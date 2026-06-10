@@ -11,46 +11,24 @@ class Procedure extends AuthenticatedController {
 		$this->load->helper(array('url', 'file'));
 		$this->load->model('procedure_model');
 		$this->load->model('procedure_item_model');
+		$this->load->library('procedure_processor');
 	}
 
 	public function index()
 	{
 		$procedures = $this->procedure_model->get_all();
-		$items = array();
+		$tabs = array();
 
 		foreach ($procedures as $procedure)
 		{
-			foreach ($this->procedure_item_model->get_by_procedure($procedure['id']) as $item)
-			{
-				$info = json_decode($item['info'], TRUE);
-
-				if ( ! is_array($info))
-				{
-					$info = array();
-				}
-
-				$items[] = array(
-					'id'                       => (int) $item['id'],
-					'procedure_id'             => (int) $item['procedure_id'],
-					'product_procedure_number' => $item['product_procedure_number'],
-					'name'                     => $item['name'],
-					'procedure_number'         => $procedure['procedure_number'],
-					'organization_name'        => $procedure['organization_name'],
-					'file_name'                => $procedure['file_name'],
-					'processor_name'           => $procedure['processor_name'],
-					'status'                   => $procedure['status'],
-					'has_image'                => ! empty($info['has_image']),
-					'image_urls'               => $info['image_urls'] ?? array(),
-					'created_at'               => $procedure['created_at'],
-				);
-			}
+			$items = $this->procedure_item_model->get_by_procedure($procedure['id']);
+			$tabs[] = $this->procedure_processor->format_procedure_tab($procedure, $items);
 		}
 
 		$data = array(
 			'title'      => 'Procedure',
 			'nav_active' => 'procedure',
-			'procedures' => $procedures,
-			'items'      => $items,
+			'tabs'       => $tabs,
 		);
 
 		$data['content'] = $this->load->view('procedure/index', $data, TRUE);
@@ -68,8 +46,6 @@ class Procedure extends AuthenticatedController {
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => 'Please select at least one zip file.'), 422);
 		}
-
-		$this->load->library('procedure_processor');
 
 		try
 		{
@@ -95,6 +71,7 @@ class Procedure extends AuthenticatedController {
 			'success'    => TRUE,
 			'message'    => count($result['procedures']).' procedure file(s) uploaded successfully.',
 			'procedures' => $result['procedures'],
+			'tabs'       => $result['tabs'],
 			'items'      => $result['items'],
 		));
 	}
