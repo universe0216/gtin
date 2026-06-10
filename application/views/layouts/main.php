@@ -1,0 +1,30 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title><?php echo html_escape($title ?? 'GTIN'); ?></title>
+
+	<link href="<?php echo base_url('assets/vendor/font-awesome/css/all.min.css'); ?>" rel="stylesheet">
+	<link href="<?php echo base_url('assets/vendor/roboto/css/roboto.css'); ?>" rel="stylesheet">
+	<link href="<?php echo base_url('assets/vendor/mdb/css/mdb.min.css'); ?>" rel="stylesheet">
+	<link href="<?php echo base_url('assets/css/app.css'); ?>" rel="stylesheet">
+</head>
+<body>
+
+<?php $this->load->view('partials/navbar', array('nav_active' => $nav_active ?? '')); ?>
+
+<main class="container py-4">
+	<?php echo $content; ?>
+</main>
+
+<script src="<?php echo base_url('assets/vendor/mdb/js/mdb.umd.min.js'); ?>"></script>
+<script>
+	window.APP_BASE_URL = <?php echo json_encode(base_url()); ?>;
+</script>
+<script src="<?php echo base_url('assets/js/crud.js'); ?>"></script>
+
+</body>
+</html>

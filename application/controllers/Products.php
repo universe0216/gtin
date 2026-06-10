@@ -1,0 +1,32 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+require_once APPPATH.'core/BasicController.php';
+
+class Products extends BasicController {
+
+	protected $entity = 'products';
+	protected $entity_label = 'Products';
+	protected $fields = array(
+		array(
+			'name'     => 'name',
+			'label'    => 'Name',
+			'type'     => 'text',
+			'required' => TRUE,
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
+			'name'     => 'description',
+			'label'    => 'Description',
+			'type'     => 'textarea',
+			'required' => FALSE,
+			'rules'    => array('trim'),
+		),
+	);
+
+	public function __construct()
+	{
+		parent::__construct();
+		$this->load->model('product_model', 'model');
+	}
+}

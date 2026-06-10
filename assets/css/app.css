@@ -1,0 +1,27 @@
+body {
+	background-color: #f5f7fa;
+}
+
+.navbar-brand {
+	letter-spacing: 0.5px;
+}
+
+.table td {
+	vertical-align: middle;
+}
+
+.table td:last-child .btn {
+	margin-left: 0.25rem;
+}
+
+#crudTable tbody tr {
+	cursor: default;
+}
+
+.modal .form-outline {
+	margin-bottom: 1rem;
+}
+
+.toast {
+	min-width: 280px;
+}
