@@ -359,6 +359,345 @@ html[data-mdb-theme="dark"] body {
 .procedure-data-table th,
 .procedure-data-table td {
 	white-space: nowrap;
+	padding: 0.5rem 0.65rem;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	vertical-align: middle;
+}
+
+.procedure-data-table .procedure-row-index {
+	width: 2.5rem;
+	text-align: center;
+	padding-left: 0.45rem;
+	padding-right: 0.45rem;
+}
+
+.procedure-data-table tbody tr.procedure-data-row {
+	cursor: pointer;
+}
+
+.procedure-data-table tbody tr.procedure-data-row:hover {
+	background-color: rgba(77, 127, 212, 0.08);
+}
+
+.procedure-detail-modal .modal-content {
+	background-color: var(--app-bg);
+	border: none;
+	height: 100vh;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.procedure-detail-modal .procedure-detail-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.procedure-detail-header {
+	border-bottom: 1px solid var(--app-border);
+	background: linear-gradient(180deg, var(--app-surface) 0%, var(--app-bg) 100%);
+	padding: 1.25rem 1.5rem;
+}
+
+.procedure-detail-eyebrow {
+	color: var(--app-text-muted);
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.procedure-detail-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.procedure-detail-info-panel {
+	border-right: 1px solid var(--app-border);
+}
+
+.procedure-detail-side-panel {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+	background-color: var(--app-surface);
+}
+
+.procedure-detail-tabs {
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--app-border);
+	padding: 0.75rem 1rem 0;
+	gap: 0.35rem;
+}
+
+.procedure-detail-tabs .nav-link {
+	color: var(--app-text-muted);
+	border: 1px solid transparent;
+	border-bottom: none;
+	border-radius: 0.5rem 0.5rem 0 0;
+	padding: 0.6rem 1rem;
+}
+
+.procedure-detail-tabs .nav-link.active {
+	color: #dbeafe;
+	background-color: var(--app-surface-raised);
+	border-color: var(--app-border);
+}
+
+.procedure-detail-tab-content {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.procedure-detail-tab-pane {
+	height: 100%;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 1.25rem 1.5rem;
+}
+
+.procedure-detail-image-gallery {
+	width: 100%;
+}
+
+.procedure-image-viewport {
+	position: relative;
+	width: 100%;
+	height: calc(100vh - 16rem);
+	min-height: 320px;
+	overflow: hidden;
+	border-radius: 0.75rem;
+	border: 1px solid var(--app-border);
+	background:
+		linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+		linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+		var(--app-surface-raised);
+	background-size: 24px 24px;
+	cursor: grab;
+	touch-action: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.procedure-image-viewport.is-dragging {
+	cursor: grabbing;
+}
+
+.procedure-image-stage {
+	transform-origin: center center;
+	backface-visibility: hidden;
+}
+
+.procedure-image-stage.is-moving {
+	will-change: transform;
+}
+
+.procedure-detail-main-image {
+	display: block;
+	max-width: none;
+	max-height: calc(100vh - 14rem);
+	width: auto;
+	height: auto;
+	border-radius: 0.5rem;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-user-drag: none;
+	pointer-events: none;
+}
+
+.procedure-image-viewer-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	flex-wrap: wrap;
+	margin-top: 0.85rem;
+}
+
+.procedure-detail-thumb-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-top: 1rem;
+}
+
+.procedure-detail-thumb-btn {
+	border: 1px solid var(--app-border);
+	background: var(--app-surface-raised);
+	border-radius: 0.5rem;
+	padding: 0.25rem;
+	cursor: pointer;
+}
+
+.procedure-detail-thumb-btn.active,
+.procedure-detail-thumb-btn:hover {
+	border-color: var(--app-accent);
+	box-shadow: 0 0 0 2px var(--app-accent-soft);
+}
+
+.procedure-detail-thumb-btn img {
+	width: 72px;
+	height: 72px;
+	object-fit: cover;
+	border-radius: 0.35rem;
+	display: block;
+}
+
+.procedure-detail-empty-image {
+	text-align: center;
+	color: var(--app-text-muted);
+	padding: 4rem 1.5rem;
+}
+
+.procedure-detail-empty-image i {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+	color: #64748b;
+}
+
+.procedure-detail-info-panel {
+	padding: 1.5rem 1.75rem;
+	min-height: 0;
+	height: 100%;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	background-color: var(--app-bg);
+}
+
+.procedure-detail-footer {
+	border-top: 1px solid var(--app-border);
+	background-color: var(--app-surface);
+	padding: 0.9rem 1.5rem;
+}
+
+.procedure-barcode-form .form-label {
+	color: var(--app-text-muted);
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.procedure-barcode-preview-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+}
+
+.procedure-barcode-preview-card {
+	border: 1px solid var(--app-border-subtle);
+	border-radius: 0.5rem;
+	background-color: var(--app-surface-raised);
+	overflow: hidden;
+}
+
+.procedure-barcode-preview-title {
+	margin: 0;
+	padding: 0.75rem 1rem;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--app-text-muted);
+	border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.procedure-barcode-preview-body {
+	min-height: 220px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	position: relative;
+}
+
+.procedure-barcode-svg {
+	max-width: 100%;
+	height: auto;
+}
+
+.procedure-barcode-svg text {
+	font-family: 'Courier New', monospace;
+	letter-spacing: 0.32em;
+}
+
+.procedure-qr-code {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.procedure-qr-code img {
+	border-radius: 0.35rem;
+}
+
+.procedure-detail-info-grid {
+	display: grid;
+	gap: 0.85rem;
+}
+
+.procedure-detail-info-item {
+	padding: 0.9rem 1rem;
+	border: 1px solid var(--app-border-subtle);
+	border-radius: 0.5rem;
+	background-color: var(--app-surface);
+}
+
+.procedure-detail-info-label {
+	display: block;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--app-text-muted);
+	margin-bottom: 0.35rem;
+}
+
+.procedure-detail-info-value {
+	font-size: 1rem;
+	color: #e2e8f0;
+	word-break: break-word;
+}
+
+.procedure-detail-meta-block {
+	margin-bottom: 1.5rem;
+	padding-bottom: 1.25rem;
+	border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.procedure-detail-meta-block .badge {
+	font-size: 0.75rem;
+}
+
+@media (max-width: 991.98px) {
+	.procedure-detail-layout {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto 1fr;
+	}
+
+	.procedure-detail-info-panel {
+		border-right: none;
+		border-bottom: 1px solid var(--app-border);
+		max-height: 40vh;
+	}
+
+	.procedure-barcode-preview-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.procedure-image-viewport {
+		height: 360px;
+		min-height: 360px;
+	}
 }
 
 .auth-page {

@@ -9,6 +9,8 @@
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
 	const formEl = document.getElementById('procedureUploadForm');
+	const uploadModalEl = document.getElementById('procedureUploadModal');
+	const openUploadBtn = document.getElementById('btnOpenUploadModal');
 	const uploadZone = document.getElementById('procedureUploadZone');
 	const fileInput = document.getElementById('zipFilesInput');
 	const selectedFilesList = document.getElementById('selectedFilesList');
@@ -20,8 +22,348 @@
 	const emptyState = document.getElementById('procedureEmptyState');
 	const tabCount = document.getElementById('procedureTabCount');
 	const toastContainer = document.getElementById('toastContainer');
+	const productModalEl = document.getElementById('procedureProductModal');
+	const productModalTitle = document.getElementById('procedureProductModalLabel');
+	const productDetailImageGallery = document.getElementById('procedureDetailImageGallery');
+	const productDetailInfo = document.getElementById('procedureDetailInfo');
+	const productDetailFooterMeta = document.getElementById('procedureDetailFooterMeta');
+	const procedureBarcodeInput = document.getElementById('procedureBarcodeInput');
+	const procedureBarcodeFullValue = document.getElementById('procedureBarcodeFullValue');
+	const procedureBarcodeSvg = document.getElementById('procedureBarcodeSvg');
+	const procedureBarcodeEmpty = document.getElementById('procedureBarcodeEmpty');
+	const procedureQrCode = document.getElementById('procedureQrCode');
+	const procedureQrEmpty = document.getElementById('procedureQrEmpty');
+	const procedureDetailTabsEl = document.getElementById('procedureDetailTabs');
 
 	let selectedFiles = [];
+	let uploadModal;
+	let productModal;
+	let productImageViewer = null;
+	let productQrCodeInstance = null;
+
+	function initUploadModal() {
+		if (typeof mdb === 'undefined' || !uploadModalEl) {
+			return;
+		}
+
+		uploadModal = mdb.Modal.getOrCreateInstance(uploadModalEl);
+		uploadModalEl.addEventListener('hidden.mdb.modal', resetUploadForm);
+	}
+
+	function resetUploadForm() {
+		selectedFiles = [];
+		formEl.reset();
+		uploadZone.classList.remove('is-dragover');
+		renderSelectedFiles();
+	}
+
+	function openUploadModal() {
+		if (uploadModal) {
+			uploadModal.show();
+		}
+	}
+
+	function initProductModal() {
+		if (typeof mdb === 'undefined' || !productModalEl) {
+			return;
+		}
+
+		productModal = mdb.Modal.getOrCreateInstance(productModalEl);
+		initDetailTabs();
+	}
+
+	function initDetailTabs() {
+		if (typeof mdb === 'undefined' || !procedureDetailTabsEl) {
+			return;
+		}
+
+		procedureDetailTabsEl.querySelectorAll('[data-mdb-tab-init]').forEach(function (element) {
+			mdb.Tab.getOrCreateInstance(element);
+		});
+	}
+
+	function resetBarcodePreview() {
+		if (procedureBarcodeSvg) {
+			procedureBarcodeSvg.innerHTML = '';
+			procedureBarcodeSvg.classList.add('d-none');
+		}
+
+		if (procedureBarcodeEmpty) {
+			procedureBarcodeEmpty.classList.remove('d-none');
+		}
+
+		if (procedureQrCode) {
+			procedureQrCode.innerHTML = '';
+		}
+
+		if (procedureQrEmpty) {
+			procedureQrEmpty.classList.remove('d-none');
+		}
+
+		productQrCodeInstance = null;
+	}
+
+	function calculateEan13Checksum(twelveDigits) {
+		let sum = 0;
+
+		for (let i = 0; i < 12; i++) {
+			const digit = parseInt(twelveDigits.charAt(i), 10);
+			sum += (i % 2 === 0) ? digit : digit * 3;
+		}
+
+		return String((10 - (sum % 10)) % 10);
+	}
+
+	function toEan13Full(value) {
+		const digits = String(value || '').replace(/\D/g, '');
+
+		if (!digits) {
+			return null;
+		}
+
+		const dataDigits = digits.slice(0, 12).padStart(12, '0');
+
+		return dataDigits + calculateEan13Checksum(dataDigits);
+	}
+
+	function applyBarcodeTextSpacing(svgEl) {
+		if (!svgEl) {
+			return;
+		}
+
+		svgEl.querySelectorAll('text').forEach(function (textEl) {
+			textEl.setAttribute('font-family', 'Courier New, monospace');
+			textEl.setAttribute('letter-spacing', '0.32em');
+			textEl.setAttribute('fill', '#000000');
+		});
+	}
+
+	function renderBarcodePreview(value) {
+		const barcodeValue = (value || '').trim();
+		const ean13Full = toEan13Full(barcodeValue);
+		resetBarcodePreview();
+
+		if (!barcodeValue) {
+			if (procedureBarcodeFullValue) {
+				procedureBarcodeFullValue.textContent = 'Full EAN-13 (with checksum): —';
+			}
+			return;
+		}
+
+		if (procedureBarcodeFullValue) {
+			procedureBarcodeFullValue.textContent = ean13Full
+				? 'Full EAN-13 (with checksum): ' + ean13Full
+				: 'Full EAN-13 (with checksum): —';
+		}
+
+		if (typeof JsBarcode !== 'undefined' && procedureBarcodeSvg && ean13Full) {
+			try {
+				// Pass 12 data digits only; JsBarcode calculates and displays the checksum digit.
+				JsBarcode(procedureBarcodeSvg, ean13Full.slice(0, 12), {
+					format: 'EAN13',
+					lineColor: '#000000',
+					background: '#ffffff',
+					width: 2,
+					height: 72,
+					displayValue: true,
+					font: 'Courier New, monospace',
+					fontSize: 16,
+					textMargin: 6,
+					marginRight: 10,
+					marginLeft: 3,
+					marginTop: 3,
+					marginBottom: 3,
+				});
+				applyBarcodeTextSpacing(procedureBarcodeSvg);
+				procedureBarcodeSvg.classList.remove('d-none');
+
+				if (procedureBarcodeEmpty) {
+					procedureBarcodeEmpty.classList.add('d-none');
+				}
+			} catch (error) {
+				if (procedureBarcodeEmpty) {
+					procedureBarcodeEmpty.textContent = 'Unable to render barcode for this value.';
+					procedureBarcodeEmpty.classList.remove('d-none');
+				}
+			}
+		}
+
+		if (typeof QRCode !== 'undefined' && procedureQrCode && ean13Full) {
+			procedureQrCode.innerHTML = '';
+			productQrCodeInstance = new QRCode(procedureQrCode, {
+				text: ean13Full,
+				width: 180,
+				height: 180,
+				colorDark: '#000000',
+				colorLight: '#ffffff',
+				correctLevel: QRCode.CorrectLevel.M,
+			});
+
+			if (procedureQrEmpty) {
+				procedureQrEmpty.classList.add('d-none');
+			}
+		}
+	}
+
+	function buildRowPayload(tab, row, index) {
+		return {
+			id: row.id,
+			row_index: index + 1,
+			product_procedure_number: row.product_procedure_number,
+			cells: row.cells || [],
+			columns: tab.columns || [],
+			image_urls: row.image_urls || [],
+			procedure_number: tab.procedure_number,
+			organization_name: tab.organization_name,
+			file_name: tab.file_name,
+			processor_name: tab.processor_name || '',
+			status: tab.status || 'uploaded',
+			created_at: tab.created_at || '',
+		};
+	}
+
+	function destroyProductImageViewer() {
+		if (productImageViewer) {
+			productImageViewer.destroy();
+			productImageViewer = null;
+		}
+	}
+
+	function initProductImageViewer() {
+		destroyProductImageViewer();
+
+		const viewport = document.getElementById('procedureImageViewport');
+
+		if (!viewport || typeof ImageViewer === 'undefined') {
+			return;
+		}
+
+		productImageViewer = new ImageViewer(viewport);
+	}
+
+	function renderDetailImages(imageUrls) {
+		destroyProductImageViewer();
+
+		if (!Array.isArray(imageUrls) || !imageUrls.length) {
+			productDetailImageGallery.innerHTML =
+				'<div class="procedure-detail-empty-image">' +
+					'<i class="fas fa-image d-block"></i>' +
+					'<p class="mb-0">No design image found for this product.</p>' +
+				'</div>';
+			return;
+		}
+
+		const mainUrl = imageUrls[0];
+		let thumbsHtml = '';
+
+		imageUrls.forEach(function (url, index) {
+			thumbsHtml +=
+				'<button type="button" class="procedure-detail-thumb-btn' + (index === 0 ? ' active' : '') + '" data-image-url="' + escapeHtml(url) + '">' +
+					'<img src="' + escapeHtml(url) + '" alt="">' +
+				'</button>';
+		});
+
+		productDetailImageGallery.innerHTML =
+			'<div class="procedure-image-viewport image-viewer" id="procedureImageViewport">' +
+				'<div class="image-viewer-stage procedure-image-stage">' +
+					'<img src="' + escapeHtml(mainUrl) + '" alt="" class="image-viewer-target procedure-detail-main-image" id="procedureDetailMainImage" draggable="false">' +
+				'</div>' +
+			'</div>' +
+			'<div class="procedure-image-viewer-toolbar">' +
+				'<span class="text-muted small"><i class="fas fa-mouse me-1"></i>Scroll to zoom</span>' +
+				'<span class="text-muted small"><i class="fas fa-hand-pointer me-1"></i>Drag to move</span>' +
+				'<button type="button" class="btn btn-sm btn-outline-secondary" id="procedureImageResetBtn" data-mdb-ripple-init>Reset View</button>' +
+			'</div>' +
+			(imageUrls.length > 1
+				? '<div class="procedure-detail-thumb-list" id="procedureDetailThumbList">' + thumbsHtml + '</div>'
+				: '');
+
+		initProductImageViewer();
+	}
+
+	function renderDetailInfo(payload) {
+		const fields = [];
+		const columns = payload.columns || [];
+		const cells = payload.cells || [];
+
+		columns.forEach(function (column, index) {
+			fields.push({
+				label: column,
+				value: cells[index] ?? '',
+			});
+		});
+
+		fields.push(
+			{ label: 'Procedure #', value: payload.procedure_number || '' },
+			{ label: 'Organization', value: payload.organization_name || '' },
+			{ label: 'Zip File', value: payload.file_name || '' },
+			{ label: 'Processor', value: payload.processor_name || '' },
+			{ label: 'Status', value: payload.status || '' },
+			{ label: 'Uploaded', value: payload.created_at || '' }
+		);
+
+		const fieldsHtml = fields.map(function (field) {
+			return '<div class="procedure-detail-info-item">' +
+				'<span class="procedure-detail-info-label">' + escapeHtml(field.label) + '</span>' +
+				'<span class="procedure-detail-info-value">' + escapeHtml(field.value) + '</span>' +
+			'</div>';
+		}).join('');
+
+		productDetailInfo.innerHTML =
+			'<div class="procedure-detail-meta-block">' +
+				'<div class="d-flex align-items-center gap-2 flex-wrap mb-2">' +
+					'<span class="badge bg-primary">Row ' + escapeHtml(String(payload.row_index || '')) + '</span>' +
+					'<span class="badge bg-info text-dark">' + escapeHtml(payload.status || 'uploaded') + '</span>' +
+				'</div>' +
+				'<h4 class="h5 mb-1">' + escapeHtml(payload.product_procedure_number || 'Product') + '</h4>' +
+				'<p class="text-muted mb-0">' + escapeHtml(payload.organization_name || '') + '</p>' +
+			'</div>' +
+			'<div class="procedure-detail-info-grid">' + fieldsHtml + '</div>';
+	}
+
+	function openProductDetailModal(payload) {
+		if (!productModal || !payload) {
+			return;
+		}
+
+		const productNumber = payload.product_procedure_number || 'Product Detail';
+
+		productModalTitle.textContent = productNumber;
+		renderDetailImages(payload.image_urls || []);
+		renderDetailInfo(payload);
+
+		if (productDetailFooterMeta) {
+			productDetailFooterMeta.textContent = (payload.organization_name || '') +
+				(payload.file_name ? ' · ' + payload.file_name : '');
+		}
+
+		if (procedureBarcodeInput) {
+			procedureBarcodeInput.value = payload.product_procedure_number || '';
+			renderBarcodePreview(procedureBarcodeInput.value);
+		}
+
+		const imageTabBtn = document.getElementById('procedureDetailTabImageBtn');
+
+		if (imageTabBtn && typeof mdb !== 'undefined') {
+			mdb.Tab.getOrCreateInstance(imageTabBtn).show();
+		}
+
+		productModal.show();
+	}
+
+	function parseRowPayload(row) {
+		const raw = row.getAttribute('data-row-payload');
+
+		if (!raw) {
+			return null;
+		}
+
+		try {
+			return JSON.parse(raw);
+		} catch (error) {
+			return null;
+		}
+	}
 
 	function escapeHtml(text) {
 		const div = document.createElement('div');
@@ -83,31 +425,21 @@
 		renderSelectedFiles();
 	}
 
-	function buildImageCell(imageUrls) {
-		if (!Array.isArray(imageUrls) || !imageUrls.length) {
-			return '<span class="text-muted small">No image</span>';
-		}
-
-		return imageUrls.map(function (url) {
-			return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="procedure-thumb-link me-1">' +
-				'<img src="' + escapeHtml(url) + '" alt="" class="procedure-thumb">' +
-			'</a>';
-		}).join('');
-	}
-
 	function buildTableHtml(tab) {
-		const headerHtml = (tab.columns || []).map(function (column) {
-			return '<th>' + escapeHtml(column) + '</th>';
-		}).join('') + '<th>Image</th>';
+		const headerHtml = '<th class="procedure-row-index">#</th>' +
+			(tab.columns || []).map(function (column) {
+				return '<th>' + escapeHtml(column) + '</th>';
+			}).join('');
 
-		const bodyHtml = (tab.rows || []).map(function (row) {
+		const bodyHtml = (tab.rows || []).map(function (row, index) {
+			const payload = buildRowPayload(tab, row, index);
 			const cellsHtml = (row.cells || []).map(function (cell) {
 				return '<td>' + escapeHtml(cell) + '</td>';
 			}).join('');
 
-			return '<tr data-id="' + row.id + '" data-product-number="' + escapeHtml(row.product_procedure_number) + '">' +
+			return '<tr class="procedure-data-row" data-id="' + row.id + '" data-product-number="' + escapeHtml(row.product_procedure_number) + '" data-row-payload="' + escapeHtml(JSON.stringify(payload)) + '">' +
+				'<td class="procedure-row-index text-muted">' + (index + 1) + '</td>' +
 				cellsHtml +
-				'<td>' + buildImageCell(row.image_urls) + '</td>' +
 			'</tr>';
 		}).join('');
 
@@ -192,6 +524,10 @@
 	}
 
 	function updateTabCount() {
+		if (!tabCount) {
+			return;
+		}
+
 		const count = tabsNav.querySelectorAll('.nav-item').length;
 		tabCount.textContent = count + ' zip file(s)';
 	}
@@ -255,9 +591,12 @@
 				}
 
 				prependTabs(result.data.tabs || []);
-				selectedFiles = [];
-				fileInput.value = '';
-				renderSelectedFiles();
+				resetUploadForm();
+
+				if (uploadModal) {
+					uploadModal.hide();
+				}
+
 				showToast(result.data.message, 'success');
 			})
 			.catch(function () {
@@ -309,7 +648,58 @@
 		setSelectedFiles(event.dataTransfer.files);
 	});
 
+	tabsContent.addEventListener('click', function (event) {
+		const row = event.target.closest('tr.procedure-data-row');
+
+		if (!row) {
+			return;
+		}
+
+		const payload = parseRowPayload(row);
+
+		if (payload) {
+			openProductDetailModal(payload);
+		}
+	});
+
+	productDetailImageGallery.addEventListener('click', function (event) {
+		const resetBtn = event.target.closest('#procedureImageResetBtn');
+
+		if (resetBtn) {
+			if (productImageViewer) {
+				productImageViewer.reset();
+			}
+			return;
+		}
+
+		const thumbBtn = event.target.closest('.procedure-detail-thumb-btn');
+
+		if (!thumbBtn) {
+			return;
+		}
+
+		const imageUrl = thumbBtn.getAttribute('data-image-url');
+
+		if (productImageViewer && imageUrl) {
+			productImageViewer.setImage(imageUrl);
+		}
+
+		productDetailImageGallery.querySelectorAll('.procedure-detail-thumb-btn').forEach(function (button) {
+			button.classList.remove('active');
+		});
+		thumbBtn.classList.add('active');
+	});
+
+	if (procedureBarcodeInput) {
+		procedureBarcodeInput.addEventListener('input', function () {
+			renderBarcodePreview(procedureBarcodeInput.value);
+		});
+	}
+
+	openUploadBtn.addEventListener('click', openUploadModal);
 	formEl.addEventListener('submit', submitUpload);
+	initUploadModal();
+	initProductModal();
 	initTabControls(tabsWrapper);
 	renderSelectedFiles();
 })();
