@@ -16,7 +16,7 @@ $form_id = 'basicModalForm';
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title" id="<?php echo $modal_id; ?>Label"><?php echo html_escape($title); ?></h5>
-				<button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<form id="<?php echo $form_id; ?>">
 				<div class="modal-body">
@@ -31,6 +31,7 @@ $form_id = 'basicModalForm';
 									id="field_<?php echo html_escape($field['name']); ?>"
 									name="<?php echo html_escape($field['name']); ?>"
 									rows="3"
+									placeholder=" "
 									<?php echo ! empty($field['required']) ? 'required' : ''; ?>
 								></textarea>
 							<?php else: ?>
@@ -39,6 +40,7 @@ $form_id = 'basicModalForm';
 									class="form-control"
 									id="field_<?php echo html_escape($field['name']); ?>"
 									name="<?php echo html_escape($field['name']); ?>"
+									placeholder=" "
 									<?php echo ! empty($field['required']) ? 'required' : ''; ?>
 								>
 							<?php endif; ?>
@@ -72,7 +74,7 @@ $form_id = 'basicModalForm';
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
-				<button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body">
 				Are you sure you want to delete this record?

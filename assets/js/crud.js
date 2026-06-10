@@ -28,6 +28,7 @@
 		if (typeof mdb !== 'undefined') {
 			basicModal = mdb.Modal.getOrCreateInstance(modalEl);
 			deleteModal = mdb.Modal.getOrCreateInstance(deleteModalEl);
+			modalEl.addEventListener('shown.mdb.modal', syncFormOutlines);
 		}
 	}
 
@@ -82,10 +83,22 @@
 		alertEl.classList.remove('d-none');
 	}
 
+	function syncFormOutlines() {
+		if (typeof mdb === 'undefined' || !mdb.Input) {
+			return;
+		}
+
+		formEl.querySelectorAll('.form-outline').forEach(function (wrapper) {
+			const instance = mdb.Input.getOrCreateInstance(wrapper);
+			instance.update();
+		});
+	}
+
 	function resetForm() {
 		formEl.reset();
 		recordIdInput.value = '';
 		hideAlert();
+		syncFormOutlines();
 	}
 
 	function fillForm(data) {
@@ -95,6 +108,7 @@
 				input.value = data[field.name] ?? '';
 			}
 		});
+		syncFormOutlines();
 	}
 
 	function openCreateModal() {

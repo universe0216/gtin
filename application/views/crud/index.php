@@ -12,11 +12,11 @@ $list_fields = array_filter($fields, function ($field) {
 	</button>
 </div>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm app-panel">
 	<div class="card-body p-0">
 		<div class="table-responsive">
-			<table class="table table-hover mb-0" id="crudTable">
-				<thead class="table-light">
+			<table class="table table-hover table-dark mb-0" id="crudTable">
+				<thead>
 					<tr>
 						<th scope="col">#</th>
 						<?php foreach ($list_fields as $field): ?>

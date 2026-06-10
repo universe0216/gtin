@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?><!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mdb-theme="dark">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,7 +12,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<link href="<?php echo base_url('assets/vendor/mdb/css/mdb.min.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/css/app.css'); ?>" rel="stylesheet">
 </head>
-<body>
+<body class="text-body">
 
 <?php $this->load->view('partials/navbar', array('nav_active' => $nav_active ?? '')); ?>
 
