@@ -1,7 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Procedure extends CI_Controller {
+require_once APPPATH.'core/AuthenticatedController.php';
+
+class Procedure extends AuthenticatedController {
 
 	public function __construct()
 	{

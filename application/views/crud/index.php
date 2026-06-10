@@ -4,12 +4,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $list_fields = array_filter($fields, function ($field) {
 	return ($field['type'] ?? 'text') !== 'hidden';
 });
+$can_edit = $can_edit ?? TRUE;
 ?>
 <div class="d-flex justify-content-between align-items-center mb-4">
 	<h1 class="h3 mb-0"><?php echo html_escape($title); ?></h1>
-	<button type="button" class="btn btn-primary" id="btnAddRecord" data-mdb-ripple-init>
-		<i class="fas fa-plus me-1"></i> Add New
-	</button>
+	<?php if ($can_edit): ?>
+		<button type="button" class="btn btn-primary" id="btnAddRecord" data-mdb-ripple-init>
+			<i class="fas fa-plus me-1"></i> Add New
+		</button>
+	<?php endif; ?>
 </div>
 
 <div class="card shadow-sm app-panel">
@@ -22,14 +25,16 @@ $list_fields = array_filter($fields, function ($field) {
 						<?php foreach ($list_fields as $field): ?>
 							<th scope="col"><?php echo html_escape($field['label']); ?></th>
 						<?php endforeach; ?>
-						<th scope="col" class="text-end" style="width: 140px;">Actions</th>
+						<?php if ($can_edit): ?>
+							<th scope="col" class="text-end" style="width: 140px;">Actions</th>
+						<?php endif; ?>
 					</tr>
 				</thead>
 				<tbody>
 					<?php if (empty($records)): ?>
 						<tr id="emptyRow">
-							<td colspan="<?php echo count($list_fields) + 2; ?>" class="text-center text-muted py-4">
-								No records found. Click "Add New" to create one.
+							<td colspan="<?php echo count($list_fields) + 1 + ($can_edit ? 1 : 0); ?>" class="text-center text-muted py-4">
+								No records found.<?php echo $can_edit ? ' Click "Add New" to create one.' : ''; ?>
 							</td>
 						</tr>
 					<?php else: ?>
@@ -39,14 +44,16 @@ $list_fields = array_filter($fields, function ($field) {
 								<?php foreach ($list_fields as $field): ?>
 									<td><?php echo html_escape($record[$field['name']] ?? ''); ?></td>
 								<?php endforeach; ?>
-								<td class="text-end">
-									<button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-mdb-ripple-init>
-										<i class="fas fa-pen"></i>
-									</button>
-									<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-mdb-ripple-init>
-										<i class="fas fa-trash"></i>
-									</button>
-								</td>
+								<?php if ($can_edit): ?>
+									<td class="text-end">
+										<button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-mdb-ripple-init>
+											<i class="fas fa-pen"></i>
+										</button>
+										<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-mdb-ripple-init>
+											<i class="fas fa-trash"></i>
+										</button>
+									</td>
+								<?php endif; ?>
 							</tr>
 						<?php endforeach; ?>
 					<?php endif; ?>
@@ -56,6 +63,7 @@ $list_fields = array_filter($fields, function ($field) {
 	</div>
 </div>
 
+<?php if ($can_edit): ?>
 <?php
 $this->load->view('partials/basic_modal', array(
 	'title'  => $title,
@@ -63,6 +71,7 @@ $this->load->view('partials/basic_modal', array(
 	'fields' => $fields,
 ));
 ?>
+<?php endif; ?>
 
 <script>
 	window.CRUD_CONFIG = <?php echo json_encode(array(
@@ -70,5 +79,6 @@ $this->load->view('partials/basic_modal', array(
 		'entityLabel' => $title,
 		'fields'      => $list_fields,
 		'baseUrl'     => site_url($entity),
+		'canEdit'     => $can_edit,
 	)); ?>;
 </script>

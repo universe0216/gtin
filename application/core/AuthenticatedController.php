@@ -1,21 +1,12 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Welcome extends CI_Controller {
+class AuthenticatedController extends CI_Controller {
 
 	public function __construct()
 	{
 		parent::__construct();
 		$this->load->library('auth');
-	}
-
-	public function index()
-	{
-		if ($this->auth->is_logged_in())
-		{
-			redirect('primary');
-		}
-
-		redirect('login');
+		$this->auth->require_login();
 	}
 }

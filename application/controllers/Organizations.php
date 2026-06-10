@@ -24,6 +24,9 @@ class Organizations extends BasicController {
 		),
 	);
 
+	protected $permission_view = 'organization.view';
+	protected $permission_edit = 'organization.edit';
+
 	public function __construct()
 	{
 		parent::__construct();

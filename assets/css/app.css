@@ -268,3 +268,27 @@ html[data-mdb-theme="dark"] body {
 	flex: 1;
 	padding-top: 0.35rem;
 }
+
+.auth-page {
+	min-height: 100vh;
+}
+
+.auth-wrapper {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem 1rem;
+}
+
+.auth-card {
+	width: 100%;
+	max-width: 420px;
+}
+
+.permission-group {
+	padding: 0.75rem 1rem;
+	border: 1px solid var(--app-border-subtle);
+	border-radius: 0.375rem;
+	background-color: var(--app-surface-raised);
+}

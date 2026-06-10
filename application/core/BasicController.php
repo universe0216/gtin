@@ -1,12 +1,16 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class BasicController extends CI_Controller {
+require_once APPPATH.'core/AuthenticatedController.php';
+
+class BasicController extends AuthenticatedController {
 
 	public $model;
 	protected $entity = '';
 	protected $entity_label = '';
 	protected $fields = array();
+	protected $permission_view = '';
+	protected $permission_edit = '';
 
 	public function __construct()
 	{
@@ -17,6 +21,8 @@ class BasicController extends CI_Controller {
 
 	public function index()
 	{
+		$this->auth->require_permission($this->permission_view);
+
 		$records = array();
 
 		if ($this->model)
@@ -30,11 +36,14 @@ class BasicController extends CI_Controller {
 			'fields'     => $this->fields,
 			'entity'     => $this->entity,
 			'nav_active' => $this->entity,
+			'can_edit'   => $this->auth->can($this->permission_edit),
 		));
 	}
 
 	public function get($id = NULL)
 	{
+		$this->auth->require_permission($this->permission_view);
+
 		if ( ! $this->model)
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);
@@ -52,6 +61,8 @@ class BasicController extends CI_Controller {
 
 	public function create()
 	{
+		$this->auth->require_permission($this->permission_edit);
+
 		if ( ! $this->model)
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);
@@ -82,6 +93,8 @@ class BasicController extends CI_Controller {
 
 	public function update($id = NULL)
 	{
+		$this->auth->require_permission($this->permission_edit);
+
 		if ( ! $this->model)
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);
@@ -116,6 +129,8 @@ class BasicController extends CI_Controller {
 
 	public function delete($id = NULL)
 	{
+		$this->auth->require_permission($this->permission_edit);
+
 		if ( ! $this->model)
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);

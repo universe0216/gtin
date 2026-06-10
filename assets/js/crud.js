@@ -6,6 +6,11 @@
 	}
 
 	const config = window.CRUD_CONFIG;
+
+	if (!config.canEdit) {
+		return;
+	}
+
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
 	const modalEl = document.getElementById('basicModal');

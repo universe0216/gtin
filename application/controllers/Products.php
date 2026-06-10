@@ -24,6 +24,9 @@ class Products extends BasicController {
 		),
 	);
 
+	protected $permission_view = 'product.view';
+	protected $permission_edit = 'product.edit';
+
 	public function __construct()
 	{
 		parent::__construct();

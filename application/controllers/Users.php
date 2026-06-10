@@ -24,6 +24,9 @@ class Users extends BasicController {
 		),
 	);
 
+	protected $permission_view = 'primary';
+	protected $permission_edit = 'primary';
+
 	public function __construct()
 	{
 		parent::__construct();
