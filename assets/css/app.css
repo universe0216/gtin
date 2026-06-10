@@ -269,6 +269,59 @@ html[data-mdb-theme="dark"] body {
 	padding-top: 0.35rem;
 }
 
+.procedure-upload-zone {
+	position: relative;
+	border: 2px dashed var(--app-border);
+	border-radius: 0.5rem;
+	background-color: var(--app-surface-raised);
+	padding: 2.5rem 1.5rem;
+	text-align: center;
+	cursor: pointer;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.procedure-upload-zone.is-dragover,
+.procedure-upload-zone:hover {
+	border-color: var(--app-accent);
+	background-color: var(--app-accent-soft);
+}
+
+.procedure-upload-input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.procedure-selected-files {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.procedure-selected-file {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.65rem 0.85rem;
+	border: 1px solid var(--app-border-subtle);
+	border-radius: 0.375rem;
+	background-color: var(--app-surface-raised);
+}
+
+.procedure-thumb {
+	width: 42px;
+	height: 42px;
+	object-fit: cover;
+	border-radius: 0.35rem;
+	border: 1px solid var(--app-border-subtle);
+}
+
+.procedure-thumb-link {
+	display: inline-block;
+}
+
 .auth-page {
 	min-height: 100vh;
 }
