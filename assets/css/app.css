@@ -9,10 +9,13 @@ html[data-mdb-theme="dark"] {
 	--app-accent: #4d7fd4;
 	--app-accent-soft: rgba(77, 127, 212, 0.14);
 	--app-text-muted: #94a3b8;
+	--app-table-row: #121418;
+	--app-table-row-hover: #1a1f28;
 	--mdb-form-control-border-color: rgba(148, 163, 184, 0.28);
 	--mdb-form-control-label-color: #94a3b8;
 	--mdb-input-focus-border-color: #5b9aff;
 	--mdb-input-focus-label-color: #93c5fd;
+	--mdb-table-bg: var(--app-surface);
 }
 
 html[data-mdb-theme="dark"] body {
@@ -522,6 +525,29 @@ html[data-mdb-theme="dark"] body {
 	-webkit-overflow-scrolling: touch;
 }
 
+.procedure-page .procedure-table-scroll {
+	border: 1px solid var(--app-border);
+	border-radius: 0.5rem;
+	background-color: var(--app-table-row);
+}
+
+.procedure-page .procedure-table-scroll .procedure-data-table {
+	margin-bottom: 0;
+}
+
+.procedure-detail-modal .table-responsive {
+	border: 1px solid var(--app-border);
+	border-radius: 0.5rem;
+	overflow: auto;
+	background-color: var(--app-table-row);
+}
+
+.procedure-data-table {
+	--mdb-table-bg: var(--app-table-row);
+	--mdb-table-hover-bg: var(--app-table-row-hover);
+	--mdb-table-accent-bg: var(--app-table-row-hover);
+}
+
 .procedure-data-table thead th {
 	position: sticky;
 	top: 0;
@@ -539,6 +565,14 @@ html[data-mdb-theme="dark"] body {
 	vertical-align: middle;
 }
 
+html[data-mdb-theme="dark"] .procedure-data-table > tbody > tr > td {
+	background-color: var(--app-table-row);
+}
+
+html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover > td {
+	background-color: var(--app-table-row-hover);
+}
+
 .procedure-data-table .procedure-row-index {
 	width: 2.5rem;
 	text-align: center;
@@ -550,13 +584,16 @@ html[data-mdb-theme="dark"] body {
 	cursor: pointer;
 }
 
-.procedure-data-table tbody tr.procedure-data-row:hover {
-	background-color: rgba(77, 127, 212, 0.08);
+.procedure-data-table tbody tr.procedure-data-row:hover > td {
+	background-color: rgba(77, 127, 212, 0.12);
 }
 
-.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-active,
-.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-active:hover {
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-active > td,
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-active:hover > td {
 	background-color: rgba(77, 127, 212, 0.22);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-active {
 	box-shadow: inset 3px 0 0 #4d7fd4;
 }
 
@@ -934,8 +971,8 @@ html[data-mdb-theme="dark"] body {
 	cursor: pointer;
 }
 
-.history-procedure-row:hover {
-	background-color: var(--app-surface-raised);
+.history-procedure-row:hover > td {
+	background-color: var(--app-table-row-hover);
 }
 
 .history-procedure-pagination .pagination .page-link {
@@ -992,6 +1029,10 @@ html[data-mdb-theme="dark"] body {
 .history-procedure-modal-footer {
 	border-top: 1px solid var(--app-border);
 	background-color: var(--app-surface);
+}
+
+.books-gtin-actions {
+	justify-content: flex-end;
 }
 
 .books-gtin-search-wrap {

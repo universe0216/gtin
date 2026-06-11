@@ -7,17 +7,22 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 			<h1 class="h4 mb-1">GTIN Country Codes</h1>
 			<p class="text-muted small mb-0">GS1 prefix ranges used in GTIN-13 / EAN-13 barcodes.</p>
 		</div>
-		<div class="books-gtin-search-wrap">
-			<div class="input-group input-group-sm">
-				<span class="input-group-text"><i class="fas fa-search"></i></span>
-				<input
-					type="search"
-					class="form-control"
-					id="gtinCountryCodeSearch"
-					placeholder="Search prefix or country..."
-					autocomplete="off"
-				>
+		<div class="d-flex flex-wrap align-items-center gap-2 books-gtin-actions">
+			<div class="books-gtin-search-wrap">
+				<div class="input-group input-group-sm">
+					<span class="input-group-text"><i class="fas fa-search"></i></span>
+					<input
+						type="search"
+						class="form-control"
+						id="gtinCountryCodeSearch"
+						placeholder="Search prefix or country..."
+						autocomplete="off"
+					>
+				</div>
 			</div>
+			<a href="<?php echo site_url('books/gtin_country_code_export'); ?>" class="btn btn-sm btn-outline-primary" data-mdb-ripple-init>
+				<i class="fas fa-file-excel me-1"></i> Download Excel
+			</a>
 		</div>
 	</div>
 
