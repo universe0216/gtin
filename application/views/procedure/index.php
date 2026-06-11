@@ -2,11 +2,11 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
 <div class="procedure-page">
-	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
 		<div>
-			<h1 class="h3 mb-2">Procedure</h1>
+			<h1 class="h4 mb-0">Procedure</h1>
 		</div>
-		<button type="button" class="btn btn-primary <?php echo empty($tabs) ? 'd-none' : ''; ?>" id="btnOpenUploadModal" data-mdb-ripple-init>
+		<button type="button" class="btn btn-sm btn-primary <?php echo empty($tabs) ? 'd-none' : ''; ?>" id="btnOpenUploadModal" data-mdb-ripple-init>
 			<i class="fas fa-upload me-1"></i> Upload Files
 		</button>
 	</div>
@@ -110,42 +110,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 		<div id="procedureInitialUpload" class="procedure-initial-upload p-3 <?php echo empty($tabs) ? '' : 'd-none'; ?>">
 			<form class="procedure-upload-form" enctype="multipart/form-data">
-				<p class="text-muted small mb-3">
-					Each zip filename must follow <code>[procedure_number]_[organization_name].zip</code>.
-					Inside each zip: one spreadsheet and design images named with <code>[product_procedure_number]</code>.
-				</p>
-
-				<div class="procedure-upload-zone mb-3">
-					<input type="file" name="zip_files[]" accept=".zip,application/zip" multiple class="procedure-upload-input">
-					<div class="procedure-upload-content">
-						<i class="fas fa-file-zipper fa-2x text-primary mb-3"></i>
-						<p class="mb-1 fw-semibold">Drop zip files here or click to browse</p>
-						<p class="text-muted small mb-0">You can upload multiple procedure packages at once.</p>
-					</div>
-				</div>
-
-				<div class="procedure-selected-files d-none mb-3"></div>
-				<span class="text-muted small procedure-upload-hint">Select one or more zip files to continue.</span>
-
-				<div class="text-end mt-3">
-					<button type="submit" class="btn btn-primary procedure-upload-submit" data-mdb-ripple-init disabled>
-						<i class="fas fa-upload me-1"></i> Upload &amp; Process
-					</button>
-				</div>
-			</form>
-		</div>
-	</div>
-</div>
-
-<div class="modal fade" id="procedureUploadModal" tabindex="-1" aria-labelledby="procedureUploadModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered modal-lg">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="procedureUploadModalLabel">Upload Zip Files</h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<form class="procedure-upload-form" enctype="multipart/form-data">
-				<div class="modal-body">
+				<div class="procedure-upload-form-body">
 					<p class="text-muted small mb-3">
 						Each zip filename must follow <code>[procedure_number]_[organization_name].zip</code>.
 						Inside each zip: one spreadsheet and design images named with <code>[product_procedure_number]</code>.
@@ -161,9 +126,48 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					</div>
 
 					<div class="procedure-selected-files d-none mb-3"></div>
-					<span class="text-muted small procedure-upload-hint">Select one or more zip files to continue.</span>
 				</div>
-				<div class="modal-footer">
+
+				<div class="procedure-upload-actions">
+					<span class="text-muted small procedure-upload-hint d-block mb-2">Select one or more zip files to continue.</span>
+					<div class="text-end">
+						<button type="submit" class="btn btn-primary procedure-upload-submit" data-mdb-ripple-init disabled>
+							<i class="fas fa-upload me-1"></i> Upload &amp; Process
+						</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="procedureUploadModal" tabindex="-1" aria-labelledby="procedureUploadModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="procedureUploadModalLabel">Upload Zip Files</h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form class="procedure-upload-form" enctype="multipart/form-data">
+				<div class="modal-body procedure-upload-form-body">
+					<p class="text-muted small mb-3">
+						Each zip filename must follow <code>[procedure_number]_[organization_name].zip</code>.
+						Inside each zip: one spreadsheet and design images named with <code>[product_procedure_number]</code>.
+					</p>
+
+					<div class="procedure-upload-zone mb-3">
+						<input type="file" name="zip_files[]" accept=".zip,application/zip" multiple class="procedure-upload-input">
+						<div class="procedure-upload-content">
+							<i class="fas fa-file-zipper fa-2x text-primary mb-3"></i>
+							<p class="mb-1 fw-semibold">Drop zip files here or click to browse</p>
+							<p class="text-muted small mb-0">You can upload multiple procedure packages at once.</p>
+						</div>
+					</div>
+
+					<div class="procedure-selected-files d-none mb-0"></div>
+				</div>
+				<div class="modal-footer procedure-upload-actions">
+					<span class="text-muted small procedure-upload-hint me-auto">Select one or more zip files to continue.</span>
 					<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
 					<button type="submit" class="btn btn-primary procedure-upload-submit" data-mdb-ripple-init disabled>
 						<i class="fas fa-upload me-1"></i> Upload &amp; Process
@@ -178,9 +182,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<div class="modal-dialog modal-fullscreen">
 		<div class="modal-content">
 			<div class="modal-header procedure-detail-header">
-				<div>
-					<h6 class="modal-title mb-0" id="procedureProductModalLabel">—</h5>
-				</div>
+				<h6 class="modal-title mb-0 procedure-detail-header-title" id="procedureProductModalLabel">—</h6>
 				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body p-0 procedure-detail-body">

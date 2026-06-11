@@ -24,6 +24,8 @@ html[data-mdb-theme="dark"] body {
 	background: linear-gradient(180deg, #131920 0%, var(--app-navbar-bg) 100%);
 	border-bottom: 1px solid var(--app-border);
 	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+	padding-top: 0.1rem;
+	padding-bottom: 0.1rem;
 }
 
 .navbar-brand {
@@ -294,21 +296,129 @@ html[data-mdb-theme="dark"] body {
 	pointer-events: none;
 }
 
-.procedure-selected-files {
+.procedure-upload-form {
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
+}
+
+.procedure-upload-form-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.procedure-upload-actions {
+	flex-shrink: 0;
+}
+
+#procedureInitialUpload {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+#procedureInitialUpload .procedure-upload-form {
+	flex: 1 1 auto;
+}
+
+#procedureInitialUpload .procedure-upload-actions {
+	border-top: 1px solid var(--app-border-subtle);
+	padding-top: 0.75rem;
+	margin-top: 0.75rem;
+}
+
+#procedureUploadModal .modal-dialog {
+	max-height: calc(100dvh - 2rem);
+	margin: 1rem auto;
+}
+
+#procedureUploadModal .modal-content {
+	max-height: calc(100dvh - 2rem);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+#procedureUploadModal .procedure-upload-form {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+#procedureUploadModal .modal-body {
+	overflow-y: auto;
+}
+
+#procedureUploadModal .modal-footer {
+	flex-shrink: 0;
+}
+
+.procedure-selected-files {
+	display: flex;
+	flex-wrap: wrap;
+	align-content: flex-start;
 	gap: 0.5rem;
+	max-height: 9rem;
+	overflow-y: auto;
+	padding: 0.5rem;
+	border: 1px solid var(--app-border-subtle);
+	border-radius: 0.5rem;
+	background-color: var(--app-surface);
+}
+
+.procedure-selected-files.d-none {
+	max-height: none;
+	overflow: visible;
+	padding: 0;
+	border: none;
+	background: transparent;
 }
 
 .procedure-selected-file {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-	padding: 0.65rem 0.85rem;
+	gap: 0.4rem;
+	max-width: 100%;
+	padding: 0.35rem 0.45rem 0.35rem 0.65rem;
 	border: 1px solid var(--app-border-subtle);
-	border-radius: 0.375rem;
+	border-radius: 999px;
 	background-color: var(--app-surface-raised);
+	font-size: 0.875rem;
+	line-height: 1.2;
+}
+
+.procedure-selected-file-icon {
+	color: #93b4f5;
+	font-size: 0.8rem;
+	flex-shrink: 0;
+}
+
+.procedure-selected-file-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.procedure-selected-file-remove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.25rem;
+	height: 1.25rem;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--app-text-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.procedure-selected-file-remove:hover {
+	background-color: rgba(220, 76, 100, 0.15);
+	color: #f0a8ae;
 }
 
 .procedure-thumb {
@@ -463,6 +573,22 @@ html[data-mdb-theme="dark"] body {
 	border-bottom: 1px solid var(--app-border);
 	background: linear-gradient(180deg, var(--app-surface) 0%, var(--app-bg) 100%);
 	padding: 1rem 1.5rem;
+}
+
+.procedure-detail-header-title {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+}
+
+.procedure-detail-header-org {
+	color: var(--app-text-muted);
+	font-weight: 500;
+}
+
+.procedure-detail-header-product {
+	font-weight: 600;
 }
 
 .procedure-detail-eyebrow {
@@ -707,29 +833,35 @@ html[data-mdb-theme="dark"] body {
 
 .procedure-detail-info-grid {
 	display: grid;
-	gap: 0.85rem;
+	grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+	column-gap: 1rem;
+	row-gap: 0.5rem;
+	align-items: center;
 }
 
 .procedure-detail-info-item {
-	padding: 0.9rem 1rem;
-	border: 1px solid var(--app-border-subtle);
-	border-radius: 0.5rem;
-	background-color: var(--app-surface);
+	display: contents;
 }
 
 .procedure-detail-info-label {
-	display: block;
+	justify-self: end;
+	text-align: right;
 	font-size: 0.75rem;
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
 	color: var(--app-text-muted);
-	margin-bottom: 0.35rem;
+	white-space: nowrap;
 }
 
 .procedure-detail-info-value {
-	font-size: 1rem;
+	min-width: 0;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.95rem;
 	color: #e2e8f0;
 	word-break: break-word;
+	border: 1px solid var(--app-border-subtle);
+	border-radius: 0.375rem;
+	background-color: var(--app-surface-raised);
 }
 
 .procedure-detail-meta-block {

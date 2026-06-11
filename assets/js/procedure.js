@@ -325,10 +325,8 @@
 
 		fields.push(
 			{ label: 'Procedure #', value: payload.procedure_number || '' },
-			{ label: 'Organization', value: payload.organization_name || '' },
 			{ label: 'Zip File', value: payload.file_name || '' },
 			{ label: 'Processor', value: payload.processor_name || '' },
-			{ label: 'Status', value: payload.status || '' },
 			{ label: 'Uploaded', value: payload.created_at || '' }
 		);
 
@@ -340,15 +338,22 @@
 		}).join('');
 
 		productDetailInfo.innerHTML =
-			'<div class="procedure-detail-meta-block">' +
-				'<div class="d-flex align-items-center gap-2 flex-wrap mb-2">' +
-					'<span class="badge bg-primary">Row ' + escapeHtml(String(payload.row_index || '')) + '</span>' +
-					'<span class="badge bg-info text-dark">' + escapeHtml(payload.status || 'uploaded') + '</span>' +
-				'</div>' +
-				'<h4 class="h5 mb-1">' + escapeHtml(payload.product_procedure_number || 'Product') + '</h4>' +
-				'<p class="text-muted mb-0">' + escapeHtml(payload.organization_name || '') + '</p>' +
-			'</div>' +
 			'<div class="procedure-detail-info-grid">' + fieldsHtml + '</div>';
+	}
+
+	function renderModalHeader(payload) {
+		if (!productModalTitle) {
+			return;
+		}
+
+		const orgName = escapeHtml(payload.organization_name || '');
+		const productNumber = escapeHtml(payload.product_procedure_number || 'Product');
+		const status = escapeHtml(payload.status || 'uploaded');
+
+		productModalTitle.innerHTML =
+			(orgName ? '<span class="procedure-detail-header-org">' + orgName + '</span>' : '') +
+			'<span class="procedure-detail-header-product">' + productNumber + '</span>' +
+			'<span class="badge bg-info text-dark">' + status + '</span>';
 	}
 
 	function openProductDetailModal(payload) {
@@ -356,9 +361,7 @@
 			return;
 		}
 
-		const productNumber = payload.product_procedure_number || 'Product Detail';
-
-		productModalTitle.textContent = productNumber;
+		renderModalHeader(payload);
 		renderDetailImages(payload.image_urls || []);
 		renderDetailInfo(payload);
 
@@ -420,12 +423,13 @@
 
 	function renderSelectedFiles() {
 		const filesHtml = selectedFiles.map(function (file, index) {
-			return '<div class="procedure-selected-file">' +
-				'<span><i class="fas fa-file-zipper me-2 text-primary"></i>' + escapeHtml(file.name) + '</span>' +
-				'<button type="button" class="btn btn-sm btn-outline-danger" data-index="' + index + '" data-mdb-ripple-init>' +
+			return '<span class="procedure-selected-file">' +
+				'<i class="fas fa-file-zipper procedure-selected-file-icon"></i>' +
+				'<span class="procedure-selected-file-name">' + escapeHtml(file.name) + '</span>' +
+				'<button type="button" class="procedure-selected-file-remove" data-index="' + index + '" aria-label="Remove ' + escapeAttr(file.name) + '">' +
 					'<i class="fas fa-times"></i>' +
 				'</button>' +
-			'</div>';
+			'</span>';
 		}).join('');
 
 		uploadForms.forEach(function (form) {
