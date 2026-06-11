@@ -21,7 +21,12 @@ $history_children = array(
 	'history_procedure' => array('label' => 'Procedure', 'url' => site_url('history/procedure')),
 );
 
+$books_children = array(
+	'books_gtin_country_code' => array('label' => 'GTIN CountryCode', 'url' => site_url('books/gtin_country_code')),
+);
+
 $history_active = isset($history_children[$nav_active]);
+$books_active = isset($books_children[$nav_active]);
 $primary_active = ($nav_active === 'primary' || isset($primary_children[$nav_active]));
 $show_primary = $CI->auth->can('primary');
 ?>
@@ -63,6 +68,26 @@ $show_primary = $CI->auth->can('primary');
 					>History</a>
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="historyDropdown">
 						<?php foreach ($history_children as $key => $item): ?>
+							<li>
+								<a
+									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"
+									href="<?php echo $item['url']; ?>"
+								><?php echo html_escape($item['label']); ?></a>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</li>
+				<li class="nav-item dropdown">
+					<a
+						class="nav-link dropdown-toggle<?php echo $books_active ? ' active fw-semibold' : ''; ?>"
+						href="#"
+						id="booksDropdown"
+						role="button"
+						data-mdb-dropdown-init
+						aria-expanded="false"
+					>Books</a>
+					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="booksDropdown">
+						<?php foreach ($books_children as $key => $item): ?>
 							<li>
 								<a
 									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"

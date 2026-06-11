@@ -993,3 +993,15 @@ html[data-mdb-theme="dark"] body {
 	border-top: 1px solid var(--app-border);
 	background-color: var(--app-surface);
 }
+
+.books-gtin-search-wrap {
+	min-width: 240px;
+	max-width: 320px;
+	width: 100%;
+}
+
+.books-gtin-table-scroll {
+	max-height: calc(100vh - 16rem);
+	overflow: auto;
+	-webkit-overflow-scrolling: touch;
+}
