@@ -6,30 +6,47 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div>
 			<h1 class="h4 mb-0">Procedure</h1>
 		</div>
-		<button type="button" class="btn btn-sm btn-primary <?php echo empty($tabs) ? 'd-none' : ''; ?>" id="btnOpenUploadModal" data-mdb-ripple-init>
-			<i class="fas fa-upload me-1"></i> Upload Files
-		</button>
+		<div class="d-flex flex-wrap gap-2">
+			<button type="button" class="btn btn-sm btn-success" id="btnOpenImportModal" data-mdb-ripple-init>
+				<i class="fas fa-file-import me-1"></i> Import
+			</button>
+			<button type="button" class="btn btn-sm btn-primary <?php echo empty($tabs) ? 'd-none' : ''; ?>" id="btnOpenUploadModal" data-mdb-ripple-init>
+				<i class="fas fa-upload me-1"></i> Upload Files
+			</button>
+		</div>
 	</div>
 
 	<div class="app-panel p-2">
 		<div id="procedureTabsWrapper" class="<?php echo empty($tabs) ? 'd-none' : ''; ?>">
 			<ul class="nav nav-tabs procedure-tabs mb-4" id="procedureTabs" role="tablist">
 				<?php foreach ($tabs as $index => $tab): ?>
-					<li class="nav-item" role="presentation">
-						<button
-							class="nav-link<?php echo $index === 0 ? ' active' : ''; ?>"
-							id="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>-tab"
-							data-mdb-tab-init
-							data-mdb-target="#procedure-tab-<?php echo (int) $tab['procedure_id']; ?>"
-							type="button"
-							role="tab"
-							aria-controls="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>"
-							aria-selected="<?php echo $index === 0 ? 'true' : 'false'; ?>"
-							data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
-						>
-							<i class="fas fa-file-zipper me-1"></i><?php echo html_escape($tab['file_name']); ?>
-							<span class="badge bg-secondary ms-2"><?php echo count($tab['rows']); ?></span>
-						</button>
+					<li class="nav-item procedure-tab-nav-item" role="presentation">
+						<div class="procedure-tab-nav-wrap">
+							<button
+								class="nav-link<?php echo $index === 0 ? ' active' : ''; ?>"
+								id="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>-tab"
+								data-mdb-tab-init
+								data-mdb-target="#procedure-tab-<?php echo (int) $tab['procedure_id']; ?>"
+								type="button"
+								role="tab"
+								aria-controls="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>"
+								aria-selected="<?php echo $index === 0 ? 'true' : 'false'; ?>"
+								data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
+							>
+								<i class="fas fa-file-zipper me-1"></i><?php echo html_escape($tab['file_name']); ?>
+								<span class="badge bg-secondary ms-2"><?php echo count($tab['rows']); ?></span>
+							</button>
+							<button
+								type="button"
+								class="procedure-tab-nav-close procedure-tab-delete-btn"
+								data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
+								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
+								aria-label="Stop procedure"
+								data-mdb-ripple-init
+							>
+								<i class="fas fa-times" aria-hidden="true"></i>
+							</button>
+						</div>
 					</li>
 				<?php endforeach; ?>
 			</ul>
@@ -263,6 +280,70 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				<button type="button" class="btn btn-outline-danger" id="procedureDetailRejectBtn" data-mdb-ripple-init>Reject</button>
 				<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init>Accept</button>
 				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade procedure-import-modal" id="procedureImportModal" tabindex="-1" aria-labelledby="procedureImportModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-fullscreen">
+		<div class="modal-content">
+			<div class="modal-header procedure-import-modal-header">
+				<h5 class="modal-title mb-0" id="procedureImportModalLabel">Import Completed Procedure</h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body procedure-import-modal-body p-0">
+				<div class="procedure-import-toolbar px-3 py-3 border-bottom border-secondary border-opacity-25">
+					<div class="procedure-import-search-wrap">
+						<div class="input-group input-group-sm">
+							<span class="input-group-text"><i class="fas fa-search"></i></span>
+							<input
+								type="search"
+								class="form-control"
+								id="procedureImportSearch"
+								placeholder="Search file, procedure #, organization, processor..."
+								autocomplete="off"
+							>
+						</div>
+					</div>
+				</div>
+				<div id="procedureImportLoading" class="text-center text-muted py-5 d-none">
+					<div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+					Loading completed procedures...
+				</div>
+				<div id="procedureImportTableWrap" class="procedure-import-modal-table">
+					<div class="table-responsive">
+						<table class="table table-hover align-middle mb-0 procedure-data-table">
+							<thead>
+								<tr>
+									<th class="procedure-row-index">#</th>
+									<th>File</th>
+									<th>Procedure #</th>
+									<th>Organization</th>
+									<th>Processor</th>
+									<th>Products</th>
+									<th>Approved</th>
+									<th>Rejected</th>
+									<th>Completed</th>
+								</tr>
+							</thead>
+							<tbody id="procedureImportTableBody">
+								<tr>
+									<td colspan="9" class="text-center text-muted py-4">No completed procedures found.</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div id="procedureImportPagination" class="procedure-import-pagination d-none d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
+					<p class="text-muted small mb-0" id="procedureImportFooterMeta"></p>
+					<nav aria-label="Import procedure pages">
+						<ul class="pagination pagination-sm mb-0" id="procedureImportPaginationList"></ul>
+					</nav>
+				</div>
+			</div>
+			<div class="modal-footer procedure-import-modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
 			</div>
 		</div>
 	</div>

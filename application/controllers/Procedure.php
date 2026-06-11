@@ -5,6 +5,8 @@ require_once APPPATH.'core/AuthenticatedController.php';
 
 class Procedure extends AuthenticatedController {
 
+	protected $import_per_page = 15;
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -16,7 +18,8 @@ class Procedure extends AuthenticatedController {
 
 	public function index()
 	{
-		$procedures = $this->procedure_model->get_all();
+		$user = $this->auth->user();
+		$procedures = $this->procedure_model->get_incomplete_by_account($user['id']);
 		$tabs = array();
 
 		foreach ($procedures as $procedure)
@@ -76,6 +79,65 @@ class Procedure extends AuthenticatedController {
 		));
 	}
 
+	public function import_list()
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$per_page = $this->import_per_page;
+		$page = max(1, (int) $this->input->get('page'));
+		$search = trim((string) $this->input->get('q'));
+		$total = $this->procedure_model->count_by_status('completed', $search);
+		$total_pages = max(1, (int) ceil($total / $per_page));
+
+		if ($page > $total_pages)
+		{
+			$page = $total_pages;
+		}
+
+		$offset = ($page - 1) * $per_page;
+		$procedures = $this->procedure_model->get_by_status('completed', $per_page, $offset, $search);
+		$range_start = $total > 0 ? $offset + 1 : 0;
+		$range_end = min($offset + count($procedures), $total);
+
+		return $this->json_response(array(
+			'success'     => TRUE,
+			'procedures'  => $procedures,
+			'total'       => $total,
+			'page'        => $page,
+			'per_page'    => $per_page,
+			'total_pages' => $total_pages,
+			'range_start' => $range_start,
+			'range_end'   => $range_end,
+			'search'      => $search,
+		));
+	}
+
+	public function import_tab($id = NULL)
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$tab = $this->build_import_tab($id);
+
+		if ($tab === NULL)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'Procedure not found.',
+			), 404);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'tab'     => $tab,
+		));
+	}
+
 	public function delete($id = NULL)
 	{
 		if ($this->input->method(TRUE) !== 'POST')
@@ -110,6 +172,29 @@ class Procedure extends AuthenticatedController {
 			'success' => TRUE,
 			'message' => 'Procedure stopped successfully.',
 		));
+	}
+
+	protected function build_import_tab($id)
+	{
+		$procedure = $this->procedure_model->get($id);
+
+		if ( ! $procedure || $procedure['status'] !== 'completed')
+		{
+			return NULL;
+		}
+
+		$items = $this->procedure_item_model->get_by_procedure($id);
+		$tab = $this->procedure_processor->format_procedure_tab($procedure, $items);
+
+		foreach ($tab['rows'] as $index => $row)
+		{
+			$item = $items[$index] ?? array();
+			$tab['rows'][$index]['status'] = $item['status'] ?? '';
+			$tab['rows'][$index]['message'] = $item['message'] ?? '';
+			$tab['rows'][$index]['barcode'] = $item['barcode'] ?? '';
+		}
+
+		return $tab;
 	}
 
 	protected function json_response($payload, $status = 200)

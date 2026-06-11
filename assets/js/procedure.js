@@ -11,6 +11,15 @@
 	const uploadForms = document.querySelectorAll('.procedure-upload-form');
 	const uploadModalEl = document.getElementById('procedureUploadModal');
 	const openUploadBtn = document.getElementById('btnOpenUploadModal');
+	const openImportBtn = document.getElementById('btnOpenImportModal');
+	const importModalEl = document.getElementById('procedureImportModal');
+	const importLoadingEl = document.getElementById('procedureImportLoading');
+	const importTableWrap = document.getElementById('procedureImportTableWrap');
+	const importTableBody = document.getElementById('procedureImportTableBody');
+	const importFooterMeta = document.getElementById('procedureImportFooterMeta');
+	const importPaginationEl = document.getElementById('procedureImportPagination');
+	const importPaginationList = document.getElementById('procedureImportPaginationList');
+	const importSearchInput = document.getElementById('procedureImportSearch');
 	const tabsWrapper = document.getElementById('procedureTabsWrapper');
 	const tabsNav = document.getElementById('procedureTabs');
 	const tabsContent = document.getElementById('procedureTabContent');
@@ -39,8 +48,16 @@
 	let filePickerOpenUntil = 0;
 	let pendingDeleteProcedureId = null;
 	let uploadModal;
+	let importModal;
 	let productModal;
 	let deleteModal;
+	let importListRequest = null;
+	let importSearchTimer = null;
+	const importState = {
+		page: 1,
+		search: '',
+		perPage: 15,
+	};
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
 	let activeDetailRow = null;
@@ -81,6 +98,303 @@
 		if (uploadModal) {
 			uploadModal.show();
 		}
+	}
+
+	function initImportModal() {
+		if (typeof mdb === 'undefined' || !importModalEl) {
+			return;
+		}
+
+		importModal = mdb.Modal.getOrCreateInstance(importModalEl);
+		importModalEl.addEventListener('show.mdb.modal', loadImportList);
+		importModalEl.addEventListener('hidden.mdb.modal', resetImportModal);
+	}
+
+	function resetImportModal() {
+		if (importListRequest) {
+			importListRequest.abort();
+			importListRequest = null;
+		}
+
+		if (importSearchTimer) {
+			clearTimeout(importSearchTimer);
+			importSearchTimer = null;
+		}
+
+		importState.page = 1;
+		importState.search = '';
+
+		if (importSearchInput) {
+			importSearchInput.value = '';
+		}
+
+		if (importLoadingEl) {
+			importLoadingEl.classList.add('d-none');
+		}
+
+		if (importTableWrap) {
+			importTableWrap.classList.remove('d-none');
+		}
+
+		if (importPaginationEl) {
+			importPaginationEl.classList.add('d-none');
+		}
+
+		if (importPaginationList) {
+			importPaginationList.innerHTML = '';
+		}
+
+		if (importFooterMeta) {
+			importFooterMeta.textContent = '';
+		}
+	}
+
+	function openImportModal() {
+		if (importModal) {
+			importModal.show();
+		}
+	}
+
+	function setImportLoading(isLoading) {
+		if (importLoadingEl) {
+			importLoadingEl.classList.toggle('d-none', !isLoading);
+		}
+
+		if (importTableWrap) {
+			importTableWrap.classList.toggle('d-none', isLoading);
+		}
+	}
+
+	function renderImportList(procedures, meta) {
+		if (!importTableBody) {
+			return;
+		}
+
+		const rowOffset = meta && meta.range_start > 0 ? meta.range_start - 1 : 0;
+
+		if (!procedures.length) {
+			importTableBody.innerHTML =
+				'<tr><td colspan="9" class="text-center text-muted py-4">No completed procedures found.</td></tr>';
+			renderImportPagination(meta || {});
+			return;
+		}
+
+		importTableBody.innerHTML = procedures.map(function (procedure, index) {
+			return '<tr class="procedure-import-row" role="button" tabindex="0" data-procedure-id="' + procedure.id + '">' +
+				'<td class="procedure-row-index text-muted">' + (rowOffset + index + 1) + '</td>' +
+				'<td><i class="fas fa-file-zipper me-1 text-primary"></i>' + escapeHtml(procedure.file_name) + '</td>' +
+				'<td>' + escapeHtml(procedure.procedure_number) + '</td>' +
+				'<td>' + escapeHtml(procedure.organization_name) + '</td>' +
+				'<td>' + escapeHtml(procedure.processor_name || '') + '</td>' +
+				'<td>' + escapeHtml(procedure.total_products) + '</td>' +
+				'<td>' + escapeHtml(procedure.approved) + '</td>' +
+				'<td>' + escapeHtml(procedure.rejected) + '</td>' +
+				'<td>' + escapeHtml(procedure.created_at) + '</td>' +
+			'</tr>';
+		}).join('');
+
+		renderImportPagination(meta || {});
+	}
+
+	function renderImportPagination(meta) {
+		const total = meta.total || 0;
+		const page = meta.page || 1;
+		const perPage = meta.per_page || importState.perPage;
+		const totalPages = meta.total_pages || 1;
+		const rangeStart = meta.range_start || 0;
+		const rangeEnd = meta.range_end || 0;
+
+		if (importFooterMeta) {
+			if (total > 0) {
+				importFooterMeta.textContent = 'Showing ' + rangeStart + '\u2013' + rangeEnd + ' of ' + total;
+			} else {
+				importFooterMeta.textContent = importState.search
+					? 'No results for "' + importState.search + '"'
+					: 'No completed procedures found';
+			}
+		}
+
+		if (!importPaginationEl || !importPaginationList) {
+			return;
+		}
+
+		if (total <= perPage) {
+			importPaginationEl.classList.add('d-none');
+			importPaginationList.innerHTML = '';
+			return;
+		}
+
+		importPaginationEl.classList.remove('d-none');
+
+		let html = '';
+		const addPageItem = function (label, targetPage, disabled, active) {
+			html += '<li class="page-item' +
+				(disabled ? ' disabled' : '') +
+				(active ? ' active' : '') +
+				'">';
+
+			if (disabled || active) {
+				html += '<span class="page-link">' + label + '</span>';
+			} else {
+				html += '<button type="button" class="page-link procedure-import-page-btn" data-page="' + targetPage + '">' + label + '</button>';
+			}
+
+			html += '</li>';
+		};
+
+		addPageItem('&laquo;', page - 1, page <= 1, false);
+
+		const windowSize = 5;
+		let startPage = Math.max(1, page - Math.floor(windowSize / 2));
+		let endPage = Math.min(totalPages, startPage + windowSize - 1);
+
+		if (endPage - startPage + 1 < windowSize) {
+			startPage = Math.max(1, endPage - windowSize + 1);
+		}
+
+		if (startPage > 1) {
+			addPageItem('1', 1, false, page === 1);
+			if (startPage > 2) {
+				addPageItem('&hellip;', page, true, false);
+			}
+		}
+
+		for (let i = startPage; i <= endPage; i++) {
+			addPageItem(String(i), i, false, i === page);
+		}
+
+		if (endPage < totalPages) {
+			if (endPage < totalPages - 1) {
+				addPageItem('&hellip;', page, true, false);
+			}
+			addPageItem(String(totalPages), totalPages, false, page === totalPages);
+		}
+
+		addPageItem('&raquo;', page + 1, page >= totalPages, false);
+		importPaginationList.innerHTML = html;
+	}
+
+	function buildImportListUrl() {
+		const params = new URLSearchParams();
+		params.set('page', String(importState.page));
+
+		if (importState.search) {
+			params.set('q', importState.search);
+		}
+
+		return baseUrl + '/import_list?' + params.toString();
+	}
+
+	function loadImportList() {
+		setImportLoading(true);
+
+		if (importListRequest) {
+			importListRequest.abort();
+		}
+
+		importListRequest = new AbortController();
+
+		fetch(buildImportListUrl(), {
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+			signal: importListRequest.signal,
+		})
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				if (!result.ok || !result.data.success) {
+					showToast(result.data.message || 'Failed to load completed procedures.', 'error');
+					renderImportList([], {});
+					return;
+				}
+
+				importState.page = result.data.page || 1;
+				importState.perPage = result.data.per_page || importState.perPage;
+				importState.search = result.data.search || importState.search;
+
+				renderImportList(result.data.procedures || [], {
+					total: result.data.total,
+					page: result.data.page,
+					per_page: result.data.per_page,
+					total_pages: result.data.total_pages,
+					range_start: result.data.range_start,
+					range_end: result.data.range_end,
+				});
+			})
+			.catch(function (error) {
+				if (error.name === 'AbortError') {
+					return;
+				}
+
+				showToast('Failed to load completed procedures.', 'error');
+				renderImportList([], {});
+			})
+			.finally(function () {
+				importListRequest = null;
+				setImportLoading(false);
+			});
+	}
+
+	function scheduleImportSearch() {
+		if (importSearchTimer) {
+			clearTimeout(importSearchTimer);
+		}
+
+		importSearchTimer = setTimeout(function () {
+			importSearchTimer = null;
+			importState.search = importSearchInput ? importSearchInput.value.trim() : '';
+			importState.page = 1;
+			loadImportList();
+		}, 300);
+	}
+
+	function importProcedureTab(procedureId) {
+		if (!procedureId) {
+			return;
+		}
+
+		if (tabExists(procedureId)) {
+			if (importModal) {
+				importModal.hide();
+			}
+
+			activateTab(procedureId);
+			showToast('Procedure is already open.', 'success');
+			return;
+		}
+
+		setImportLoading(true);
+
+		fetch(baseUrl + '/import_tab/' + procedureId, {
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		})
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				if (!result.ok || !result.data.success) {
+					showToast(result.data.message || 'Failed to import procedure.', 'error');
+					return;
+				}
+
+				prependTabs([result.data.tab], { imported: true });
+
+				if (importModal) {
+					importModal.hide();
+				}
+
+				showToast('Procedure imported successfully.', 'success');
+			})
+			.catch(function () {
+				showToast('Failed to import procedure.', 'error');
+			})
+			.finally(function () {
+				setImportLoading(false);
+			});
 	}
 
 	function initProductModal() {
@@ -578,46 +892,87 @@
 		'</div>';
 	}
 
-	function buildTabButton(tab, isActive) {
-		return '<li class="nav-item" role="presentation">' +
-			'<button class="nav-link' + (isActive ? ' active' : '') + '" ' +
-				'id="procedure-tab-' + tab.procedure_id + '-tab" ' +
-				'data-mdb-tab-init ' +
-				'data-mdb-target="#procedure-tab-' + tab.procedure_id + '" ' +
-				'type="button" role="tab" ' +
-				'aria-controls="procedure-tab-' + tab.procedure_id + '" ' +
-				'aria-selected="' + (isActive ? 'true' : 'false') + '" ' +
-				'data-procedure-id="' + tab.procedure_id + '">' +
-				'<i class="fas fa-file-zipper me-1"></i>' + escapeHtml(tab.file_name) +
-				'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
-			'</button>' +
+	function buildTabNavCloseButton(tab, isCompleted) {
+		if (isCompleted) {
+			return '<button type="button" class="procedure-tab-nav-close procedure-tab-close-btn"' +
+				' data-procedure-id="' + tab.procedure_id + '"' +
+				' aria-label="Close tab"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-times" aria-hidden="true"></i>' +
+			'</button>';
+		}
+
+		return '<button type="button" class="procedure-tab-nav-close procedure-tab-delete-btn"' +
+			' data-procedure-id="' + tab.procedure_id + '"' +
+			' data-file-name="' + escapeAttr(tab.file_name) + '"' +
+			' aria-label="Stop procedure"' +
+			' data-mdb-ripple-init>' +
+			'<i class="fas fa-times" aria-hidden="true"></i>' +
+		'</button>';
+	}
+
+	function buildTabButton(tab, isActive, isImported) {
+		const isCompleted = isImported || tab.status === 'completed';
+
+		return '<li class="nav-item procedure-tab-nav-item" role="presentation">' +
+			'<div class="procedure-tab-nav-wrap">' +
+				'<button class="nav-link' + (isActive ? ' active' : '') + '" ' +
+					'id="procedure-tab-' + tab.procedure_id + '-tab" ' +
+					'data-mdb-tab-init ' +
+					'data-mdb-target="#procedure-tab-' + tab.procedure_id + '" ' +
+					'type="button" role="tab" ' +
+					'aria-controls="procedure-tab-' + tab.procedure_id + '" ' +
+					'aria-selected="' + (isActive ? 'true' : 'false') + '" ' +
+					'data-procedure-id="' + tab.procedure_id + '"' +
+					(isCompleted ? ' data-completed="true"' : '') + '>' +
+					'<i class="fas fa-file-zipper me-1"></i>' + escapeHtml(tab.file_name) +
+					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
+					(isCompleted
+						? '<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>'
+						: '') +
+				'</button>' +
+				buildTabNavCloseButton(tab, isCompleted) +
+			'</div>' +
 		'</li>';
 	}
 
-	function buildTabPane(tab, isActive) {
+	function buildTabActionButton(tab, isImported) {
+		if (isImported) {
+			return '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto procedure-tab-close-btn"' +
+				'data-procedure-id="' + tab.procedure_id + '" ' +
+				'data-mdb-ripple-init>' +
+				'<i class="fas fa-times me-1"></i> Close' +
+			'</button>';
+		}
+
+		return '<button type="button" class="btn btn-sm btn-outline-danger ms-auto procedure-tab-delete-btn"' +
+			'data-procedure-id="' + tab.procedure_id + '" ' +
+			'data-file-name="' + escapeAttr(tab.file_name) + '" ' +
+			'data-mdb-ripple-init>' +
+			'<i class="fas fa-trash me-1"></i> Delete' +
+		'</button>';
+	}
+
+	function buildTabPane(tab, isActive, isImported) {
 		return '<div class="tab-pane fade' + (isActive ? ' show active' : '') + '" ' +
 			'id="procedure-tab-' + tab.procedure_id + '" role="tabpanel" ' +
 			'aria-labelledby="procedure-tab-' + tab.procedure_id + '-tab" ' +
-			'data-procedure-id="' + tab.procedure_id + '">' +
+			'data-procedure-id="' + tab.procedure_id + '"' +
+			(isImported ? ' data-imported="true"' : '') + '>' +
 			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
 				'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
 				'<span><strong>Processor:</strong> ' + escapeHtml(tab.processor_name || '') + '</span>' +
 				'<span><strong>Status:</strong> ' + escapeHtml(tab.status || 'uploaded') + '</span>' +
 				'<span><strong>Uploaded:</strong> ' + escapeHtml(tab.created_at || '') + '</span>' +
-				'<button type="button" class="btn btn-sm btn-outline-danger ms-auto procedure-tab-delete-btn"' +
-					'data-procedure-id="' + tab.procedure_id + '" ' +
-					'data-file-name="' + escapeAttr(tab.file_name) + '" ' +
-					'data-mdb-ripple-init>' +
-					'<i class="fas fa-trash me-1"></i> Delete' +
-				'</button>' +
+				buildTabActionButton(tab, isImported) +
 			'</div>' +
 			buildTableHtml(tab) +
 		'</div>';
 	}
 
 	function tabExists(procedureId) {
-		return !!tabsNav.querySelector('[data-procedure-id="' + procedureId + '"]');
+		return !!tabsNav.querySelector('.nav-link[data-procedure-id="' + procedureId + '"]');
 	}
 
 	function deactivateTabs() {
@@ -633,8 +988,8 @@
 	function activateTab(procedureId) {
 		deactivateTabs();
 
-		const button = tabsNav.querySelector('[data-procedure-id="' + procedureId + '"]');
-		const pane = tabsContent.querySelector('[data-procedure-id="' + procedureId + '"]');
+		const button = tabsNav.querySelector('.nav-link[data-procedure-id="' + procedureId + '"]');
+		const pane = tabsContent.querySelector('.tab-pane[data-procedure-id="' + procedureId + '"]');
 
 		if (button) {
 			button.classList.add('active');
@@ -681,7 +1036,7 @@
 		modal.show();
 	}
 
-	function removeTab(procedureId) {
+	function removeTabFromDom(procedureId) {
 		const tabBtn = tabsNav.querySelector('.nav-link[data-procedure-id="' + procedureId + '"]');
 		const navItem = tabBtn ? tabBtn.closest('.nav-item') : null;
 		const pane = tabsContent.querySelector('.tab-pane[data-procedure-id="' + procedureId + '"]');
@@ -716,6 +1071,10 @@
 		updateTabCount();
 	}
 
+	function closeTab(procedureId) {
+		removeTabFromDom(procedureId);
+	}
+
 	function confirmDeleteProcedure() {
 		if (!pendingDeleteProcedureId) {
 			return;
@@ -742,7 +1101,7 @@
 					return;
 				}
 
-				removeTab(procedureId);
+				removeTabFromDom(procedureId);
 
 				if (deleteModal) {
 					deleteModal.hide();
@@ -761,7 +1120,9 @@
 			});
 	}
 
-	function prependTabs(tabs) {
+	function prependTabs(tabs, options) {
+		const isImported = !!(options && options.imported);
+
 		if (!tabs.length) {
 			return;
 		}
@@ -779,8 +1140,8 @@
 		});
 
 		newTabs.slice().reverse().forEach(function (tab) {
-			tabsNav.insertAdjacentHTML('afterbegin', buildTabButton(tab, false));
-			tabsContent.insertAdjacentHTML('afterbegin', buildTabPane(tab, false));
+			tabsNav.insertAdjacentHTML('afterbegin', buildTabButton(tab, false, isImported));
+			tabsContent.insertAdjacentHTML('afterbegin', buildTabPane(tab, false, isImported));
 		});
 
 		initTabControls(tabsWrapper);
@@ -845,6 +1206,7 @@
 	}
 
 	initUploadModal();
+	initImportModal();
 	initProductModal();
 	initDeleteModal();
 
@@ -853,6 +1215,15 @@
 	}
 
 	document.addEventListener('click', function (event) {
+		const closeBtn = event.target.closest('.procedure-tab-close-btn');
+
+		if (closeBtn) {
+			event.preventDefault();
+			event.stopPropagation();
+			closeTab(closeBtn.getAttribute('data-procedure-id'));
+			return;
+		}
+
 		const deleteBtn = event.target.closest('.procedure-tab-delete-btn');
 
 		if (deleteBtn) {
@@ -862,7 +1233,39 @@
 				deleteBtn.getAttribute('data-procedure-id'),
 				deleteBtn.getAttribute('data-file-name')
 			);
+			return;
 		}
+
+		const importPageBtn = event.target.closest('.procedure-import-page-btn');
+
+		if (importPageBtn) {
+			event.preventDefault();
+			importState.page = parseInt(importPageBtn.getAttribute('data-page'), 10) || 1;
+			loadImportList();
+			return;
+		}
+
+		const importRow = event.target.closest('.procedure-import-row');
+
+		if (importRow) {
+			event.preventDefault();
+			importProcedureTab(importRow.getAttribute('data-procedure-id'));
+		}
+	});
+
+	document.addEventListener('keydown', function (event) {
+		if (event.key !== 'Enter' && event.key !== ' ') {
+			return;
+		}
+
+		const importRow = event.target.closest('.procedure-import-row');
+
+		if (!importRow) {
+			return;
+		}
+
+		event.preventDefault();
+		importProcedureTab(importRow.getAttribute('data-procedure-id'));
 	});
 
 	uploadForms.forEach(function (form) {
@@ -982,6 +1385,14 @@
 
 	if (openUploadBtn) {
 		openUploadBtn.addEventListener('click', openUploadModal);
+	}
+
+	if (openImportBtn) {
+		openImportBtn.addEventListener('click', openImportModal);
+	}
+
+	if (importSearchInput) {
+		importSearchInput.addEventListener('input', scheduleImportSearch);
 	}
 
 	initTabControls(tabsWrapper);
