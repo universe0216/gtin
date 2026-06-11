@@ -76,6 +76,42 @@ class Procedure extends AuthenticatedController {
 		));
 	}
 
+	public function delete($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+		}
+
+		$procedure = $this->procedure_model->get($id);
+
+		if ( ! $procedure)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Procedure not found.'), 404);
+		}
+
+		if ( ! empty($procedure['storage_path']))
+		{
+			$storage_dir = FCPATH.str_replace('/', DIRECTORY_SEPARATOR, $procedure['storage_path']);
+
+			if (is_dir($storage_dir))
+			{
+				delete_files($storage_dir, TRUE);
+				@rmdir($storage_dir);
+			}
+		}
+
+		if ( ! $this->procedure_model->delete($id))
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete procedure.'), 500);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => 'Procedure stopped successfully.',
+		));
+	}
+
 	protected function json_response($payload, $status = 200)
 	{
 		return $this->output

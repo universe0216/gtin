@@ -43,12 +43,21 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						aria-labelledby="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>-tab"
 						data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
 					>
-						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted">
+						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
 							<span><strong>Procedure #:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
 							<span><strong>Organization:</strong> <?php echo html_escape($tab['organization_name']); ?></span>
 							<span><strong>Processor:</strong> <?php echo html_escape($tab['processor_name']); ?></span>
 							<span><strong>Status:</strong> <?php echo html_escape($tab['status']); ?></span>
 							<span><strong>Uploaded:</strong> <?php echo html_escape($tab['created_at']); ?></span>
+							<button
+								type="button"
+								class="btn btn-sm btn-outline-danger ms-auto procedure-tab-delete-btn"
+								data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
+								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
+								data-mdb-ripple-init
+							>
+								<i class="fas fa-trash me-1"></i> Delete
+							</button>
 						</div>
 
 						<div class="table-responsive">
@@ -147,8 +156,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div class="modal-content">
 			<div class="modal-header procedure-detail-header">
 				<div>
-					<p class="procedure-detail-eyebrow mb-1">Product Detail</p>
-					<h5 class="modal-title mb-0" id="procedureProductModalLabel">—</h5>
+					<h6 class="modal-title mb-0" id="procedureProductModalLabel">—</h5>
 				</div>
 				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
 			</div>
@@ -222,6 +230,24 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 			<div class="modal-footer procedure-detail-footer">
 				<span class="text-muted small me-auto" id="procedureDetailFooterMeta"></span>
 				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="procedureDeleteModal" tabindex="-1" aria-labelledby="procedureDeleteModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="procedureDeleteModalLabel">—</h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				This procedure is not completed yet, will you stop procedure for this factory?
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
+				<button type="button" class="btn btn-danger" id="procedureConfirmDeleteBtn" data-mdb-ripple-init>Stop Procedure</button>
 			</div>
 		</div>
 	</div>

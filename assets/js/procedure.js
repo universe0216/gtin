@@ -34,10 +34,16 @@
 	const procedureQrCode = document.getElementById('procedureQrCode');
 	const procedureQrEmpty = document.getElementById('procedureQrEmpty');
 	const procedureDetailTabsEl = document.getElementById('procedureDetailTabs');
+	const deleteModalEl = document.getElementById('procedureDeleteModal');
+	const deleteModalTitle = document.getElementById('procedureDeleteModalLabel');
+	const confirmDeleteBtn = document.getElementById('procedureConfirmDeleteBtn');
 
 	let selectedFiles = [];
+	let filePickerOpenUntil = 0;
+	let pendingDeleteProcedureId = null;
 	let uploadModal;
 	let productModal;
+	let deleteModal;
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
 
@@ -70,6 +76,19 @@
 
 		productModal = mdb.Modal.getOrCreateInstance(productModalEl);
 		initDetailTabs();
+	}
+
+	function ensureDeleteModal() {
+		if (deleteModal || typeof mdb === 'undefined' || !deleteModalEl) {
+			return deleteModal;
+		}
+
+		deleteModal = mdb.Modal.getOrCreateInstance(deleteModalEl);
+		return deleteModal;
+	}
+
+	function initDeleteModal() {
+		ensureDeleteModal();
 	}
 
 	function initDetailTabs() {
@@ -425,6 +444,17 @@
 		renderSelectedFiles();
 	}
 
+	function openFilePicker() {
+		const now = Date.now();
+
+		if (now < filePickerOpenUntil) {
+			return;
+		}
+
+		filePickerOpenUntil = now + 1000;
+		fileInput.click();
+	}
+
 	function buildTableHtml(tab) {
 		const headerHtml = '<th class="procedure-row-index">#</th>' +
 			(tab.columns || []).map(function (column) {
@@ -472,12 +502,18 @@
 			'id="procedure-tab-' + tab.procedure_id + '" role="tabpanel" ' +
 			'aria-labelledby="procedure-tab-' + tab.procedure_id + '-tab" ' +
 			'data-procedure-id="' + tab.procedure_id + '">' +
-			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted">' +
+			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
 				'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
 				'<span><strong>Processor:</strong> ' + escapeHtml(tab.processor_name || '') + '</span>' +
 				'<span><strong>Status:</strong> ' + escapeHtml(tab.status || 'uploaded') + '</span>' +
 				'<span><strong>Uploaded:</strong> ' + escapeHtml(tab.created_at || '') + '</span>' +
+				'<button type="button" class="btn btn-sm btn-outline-danger ms-auto procedure-tab-delete-btn"' +
+					'data-procedure-id="' + tab.procedure_id + '" ' +
+					'data-file-name="' + escapeHtml(tab.file_name) + '" ' +
+					'data-mdb-ripple-init>' +
+					'<i class="fas fa-trash me-1"></i> Delete' +
+				'</button>' +
 			'</div>' +
 			buildTableHtml(tab) +
 		'</div>';
@@ -530,6 +566,97 @@
 
 		const count = tabsNav.querySelectorAll('.nav-item').length;
 		tabCount.textContent = count + ' zip file(s)';
+	}
+
+	function openDeleteModal(procedureId, fileName) {
+		const modal = ensureDeleteModal();
+
+		if (!modal || !procedureId) {
+			return;
+		}
+
+		pendingDeleteProcedureId = procedureId;
+
+		if (deleteModalTitle) {
+			deleteModalTitle.textContent = fileName || '—';
+		}
+
+		modal.show();
+	}
+
+	function removeTab(procedureId) {
+		const tabBtn = tabsNav.querySelector('.nav-link[data-procedure-id="' + procedureId + '"]');
+		const navItem = tabBtn ? tabBtn.closest('.nav-item') : null;
+		const pane = tabsContent.querySelector('.tab-pane[data-procedure-id="' + procedureId + '"]');
+		const wasActive = tabBtn && tabBtn.classList.contains('active');
+
+		if (navItem) {
+			navItem.remove();
+		}
+
+		if (pane) {
+			pane.remove();
+		}
+
+		const remainingTabs = tabsNav.querySelectorAll('.nav-item');
+
+		if (!remainingTabs.length) {
+			tabsWrapper.classList.add('d-none');
+			emptyState.classList.remove('d-none');
+		} else if (wasActive) {
+			const nextTab = tabsNav.querySelector('.nav-link');
+
+			if (nextTab) {
+				activateTab(nextTab.getAttribute('data-procedure-id'));
+			}
+		}
+
+		updateTabCount();
+	}
+
+	function confirmDeleteProcedure() {
+		if (!pendingDeleteProcedureId) {
+			return;
+		}
+
+		const procedureId = pendingDeleteProcedureId;
+
+		if (confirmDeleteBtn) {
+			confirmDeleteBtn.disabled = true;
+		}
+
+		fetch(baseUrl + '/delete/' + procedureId, {
+			method: 'POST',
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		})
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				if (!result.ok || !result.data.success) {
+					showToast(result.data.message || 'Failed to delete procedure.', 'error');
+					return;
+				}
+
+				removeTab(procedureId);
+
+				if (deleteModal) {
+					deleteModal.hide();
+				}
+
+				showToast(result.data.message, 'success');
+			})
+			.catch(function () {
+				showToast('Failed to delete procedure.', 'error');
+			})
+			.finally(function () {
+				if (confirmDeleteBtn) {
+					confirmDeleteBtn.disabled = false;
+				}
+				pendingDeleteProcedureId = null;
+			});
 	}
 
 	function prependTabs(tabs) {
@@ -610,59 +737,90 @@
 			});
 	}
 
-	uploadZone.addEventListener('click', function () {
-		fileInput.click();
-	});
+	initUploadModal();
+	initProductModal();
+	initDeleteModal();
 
-	fileInput.addEventListener('change', function () {
-		setSelectedFiles(fileInput.files);
-	});
+	if (confirmDeleteBtn) {
+		confirmDeleteBtn.addEventListener('click', confirmDeleteProcedure);
+	}
 
-	selectedFilesList.addEventListener('click', function (event) {
-		const button = event.target.closest('button[data-index]');
+	document.addEventListener('click', function (event) {
+		const deleteBtn = event.target.closest('.procedure-tab-delete-btn');
 
-		if (!button) {
-			return;
-		}
-
-		const index = parseInt(button.getAttribute('data-index'), 10);
-		selectedFiles.splice(index, 1);
-		renderSelectedFiles();
-	});
-
-	['dragenter', 'dragover'].forEach(function (eventName) {
-		uploadZone.addEventListener(eventName, function (event) {
+		if (deleteBtn) {
 			event.preventDefault();
-			uploadZone.classList.add('is-dragover');
-		});
-	});
-
-	['dragleave', 'drop'].forEach(function (eventName) {
-		uploadZone.addEventListener(eventName, function (event) {
-			event.preventDefault();
-			uploadZone.classList.remove('is-dragover');
-		});
-	});
-
-	uploadZone.addEventListener('drop', function (event) {
-		setSelectedFiles(event.dataTransfer.files);
-	});
-
-	tabsContent.addEventListener('click', function (event) {
-		const row = event.target.closest('tr.procedure-data-row');
-
-		if (!row) {
-			return;
-		}
-
-		const payload = parseRowPayload(row);
-
-		if (payload) {
-			openProductDetailModal(payload);
+			event.stopPropagation();
+			openDeleteModal(
+				deleteBtn.getAttribute('data-procedure-id'),
+				deleteBtn.getAttribute('data-file-name')
+			);
 		}
 	});
 
-	productDetailImageGallery.addEventListener('click', function (event) {
+	if (uploadZone) {
+		uploadZone.addEventListener('click', function () {
+			openFilePicker();
+		});
+
+		['dragenter', 'dragover'].forEach(function (eventName) {
+			uploadZone.addEventListener(eventName, function (event) {
+				event.preventDefault();
+				uploadZone.classList.add('is-dragover');
+			});
+		});
+
+		['dragleave', 'drop'].forEach(function (eventName) {
+			uploadZone.addEventListener(eventName, function (event) {
+				event.preventDefault();
+				uploadZone.classList.remove('is-dragover');
+			});
+		});
+
+		uploadZone.addEventListener('drop', function (event) {
+			setSelectedFiles(event.dataTransfer.files);
+		});
+	}
+
+	if (fileInput) {
+		fileInput.addEventListener('change', function () {
+			setSelectedFiles(fileInput.files);
+			fileInput.value = '';
+		});
+	}
+
+	if (selectedFilesList) {
+		selectedFilesList.addEventListener('click', function (event) {
+			const button = event.target.closest('button[data-index]');
+
+			if (!button) {
+				return;
+			}
+
+			const index = parseInt(button.getAttribute('data-index'), 10);
+			selectedFiles.splice(index, 1);
+			renderSelectedFiles();
+		});
+	}
+
+	if (tabsWrapper) {
+		tabsWrapper.addEventListener('click', function (event) {
+			const row = event.target.closest('tr.procedure-data-row');
+
+			if (!row) {
+				return;
+			}
+
+			const payload = parseRowPayload(row);
+
+			if (payload) {
+				openProductDetailModal(payload);
+			}
+		});
+	}
+
+	if (productDetailImageGallery) {
+		productDetailImageGallery.addEventListener('click', function (event) {
 		const resetBtn = event.target.closest('#procedureImageResetBtn');
 
 		if (resetBtn) {
@@ -688,7 +846,8 @@
 			button.classList.remove('active');
 		});
 		thumbBtn.classList.add('active');
-	});
+		});
+	}
 
 	if (procedureBarcodeInput) {
 		procedureBarcodeInput.addEventListener('input', function () {
@@ -696,10 +855,14 @@
 		});
 	}
 
-	openUploadBtn.addEventListener('click', openUploadModal);
-	formEl.addEventListener('submit', submitUpload);
-	initUploadModal();
-	initProductModal();
+	if (openUploadBtn) {
+		openUploadBtn.addEventListener('click', openUploadModal);
+	}
+
+	if (formEl) {
+		formEl.addEventListener('submit', submitUpload);
+	}
+
 	initTabControls(tabsWrapper);
 	renderSelectedFiles();
 })();

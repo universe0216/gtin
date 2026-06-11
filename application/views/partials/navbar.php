@@ -21,7 +21,7 @@ $primary_active = ($nav_active === 'primary' || isset($primary_children[$nav_act
 $show_primary = $CI->auth->can('primary');
 ?>
 <nav class="navbar navbar-expand-lg navbar-dark app-navbar sticky-top">
-	<div class="container">
+	<div class="container-fluid px-4">
 		<a class="navbar-brand fw-bold" href="<?php echo site_url('primary'); ?>">GTIN</a>
 		<button
 			class="navbar-toggler"

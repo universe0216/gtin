@@ -25,6 +25,14 @@ class Procedure_model extends CI_Model {
 			->row_array();
 	}
 
+	public function exists_by_file_and_procedure($file_name, $procedure_number)
+	{
+		return $this->db
+			->where('file_name', $file_name)
+			->where('procedure_number', $procedure_number)
+			->count_all_results($this->table) > 0;
+	}
+
 	public function insert($data)
 	{
 		$data['created_at'] = date('Y-m-d H:i:s');
@@ -42,5 +50,12 @@ class Procedure_model extends CI_Model {
 		return $this->db
 			->where('id', $id)
 			->update($this->table, $data);
+	}
+
+	public function delete($id)
+	{
+		return $this->db
+			->where('id', $id)
+			->delete($this->table);
 	}
 }

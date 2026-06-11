@@ -16,10 +16,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 <?php $this->load->view('partials/navbar', array('nav_active' => $nav_active ?? '')); ?>
 
-<main class="container py-4">
+<main class="container-fluid px-4 py-4">
 	<?php echo $content; ?>
 </main>
 
+<script src="<?php echo base_url('assets/vendor/jquery/js/jquery.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/mdb/js/mdb.umd.min.js'); ?>"></script>
 <script>
 	window.APP_BASE_URL = <?php echo json_encode(base_url()); ?>;

@@ -29,6 +29,8 @@ class Procedure_processor {
 			throw new RuntimeException('No valid zip files were uploaded.');
 		}
 
+		$this->validate_no_duplicate_procedures($normalized);
+
 		$month_dir = $this->storage_root.date('Y-m').DIRECTORY_SEPARATOR;
 		$this->ensure_directory($month_dir);
 
@@ -52,6 +54,34 @@ class Procedure_processor {
 	public function format_procedure_tab($procedure, $saved_items)
 	{
 		return $this->build_tab_data($procedure, $saved_items);
+	}
+
+	protected function validate_no_duplicate_procedures($files)
+	{
+		$this->CI->load->model('procedure_model');
+		$seen = array();
+
+		foreach ($files as $file)
+		{
+			$parsed = $this->parse_zip_filename($file['name']);
+			$key = $parsed['procedure_number'].'|'.$file['name'];
+
+			if (isset($seen[$key]))
+			{
+				throw new RuntimeException(
+					'Duplicate file in upload: '.$file['name'].'.'
+				);
+			}
+
+			$seen[$key] = TRUE;
+
+			if ($this->CI->procedure_model->exists_by_file_and_procedure($file['name'], $parsed['procedure_number']))
+			{
+				throw new RuntimeException(
+					'Procedure '.$parsed['procedure_number'].' with file '.$file['name'].' already exists.'
+				);
+			}
+		}
 	}
 
 	protected function process_single_zip($file, $month_dir, $account_id)

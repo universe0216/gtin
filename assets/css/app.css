@@ -287,10 +287,11 @@ html[data-mdb-theme="dark"] body {
 }
 
 .procedure-upload-input {
-	position: absolute;
-	inset: 0;
-	opacity: 0;
-	cursor: pointer;
+	display: none;
+}
+
+.procedure-upload-content {
+	pointer-events: none;
 }
 
 .procedure-selected-files {
@@ -398,7 +399,7 @@ html[data-mdb-theme="dark"] body {
 .procedure-detail-header {
 	border-bottom: 1px solid var(--app-border);
 	background: linear-gradient(180deg, var(--app-surface) 0%, var(--app-bg) 100%);
-	padding: 1.25rem 1.5rem;
+	padding: 1rem 1.5rem;
 }
 
 .procedure-detail-eyebrow {
