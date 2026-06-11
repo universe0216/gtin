@@ -15,6 +15,29 @@ class Procedure_model extends CI_Model {
 			->result_array();
 	}
 
+	public function get_by_status($status, $limit = NULL, $offset = 0)
+	{
+		$this->db
+			->select('procedures.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = procedures.account_id', 'left')
+			->where('procedures.status', $status)
+			->order_by('procedures.id', 'DESC');
+
+		if ($limit !== NULL)
+		{
+			$this->db->limit((int) $limit, (int) $offset);
+		}
+
+		return $this->db->get($this->table)->result_array();
+	}
+
+	public function count_by_status($status)
+	{
+		return (int) $this->db
+			->where('status', $status)
+			->count_all_results($this->table);
+	}
+
 	public function get($id)
 	{
 		return $this->db

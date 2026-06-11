@@ -17,6 +17,11 @@ $nav_items = array(
 	'products'      => array('label' => 'Products', 'url' => site_url('products'), 'permission' => 'product.view'),
 );
 
+$history_children = array(
+	'history_procedure' => array('label' => 'Procedure', 'url' => site_url('history/procedure')),
+);
+
+$history_active = isset($history_children[$nav_active]);
 $primary_active = ($nav_active === 'primary' || isset($primary_children[$nav_active]));
 $show_primary = $CI->auth->can('primary');
 ?>
@@ -47,6 +52,26 @@ $show_primary = $CI->auth->can('primary');
 						</li>
 					<?php endif; ?>
 				<?php endforeach; ?>
+				<li class="nav-item dropdown">
+					<a
+						class="nav-link dropdown-toggle<?php echo $history_active ? ' active fw-semibold' : ''; ?>"
+						href="#"
+						id="historyDropdown"
+						role="button"
+						data-mdb-dropdown-init
+						aria-expanded="false"
+					>History</a>
+					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="historyDropdown">
+						<?php foreach ($history_children as $key => $item): ?>
+							<li>
+								<a
+									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"
+									href="<?php echo $item['url']; ?>"
+								><?php echo html_escape($item['label']); ?></a>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</li>
 				<?php if ($show_primary): ?>
 					<li class="nav-item dropdown">
 						<a

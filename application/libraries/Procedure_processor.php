@@ -166,6 +166,9 @@ class Procedure_processor {
 				'product_procedure_number' => $product['product_procedure_number'],
 				'name'                     => $product['name'],
 				'info'                     => json_encode($info),
+				'status'                   => 'pending',
+				'message'                  => NULL,
+				'barcode'                  => NULL,
 				'created_at'               => $now,
 			);
 		}
