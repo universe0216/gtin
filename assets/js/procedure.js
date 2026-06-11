@@ -493,7 +493,7 @@
 			'</tr>';
 		}).join('');
 
-		return '<div class="table-responsive">' +
+		return '<div class="procedure-table-scroll">' +
 			'<table class="table table-hover align-middle mb-0 procedure-data-table">' +
 				'<thead><tr>' + headerHtml + '</tr></thead>' +
 				'<tbody>' + bodyHtml + '</tbody>' +

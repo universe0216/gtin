@@ -357,6 +357,69 @@ html[data-mdb-theme="dark"] body {
 	color: #cbd5e1;
 }
 
+.procedure-page {
+	display: flex;
+	flex-direction: column;
+	height: calc(100dvh - 6.5rem);
+	min-height: 20rem;
+}
+
+.procedure-page > .d-flex {
+	flex-shrink: 0;
+}
+
+.procedure-page > .app-panel {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+#procedureTabsWrapper {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+#procedureTabsWrapper > .procedure-tabs {
+	flex-shrink: 0;
+}
+
+#procedureTabContent {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+
+#procedureTabContent > .tab-pane.active.show {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	height: 100%;
+}
+
+#procedureTabContent > .tab-pane > .procedure-tab-meta {
+	flex-shrink: 0;
+}
+
+.procedure-table-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.procedure-data-table thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background-color: var(--app-surface-raised);
+	box-shadow: 0 1px 0 var(--app-border-subtle);
+}
+
 .procedure-data-table th,
 .procedure-data-table td {
 	white-space: nowrap;

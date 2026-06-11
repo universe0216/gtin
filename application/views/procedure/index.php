@@ -60,7 +60,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							</button>
 						</div>
 
-						<div class="table-responsive">
+						<div class="procedure-table-scroll">
 							<table class="table table-hover align-middle mb-0 procedure-data-table">
 								<thead>
 									<tr>
