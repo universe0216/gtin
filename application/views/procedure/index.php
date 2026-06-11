@@ -254,6 +254,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 			</div>
 			<div class="modal-footer procedure-detail-footer">
 				<span class="text-muted small me-auto" id="procedureDetailFooterMeta"></span>
+				<button type="button" class="btn btn-outline-secondary" id="procedureDetailPrevBtn" data-mdb-ripple-init disabled>
+					<i class="fas fa-chevron-left me-1"></i> Previous
+				</button>
+				<button type="button" class="btn btn-outline-secondary" id="procedureDetailNextBtn" data-mdb-ripple-init disabled>
+					Next <i class="fas fa-chevron-right ms-1"></i>
+				</button>
+				<button type="button" class="btn btn-outline-danger" id="procedureDetailRejectBtn" data-mdb-ripple-init>Reject</button>
+				<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init>Accept</button>
 				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Close</button>
 			</div>
 		</div>

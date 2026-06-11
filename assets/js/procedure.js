@@ -22,6 +22,8 @@
 	const productDetailImageGallery = document.getElementById('procedureDetailImageGallery');
 	const productDetailInfo = document.getElementById('procedureDetailInfo');
 	const productDetailFooterMeta = document.getElementById('procedureDetailFooterMeta');
+	const productDetailPrevBtn = document.getElementById('procedureDetailPrevBtn');
+	const productDetailNextBtn = document.getElementById('procedureDetailNextBtn');
 	const procedureBarcodeInput = document.getElementById('procedureBarcodeInput');
 	const procedureBarcodeFullValue = document.getElementById('procedureBarcodeFullValue');
 	const procedureBarcodeSvg = document.getElementById('procedureBarcodeSvg');
@@ -41,6 +43,7 @@
 	let deleteModal;
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
+	let activeDetailRow = null;
 
 	function initUploadModal() {
 		if (typeof mdb === 'undefined' || !uploadModalEl) {
@@ -86,6 +89,7 @@
 		}
 
 		productModal = mdb.Modal.getOrCreateInstance(productModalEl);
+		productModalEl.addEventListener('hidden.mdb.modal', clearActiveDetailRow);
 		initDetailTabs();
 	}
 
@@ -356,19 +360,88 @@
 			'<span class="badge bg-info text-dark">' + status + '</span>';
 	}
 
-	function openProductDetailModal(payload) {
+	function getActiveTabRows() {
+		const activePane = tabsContent ? tabsContent.querySelector('.tab-pane.active') : null;
+
+		if (!activePane) {
+			return [];
+		}
+
+		return Array.from(activePane.querySelectorAll('tr.procedure-data-row'));
+	}
+
+	function clearActiveDetailRow() {
+		if (activeDetailRow) {
+			activeDetailRow.classList.remove('procedure-data-row-active');
+			activeDetailRow = null;
+		}
+
+		updateDetailNavButtons();
+	}
+
+	function setActiveDetailRow(row) {
+		clearActiveDetailRow();
+
+		if (!row) {
+			return;
+		}
+
+		row.classList.add('procedure-data-row-active');
+		activeDetailRow = row;
+		row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+		updateDetailNavButtons();
+	}
+
+	function updateDetailNavButtons() {
+		const rows = getActiveTabRows();
+		const currentIndex = activeDetailRow ? rows.indexOf(activeDetailRow) : -1;
+
+		if (productDetailPrevBtn) {
+			productDetailPrevBtn.disabled = currentIndex <= 0;
+		}
+
+		if (productDetailNextBtn) {
+			productDetailNextBtn.disabled = currentIndex < 0 || currentIndex >= rows.length - 1;
+		}
+
+		if (productDetailFooterMeta) {
+			if (currentIndex >= 0) {
+				productDetailFooterMeta.textContent = 'Row ' + (currentIndex + 1) + ' of ' + rows.length;
+			} else {
+				productDetailFooterMeta.textContent = '';
+			}
+		}
+	}
+
+	function navigateDetailRow(direction) {
+		const rows = getActiveTabRows();
+		const currentIndex = activeDetailRow ? rows.indexOf(activeDetailRow) : -1;
+		const nextIndex = currentIndex + direction;
+
+		if (nextIndex < 0 || nextIndex >= rows.length) {
+			return;
+		}
+
+		const row = rows[nextIndex];
+		const payload = parseRowPayload(row);
+
+		if (payload) {
+			openProductDetailModal(payload, row);
+		}
+	}
+
+	function openProductDetailModal(payload, row) {
 		if (!productModal || !payload) {
 			return;
+		}
+
+		if (row) {
+			setActiveDetailRow(row);
 		}
 
 		renderModalHeader(payload);
 		renderDetailImages(payload.image_urls || []);
 		renderDetailInfo(payload);
-
-		if (productDetailFooterMeta) {
-			productDetailFooterMeta.textContent = (payload.organization_name || '') +
-				(payload.file_name ? ' · ' + payload.file_name : '');
-		}
 
 		if (procedureBarcodeInput) {
 			procedureBarcodeInput.value = payload.product_procedure_number || '';
@@ -854,8 +927,20 @@
 			const payload = parseRowPayload(row);
 
 			if (payload) {
-				openProductDetailModal(payload);
+				openProductDetailModal(payload, row);
 			}
+		});
+	}
+
+	if (productDetailPrevBtn) {
+		productDetailPrevBtn.addEventListener('click', function () {
+			navigateDetailRow(-1);
+		});
+	}
+
+	if (productDetailNextBtn) {
+		productDetailNextBtn.addEventListener('click', function () {
+			navigateDetailRow(1);
 		});
 	}
 
