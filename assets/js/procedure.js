@@ -8,18 +8,13 @@
 	const config = window.PROCEDURE_CONFIG;
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
-	const formEl = document.getElementById('procedureUploadForm');
+	const uploadForms = document.querySelectorAll('.procedure-upload-form');
 	const uploadModalEl = document.getElementById('procedureUploadModal');
 	const openUploadBtn = document.getElementById('btnOpenUploadModal');
-	const uploadZone = document.getElementById('procedureUploadZone');
-	const fileInput = document.getElementById('zipFilesInput');
-	const selectedFilesList = document.getElementById('selectedFilesList');
-	const uploadBtn = document.getElementById('procedureUploadBtn');
-	const uploadHint = document.getElementById('procedureUploadHint');
 	const tabsWrapper = document.getElementById('procedureTabsWrapper');
 	const tabsNav = document.getElementById('procedureTabs');
 	const tabsContent = document.getElementById('procedureTabContent');
-	const emptyState = document.getElementById('procedureEmptyState');
+	const initialUpload = document.getElementById('procedureInitialUpload');
 	const tabCount = document.getElementById('procedureTabCount');
 	const toastContainer = document.getElementById('toastContainer');
 	const productModalEl = document.getElementById('procedureProductModal');
@@ -56,10 +51,26 @@
 		uploadModalEl.addEventListener('hidden.mdb.modal', resetUploadForm);
 	}
 
+	function getUploadControls(form) {
+		return {
+			form: form,
+			zone: form.querySelector('.procedure-upload-zone'),
+			fileInput: form.querySelector('.procedure-upload-input'),
+			selectedFilesList: form.querySelector('.procedure-selected-files'),
+			uploadBtn: form.querySelector('.procedure-upload-submit'),
+			uploadHint: form.querySelector('.procedure-upload-hint'),
+		};
+	}
+
 	function resetUploadForm() {
 		selectedFiles = [];
-		formEl.reset();
-		uploadZone.classList.remove('is-dragover');
+		uploadForms.forEach(function (form) {
+			const controls = getUploadControls(form);
+			form.reset();
+			if (controls.zone) {
+				controls.zone.classList.remove('is-dragover');
+			}
+		});
 		renderSelectedFiles();
 	}
 
@@ -408,16 +419,7 @@
 	}
 
 	function renderSelectedFiles() {
-		if (!selectedFiles.length) {
-			selectedFilesList.classList.add('d-none');
-			selectedFilesList.innerHTML = '';
-			uploadBtn.disabled = true;
-			uploadHint.textContent = 'Select one or more zip files to continue.';
-			return;
-		}
-
-		selectedFilesList.classList.remove('d-none');
-		selectedFilesList.innerHTML = selectedFiles.map(function (file, index) {
+		const filesHtml = selectedFiles.map(function (file, index) {
 			return '<div class="procedure-selected-file">' +
 				'<span><i class="fas fa-file-zipper me-2 text-primary"></i>' + escapeHtml(file.name) + '</span>' +
 				'<button type="button" class="btn btn-sm btn-outline-danger" data-index="' + index + '" data-mdb-ripple-init>' +
@@ -426,8 +428,22 @@
 			'</div>';
 		}).join('');
 
-		uploadBtn.disabled = false;
-		uploadHint.textContent = selectedFiles.length + ' file(s) ready to upload.';
+		uploadForms.forEach(function (form) {
+			const controls = getUploadControls(form);
+
+			if (!selectedFiles.length) {
+				controls.selectedFilesList.classList.add('d-none');
+				controls.selectedFilesList.innerHTML = '';
+				controls.uploadBtn.disabled = true;
+				controls.uploadHint.textContent = 'Select one or more zip files to continue.';
+				return;
+			}
+
+			controls.selectedFilesList.classList.remove('d-none');
+			controls.selectedFilesList.innerHTML = filesHtml;
+			controls.uploadBtn.disabled = false;
+			controls.uploadHint.textContent = selectedFiles.length + ' file(s) ready to upload.';
+		});
 	}
 
 	function setSelectedFiles(fileList) {
@@ -444,7 +460,11 @@
 		renderSelectedFiles();
 	}
 
-	function openFilePicker() {
+	function openFilePicker(fileInput) {
+		if (!fileInput) {
+			return;
+		}
+
 		const now = Date.now();
 
 		if (now < filePickerOpenUntil) {
@@ -602,7 +622,12 @@
 
 		if (!remainingTabs.length) {
 			tabsWrapper.classList.add('d-none');
-			emptyState.classList.remove('d-none');
+			if (initialUpload) {
+				initialUpload.classList.remove('d-none');
+			}
+			if (openUploadBtn) {
+				openUploadBtn.classList.add('d-none');
+			}
 		} else if (wasActive) {
 			const nextTab = tabsNav.querySelector('.nav-link');
 
@@ -664,7 +689,12 @@
 			return;
 		}
 
-		emptyState.classList.add('d-none');
+		if (initialUpload) {
+			initialUpload.classList.add('d-none');
+		}
+		if (openUploadBtn) {
+			openUploadBtn.classList.remove('d-none');
+		}
 		tabsWrapper.classList.remove('d-none');
 
 		const newTabs = tabs.filter(function (tab) {
@@ -698,8 +728,11 @@
 			formData.append('zip_files[]', file);
 		});
 
-		uploadBtn.disabled = true;
-		uploadHint.textContent = 'Uploading and processing files...';
+		uploadForms.forEach(function (form) {
+			const controls = getUploadControls(form);
+			controls.uploadBtn.disabled = true;
+			controls.uploadHint.textContent = 'Uploading and processing files...';
+		});
 
 		fetch(baseUrl + '/upload', {
 			method: 'POST',
@@ -730,10 +763,7 @@
 				showToast('An unexpected error occurred during upload.', 'error');
 			})
 			.finally(function () {
-				uploadBtn.disabled = false;
-				uploadHint.textContent = selectedFiles.length
-					? selectedFiles.length + ' file(s) ready to upload.'
-					: 'Select one or more zip files to continue.';
+				renderSelectedFiles();
 			});
 	}
 
@@ -758,50 +788,56 @@
 		}
 	});
 
-	if (uploadZone) {
-		uploadZone.addEventListener('click', function () {
-			openFilePicker();
-		});
+	uploadForms.forEach(function (form) {
+		const controls = getUploadControls(form);
 
-		['dragenter', 'dragover'].forEach(function (eventName) {
-			uploadZone.addEventListener(eventName, function (event) {
-				event.preventDefault();
-				uploadZone.classList.add('is-dragover');
+		if (controls.zone) {
+			controls.zone.addEventListener('click', function () {
+				openFilePicker(controls.fileInput);
 			});
-		});
 
-		['dragleave', 'drop'].forEach(function (eventName) {
-			uploadZone.addEventListener(eventName, function (event) {
-				event.preventDefault();
-				uploadZone.classList.remove('is-dragover');
+			['dragenter', 'dragover'].forEach(function (eventName) {
+				controls.zone.addEventListener(eventName, function (event) {
+					event.preventDefault();
+					controls.zone.classList.add('is-dragover');
+				});
 			});
-		});
 
-		uploadZone.addEventListener('drop', function (event) {
-			setSelectedFiles(event.dataTransfer.files);
-		});
-	}
+			['dragleave', 'drop'].forEach(function (eventName) {
+				controls.zone.addEventListener(eventName, function (event) {
+					event.preventDefault();
+					controls.zone.classList.remove('is-dragover');
+				});
+			});
 
-	if (fileInput) {
-		fileInput.addEventListener('change', function () {
-			setSelectedFiles(fileInput.files);
-			fileInput.value = '';
-		});
-	}
+			controls.zone.addEventListener('drop', function (event) {
+				setSelectedFiles(event.dataTransfer.files);
+			});
+		}
 
-	if (selectedFilesList) {
-		selectedFilesList.addEventListener('click', function (event) {
-			const button = event.target.closest('button[data-index]');
+		if (controls.fileInput) {
+			controls.fileInput.addEventListener('change', function () {
+				setSelectedFiles(controls.fileInput.files);
+				controls.fileInput.value = '';
+			});
+		}
 
-			if (!button) {
-				return;
-			}
+		if (controls.selectedFilesList) {
+			controls.selectedFilesList.addEventListener('click', function (event) {
+				const button = event.target.closest('button[data-index]');
 
-			const index = parseInt(button.getAttribute('data-index'), 10);
-			selectedFiles.splice(index, 1);
-			renderSelectedFiles();
-		});
-	}
+				if (!button) {
+					return;
+				}
+
+				const index = parseInt(button.getAttribute('data-index'), 10);
+				selectedFiles.splice(index, 1);
+				renderSelectedFiles();
+			});
+		}
+
+		form.addEventListener('submit', submitUpload);
+	});
 
 	if (tabsWrapper) {
 		tabsWrapper.addEventListener('click', function (event) {
@@ -857,10 +893,6 @@
 
 	if (openUploadBtn) {
 		openUploadBtn.addEventListener('click', openUploadModal);
-	}
-
-	if (formEl) {
-		formEl.addEventListener('submit', submitUpload);
 	}
 
 	initTabControls(tabsWrapper);
