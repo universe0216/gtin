@@ -277,15 +277,15 @@
 
 		imageUrls.forEach(function (url, index) {
 			thumbsHtml +=
-				'<button type="button" class="procedure-detail-thumb-btn' + (index === 0 ? ' active' : '') + '" data-image-url="' + escapeHtml(url) + '">' +
-					'<img src="' + escapeHtml(url) + '" alt="">' +
+				'<button type="button" class="procedure-detail-thumb-btn' + (index === 0 ? ' active' : '') + '" data-image-url="' + escapeAttr(url) + '">' +
+					'<img src="' + escapeAttr(url) + '" alt="">' +
 				'</button>';
 		});
 
 		productDetailImageGallery.innerHTML =
 			'<div class="procedure-image-viewport image-viewer" id="procedureImageViewport">' +
 				'<div class="image-viewer-stage procedure-image-stage">' +
-					'<img src="' + escapeHtml(mainUrl) + '" alt="" class="image-viewer-target procedure-detail-main-image" id="procedureDetailMainImage" draggable="false">' +
+					'<img src="' + escapeAttr(mainUrl) + '" alt="" class="image-viewer-target procedure-detail-main-image" id="procedureDetailMainImage" draggable="false">' +
 				'</div>' +
 			'</div>' +
 			'<div class="procedure-image-viewer-toolbar">' +
@@ -467,7 +467,7 @@
 				return '<td>' + escapeHtml(cell) + '</td>';
 			}).join('');
 
-			return '<tr class="procedure-data-row" data-id="' + row.id + '" data-product-number="' + escapeHtml(row.product_procedure_number) + '" data-row-payload="' + escapeHtml(JSON.stringify(payload)) + '">' +
+			return '<tr class="procedure-data-row" data-id="' + row.id + '" data-product-number="' + escapeAttr(row.product_procedure_number) + '" data-row-payload="' + escapeAttr(JSON.stringify(payload)) + '">' +
 				'<td class="procedure-row-index text-muted">' + (index + 1) + '</td>' +
 				cellsHtml +
 			'</tr>';
@@ -510,7 +510,7 @@
 				'<span><strong>Uploaded:</strong> ' + escapeHtml(tab.created_at || '') + '</span>' +
 				'<button type="button" class="btn btn-sm btn-outline-danger ms-auto procedure-tab-delete-btn"' +
 					'data-procedure-id="' + tab.procedure_id + '" ' +
-					'data-file-name="' + escapeHtml(tab.file_name) + '" ' +
+					'data-file-name="' + escapeAttr(tab.file_name) + '" ' +
 					'data-mdb-ripple-init>' +
 					'<i class="fas fa-trash me-1"></i> Delete' +
 				'</button>' +

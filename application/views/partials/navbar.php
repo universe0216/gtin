@@ -12,9 +12,9 @@ $primary_children = array(
 );
 
 $nav_items = array(
-	'products'      => array('label' => 'Products', 'url' => site_url('products'), 'permission' => 'product.view'),
-	'organizations' => array('label' => 'Organizations', 'url' => site_url('organizations'), 'permission' => 'organization.view'),
 	'procedure'     => array('label' => 'Procedure', 'url' => site_url('procedure'), 'permission' => NULL),
+	'organizations' => array('label' => 'Organizations', 'url' => site_url('organizations'), 'permission' => 'organization.view'),
+	'products'      => array('label' => 'Products', 'url' => site_url('products'), 'permission' => 'product.view'),
 );
 
 $primary_active = ($nav_active === 'primary' || isset($primary_children[$nav_active]));
@@ -36,6 +36,17 @@ $show_primary = $CI->auth->can('primary');
 		</button>
 		<div class="collapse navbar-collapse" id="mainNavbar">
 			<ul class="navbar-nav ms-auto align-items-lg-center">
+				
+				<?php foreach ($nav_items as $key => $item): ?>
+					<?php if ($item['permission'] === NULL || $CI->auth->can($item['permission'])): ?>
+						<li class="nav-item">
+							<a
+								class="nav-link<?php echo ($nav_active === $key) ? ' active fw-semibold' : ''; ?>"
+								href="<?php echo $item['url']; ?>"
+							><?php echo html_escape($item['label']); ?></a>
+						</li>
+					<?php endif; ?>
+				<?php endforeach; ?>
 				<?php if ($show_primary): ?>
 					<li class="nav-item dropdown">
 						<a
@@ -58,16 +69,6 @@ $show_primary = $CI->auth->can('primary');
 						</ul>
 					</li>
 				<?php endif; ?>
-				<?php foreach ($nav_items as $key => $item): ?>
-					<?php if ($item['permission'] === NULL || $CI->auth->can($item['permission'])): ?>
-						<li class="nav-item">
-							<a
-								class="nav-link<?php echo ($nav_active === $key) ? ' active fw-semibold' : ''; ?>"
-								href="<?php echo $item['url']; ?>"
-							><?php echo html_escape($item['label']); ?></a>
-						</li>
-					<?php endif; ?>
-				<?php endforeach; ?>
 				<?php if ($CI->auth->is_admin()): ?>
 					<li class="nav-item">
 						<a
