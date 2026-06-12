@@ -22,7 +22,6 @@
 	const permissionsPanel = document.getElementById('permissionsPanel');
 	const passwordInput = document.getElementById('account_password');
 	const passwordHint = document.getElementById('passwordHint');
-	const toastContainer = document.getElementById('toastContainer');
 
 	let accountModal;
 	let deleteModal;
@@ -44,28 +43,6 @@
 		formEl.querySelectorAll('.form-outline').forEach(function (wrapper) {
 			mdb.Input.getOrCreateInstance(wrapper).update();
 		});
-	}
-
-	function showToast(message, type) {
-		const id = 'toast-' + Date.now();
-		const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
-		const html =
-			'<div id="' + id + '" class="toast align-items-center text-white ' + bgClass + ' border-0" role="alert">' +
-				'<div class="d-flex"><div class="toast-body">' + escapeHtml(message) + '</div>' +
-				'<button type="button" class="btn-close btn-close-white me-2 m-auto" data-mdb-dismiss="toast"></button></div></div>';
-		toastContainer.insertAdjacentHTML('beforeend', html);
-		const toastEl = document.getElementById(id);
-		if (typeof mdb !== 'undefined') {
-			const toast = new mdb.Toast(toastEl, { delay: 3500 });
-			toast.show();
-			toastEl.addEventListener('hidden.mdb.toast', function () { toastEl.remove(); });
-		}
-	}
-
-	function escapeHtml(text) {
-		const div = document.createElement('div');
-		div.textContent = text ?? '';
-		return div.innerHTML;
 	}
 
 	function togglePermissionsPanel() {

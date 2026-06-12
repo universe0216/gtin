@@ -96,8 +96,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div id="historyToastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
-
 <script>
 	window.HISTORY_CONFIG = {
 		type: 'products',

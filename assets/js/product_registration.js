@@ -25,7 +25,6 @@
 	const tabsContent = document.getElementById('procedureTabContent');
 	const initialUpload = document.getElementById('procedureInitialUpload');
 	const tabCount = document.getElementById('procedureTabCount');
-	const toastContainer = document.getElementById('toastContainer');
 	const productModalEl = document.getElementById('procedureProductModal');
 	const productModalTitle = document.getElementById('procedureProductModalLabel');
 	const productDetailImageGallery = document.getElementById('procedureDetailImageGallery');
@@ -1343,29 +1342,6 @@
 			return JSON.parse(raw);
 		} catch (error) {
 			return null;
-		}
-	}
-
-	function escapeHtml(text) {
-		const div = document.createElement('div');
-		div.textContent = text ?? '';
-		return div.innerHTML;
-	}
-
-	function showToast(message, type) {
-		const id = 'toast-' + Date.now();
-		const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
-		const html =
-			'<div id="' + id + '" class="toast align-items-center text-white ' + bgClass + ' border-0" role="alert">' +
-				'<div class="d-flex"><div class="toast-body">' + escapeHtml(message) + '</div>' +
-				'<button type="button" class="btn-close btn-close-white me-2 m-auto" data-mdb-dismiss="toast"></button></div></div>';
-		toastContainer.insertAdjacentHTML('beforeend', html);
-		const toastEl = document.getElementById(id);
-
-		if (typeof mdb !== 'undefined') {
-			const toast = new mdb.Toast(toastEl, { delay: 4000 });
-			toast.show();
-			toastEl.addEventListener('hidden.mdb.toast', function () { toastEl.remove(); });
 		}
 	}
 

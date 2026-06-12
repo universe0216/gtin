@@ -15,7 +15,6 @@
 	const tabsNav = document.getElementById('orgRegistrationTabs');
 	const tabsContent = document.getElementById('orgRegistrationTabContent');
 	const initialUpload = document.getElementById('orgRegistrationInitialUpload');
-	const toastContainer = document.getElementById('toastContainer');
 	const deleteModalEl = document.getElementById('orgRegistrationDeleteModal');
 	const deleteModalTitle = document.getElementById('orgRegistrationDeleteModalLabel');
 	const confirmDeleteBtn = document.getElementById('orgRegistrationConfirmDeleteBtn');
@@ -52,43 +51,6 @@
 			uploadBtn: form.querySelector('.procedure-upload-submit'),
 			uploadHint: form.querySelector('.procedure-upload-hint'),
 		};
-	}
-
-	function escapeHtml(text) {
-		const div = document.createElement('div');
-		div.textContent = text ?? '';
-		return div.innerHTML;
-	}
-
-	function escapeAttr(text) {
-		return escapeHtml(text).replace(/"/g, '&quot;');
-	}
-
-	function showToast(message, type) {
-		if (!toastContainer) {
-			return;
-		}
-
-		const id = 'toast-' + Date.now();
-		const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
-		const html =
-			'<div id="' + id + '" class="toast align-items-center text-white ' + bgClass + ' border-0" role="alert">' +
-				'<div class="d-flex">' +
-					'<div class="toast-body">' + escapeHtml(message) + '</div>' +
-					'<button type="button" class="btn-close btn-close-white me-2 m-auto" data-mdb-dismiss="toast"></button>' +
-				'</div>' +
-			'</div>';
-
-		toastContainer.insertAdjacentHTML('beforeend', html);
-		const toastEl = document.getElementById(id);
-
-		if (typeof mdb !== 'undefined') {
-			const toast = new mdb.Toast(toastEl, { delay: 3500 });
-			toast.show();
-			toastEl.addEventListener('hidden.mdb.toast', function () {
-				toastEl.remove();
-			});
-		}
 	}
 
 	function resetUploadForm() {

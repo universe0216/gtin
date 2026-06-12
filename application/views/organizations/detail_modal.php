@@ -73,7 +73,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 										Loading products...
 									</span>
 								</div>
-								<table class="table table-hover align-middle mb-0 procedure-data-table">
+								<table class="table table-hover align-middle mb-0 procedure-data-table entity-detail-products-data-table">
 									<thead>
 										<tr id="organizationProductsTableHead"></tr>
 									</thead>
@@ -99,6 +99,24 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				<span class="text-muted small me-auto" id="organizationDetailFooterMeta"></span>
 				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Close</button>
 			</div> -->
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="organizationProductDeleteModal" tabindex="-1" aria-labelledby="organizationProductDeleteModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-sm">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="organizationProductDeleteModalLabel">Delete product</h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				Are you sure you want to delete <strong id="organizationProductDeleteName">this product</strong>?
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
+				<button type="button" class="btn btn-danger" id="organizationProductConfirmDeleteBtn" data-mdb-ripple-init>Delete</button>
+			</div>
 		</div>
 	</div>
 </div>

@@ -9,8 +9,6 @@
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 	const historyType = config.type || 'products';
 
-	const toastContainer = document.getElementById('historyToastContainer');
-
 	let modal;
 	let activeRequest = null;
 
@@ -48,39 +46,6 @@
 			loadingEl: procedureModalLoading,
 			footerMetaEl: procedureModalFooterMeta,
 		};
-	}
-
-	function escapeHtml(value) {
-		return String(value ?? '')
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#39;');
-	}
-
-	function showToast(message, type) {
-		if (!toastContainer) {
-			return;
-		}
-
-		const bgClass = type === 'error' ? 'bg-danger' : 'bg-success';
-		const id = 'history-toast-' + Date.now();
-		const html =
-			'<div id="' + id + '" class="toast align-items-center text-white ' + bgClass + ' border-0" role="alert">' +
-				'<div class="d-flex"><div class="toast-body">' + escapeHtml(message) + '</div>' +
-				'<button type="button" class="btn-close btn-close-white me-2 m-auto" data-mdb-dismiss="toast"></button></div></div>';
-
-		toastContainer.insertAdjacentHTML('beforeend', html);
-		const toastEl = document.getElementById(id);
-
-		if (typeof mdb !== 'undefined') {
-			const toast = new mdb.Toast(toastEl, { delay: 4000 });
-			toast.show();
-			toastEl.addEventListener('hidden.mdb.toast', function () {
-				toastEl.remove();
-			});
-		}
 	}
 
 	function initModal() {

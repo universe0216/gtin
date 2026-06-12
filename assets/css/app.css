@@ -715,6 +715,28 @@ html[data-mdb-theme="dark"] body {
 	overflow: auto;
 }
 
+.entity-detail-products-data-table .procedure-table-action-col {
+	position: sticky;
+	right: 0;
+	z-index: 1;
+	width: 3.5rem;
+	min-width: 3.5rem;
+	text-align: center;
+	padding-left: 0.5rem;
+	padding-right: 0.5rem;
+	background-color: var(--app-table-row);
+	box-shadow: -6px 0 10px -6px rgba(0, 0, 0, 0.35);
+}
+
+.entity-detail-products-data-table thead th.procedure-table-action-col {
+	z-index: 4;
+	background-color: var(--app-surface-raised);
+}
+
+.entity-detail-products-data-table.table-hover > tbody > tr:hover > td.procedure-table-action-col {
+	background-color: var(--app-table-row-hover);
+}
+
 .entity-list-loading {
 	position: absolute;
 	inset: 0;

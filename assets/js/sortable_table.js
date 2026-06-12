@@ -1,15 +1,6 @@
 (function (window) {
 	'use strict';
 
-	function escapeHtml(value) {
-		return String(value ?? '')
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#39;');
-	}
-
 	function sortIconClass(direction) {
 		if (direction === 'asc') {
 			return 'fas fa-sort-up';
@@ -56,7 +47,7 @@
 		const buttonClass = options && options.buttonClass ? options.buttonClass : 'entity-list-sort-btn';
 		const indexClass = options && options.indexClass ? options.indexClass : 'procedure-row-index';
 
-		let html = '<th class="' + indexClass + '">' + escapeHtml(indexHeader) + '</th>';
+		let html = '<th class="' + indexClass + '">' + window.escapeHtml(indexHeader) + '</th>';
 
 		columns.forEach(function (column) {
 			const isSorted = sortState.sort === column.key;
@@ -65,8 +56,8 @@
 
 			html +=
 				'<th>' +
-					'<button type="button" class="' + buttonClass + sortedClass + '" data-sort-key="' + escapeHtml(column.key) + '">' +
-						'<span>' + escapeHtml(column.label) + '</span>' +
+					'<button type="button" class="' + buttonClass + sortedClass + '" data-sort-key="' + window.escapeHtml(column.key) + '">' +
+						'<span>' + window.escapeHtml(column.label) + '</span>' +
 						'<i class="' + sortIconClass(direction) + ' entity-list-sort-icon" aria-hidden="true"></i>' +
 					'</button>' +
 				'</th>';

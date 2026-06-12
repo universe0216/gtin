@@ -218,9 +218,11 @@ class Organizations extends BasicController {
 				array('key' => 'created_at', 'label' => 'Created At'),
 				array('key' => 'updated_at', 'label' => 'Updated At'),
 			),
-			'productColumns'  => $this->detail_product_columns,
-			'perPage'         => $this->list_per_page,
-			'perPageOptions'  => $this->list_per_page_options,
+			'productColumns'    => $this->detail_product_columns,
+			'productDeleteUrl'  => site_url('products/delete'),
+			'canDeleteProduct'  => $this->auth->can('product.edit'),
+			'perPage'           => $this->list_per_page,
+			'perPageOptions'    => $this->list_per_page_options,
 		);
 	}
 }

@@ -192,8 +192,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
-
 <script>
 	window.ORGANIZATION_REGISTRATION_CONFIG = {
 		baseUrl: <?php echo json_encode(site_url('organization_registration')); ?>,

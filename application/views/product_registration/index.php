@@ -422,8 +422,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
-
 <script src="<?php echo base_url('assets/vendor/jsbarcode/JsBarcode.all.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/qrcode/qrcode.min.js'); ?>"></script>
 <script>

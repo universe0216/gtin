@@ -36,5 +36,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/js/organization_registration.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/history.js'); ?>"></script>
 
+<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
 </body>
 </html>

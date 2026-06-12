@@ -16,6 +16,8 @@
 	const readOnlyFields = detailConfig.readOnlyFields || [];
 	const canEdit = !!detailConfig.canEdit;
 	const productColumns = detailConfig.productColumns || [];
+	const productDeleteUrl = (detailConfig.productDeleteUrl || '').replace(/\/$/, '');
+	const canDeleteProduct = !!detailConfig.canDeleteProduct;
 	const perPage = detailConfig.perPage || 10;
 
 	const modalEl = document.getElementById('organizationDetailModal');
@@ -33,15 +35,21 @@
 	const productsPaginationNav = document.getElementById('organizationProductsPaginationNav');
 	const productsPaginationList = document.getElementById('organizationProductsPaginationList');
 	const productsPageMeta = document.getElementById('organizationProductsPageMeta');
+	const productDeleteModalEl = document.getElementById('organizationProductDeleteModal');
+	const productDeleteNameEl = document.getElementById('organizationProductDeleteName');
+	const productConfirmDeleteBtn = document.getElementById('organizationProductConfirmDeleteBtn');
 	const tableBody = document.getElementById('entityListTableBody');
 	const sortableTable = window.SortableTable;
 
 	let modal;
+	let productDeleteModal;
 	let detailRequest = null;
 	let updateRequest = null;
 	let productsRequest = null;
+	let productDeleteRequest = null;
 	let productsSearchTimer = null;
 	let productsLoaded = false;
+	let pendingDeleteProductId = null;
 
 	const detailState = {
 		organizationId: null,
@@ -56,15 +64,6 @@
 		dir: '',
 	};
 
-	function escapeHtml(value) {
-		return String(value ?? '')
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#39;');
-	}
-
 	function initModal() {
 		if (typeof mdb === 'undefined' || !modalEl) {
 			return;
@@ -72,6 +71,17 @@
 
 		modal = mdb.Modal.getOrCreateInstance(modalEl);
 		modalEl.addEventListener('hidden.mdb.modal', resetModal);
+
+		if (productDeleteModalEl) {
+			productDeleteModal = mdb.Modal.getOrCreateInstance(productDeleteModalEl);
+			productDeleteModalEl.addEventListener('hidden.mdb.modal', function () {
+				pendingDeleteProductId = null;
+			});
+		}
+	}
+
+	function getProductsColSpan() {
+		return productColumns.length + 1 + (canDeleteProduct ? 1 : 0);
 	}
 
 	function setInfoLoading(isLoading) {
@@ -307,7 +317,13 @@
 			return;
 		}
 
-		productsTableHead.innerHTML = sortableTable.renderHeader(productColumns, productsState);
+		let html = sortableTable.renderHeader(productColumns, productsState);
+
+		if (canDeleteProduct) {
+			html += '<th class="procedure-table-action-col" aria-label="Actions"></th>';
+		}
+
+		productsTableHead.innerHTML = html;
 	}
 
 	function renderProductsPagination(meta) {
@@ -366,7 +382,7 @@
 			return;
 		}
 
-		const colSpan = productColumns.length + 1;
+		const colSpan = getProductsColSpan();
 
 		if (!records.length) {
 			const message = productsState.search ? 'No products match your search.' : 'No products found for this organization.';
@@ -384,6 +400,19 @@
 			productColumns.forEach(function (column) {
 				html += '<td>' + escapeHtml(record[column.key] ?? '') + '</td>';
 			});
+
+			if (canDeleteProduct) {
+				html +=
+					'<td class="procedure-table-action-col">' +
+						'<button type="button" class="btn btn-sm btn-outline-danger organization-product-delete-btn" ' +
+						'data-product-id="' + escapeHtml(record.id) + '" ' +
+						'data-product-name="' + escapeHtml(record.name || '') + '" ' +
+						'data-mdb-ripple-init aria-label="Delete product">' +
+							'<i class="fas fa-trash" aria-hidden="true"></i>' +
+						'</button>' +
+					'</td>';
+			}
+
 			html += '</tr>';
 		});
 
@@ -469,7 +498,7 @@
 
 				if (productsTableBody) {
 					productsTableBody.innerHTML =
-						'<tr><td colspan="' + (productColumns.length + 1) + '" class="text-center text-danger py-4">' +
+						'<tr><td colspan="' + getProductsColSpan() + '" class="text-center text-danger py-4">' +
 						escapeHtml(error.message || 'Failed to load products.') +
 						'</td></tr>';
 				}
@@ -570,8 +599,10 @@
 		}
 		if (productsTableBody) {
 			productsTableBody.innerHTML =
-				'<tr><td colspan="' + (productColumns.length + 1) + '" class="text-center text-muted py-4">Select an organization to view products.</td></tr>';
+				'<tr><td colspan="' + getProductsColSpan() + '" class="text-center text-muted py-4">Select an organization to view products.</td></tr>';
 		}
+
+		pendingDeleteProductId = null;
 		if (productsPaginationList) {
 			productsPaginationList.innerHTML = '';
 		}
@@ -611,6 +642,75 @@
 		renderProductTableHead();
 		modal.show();
 		loadDetail(organizationId);
+	}
+
+	function openProductDeleteModal(productId, productName) {
+		if (!productDeleteModal || !productId) {
+			return;
+		}
+
+		pendingDeleteProductId = productId;
+
+		if (productDeleteNameEl) {
+			productDeleteNameEl.textContent = productName || 'this product';
+		}
+
+		productDeleteModal.show();
+	}
+
+	function deleteProduct() {
+		if (!canDeleteProduct || !productDeleteUrl || !pendingDeleteProductId) {
+			return;
+		}
+
+		if (productConfirmDeleteBtn) {
+			productConfirmDeleteBtn.disabled = true;
+		}
+
+		if (productDeleteRequest) {
+			productDeleteRequest.abort();
+		}
+
+		productDeleteRequest = new AbortController();
+
+		fetch(productDeleteUrl + '/' + pendingDeleteProductId, {
+			method: 'POST',
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+			signal: productDeleteRequest.signal,
+		})
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				if (!result.ok || !result.data.success) {
+					throw new Error(result.data.message || 'Failed to delete product.');
+				}
+
+				if (productDeleteModal) {
+					productDeleteModal.hide();
+				}
+
+				showToast(result.data.message || 'Product deleted successfully.', 'success');
+				productsLoaded = false;
+				loadProducts();
+			})
+			.catch(function (error) {
+				if (error.name === 'AbortError') {
+					return;
+				}
+
+				showToast(error.message || 'Failed to delete product.', 'error');
+			})
+			.finally(function () {
+				if (productConfirmDeleteBtn) {
+					productConfirmDeleteBtn.disabled = false;
+				}
+
+				productDeleteRequest = null;
+				pendingDeleteProductId = null;
+			});
 	}
 
 	function scheduleProductsSearch() {
@@ -692,6 +792,27 @@
 			productsState.page = parseInt(button.getAttribute('data-page') || '1', 10);
 			loadProducts();
 		});
+	}
+
+	if (productsTableBody) {
+		productsTableBody.addEventListener('click', function (event) {
+			const deleteBtn = event.target.closest('.organization-product-delete-btn');
+
+			if (!deleteBtn) {
+				return;
+			}
+
+			event.preventDefault();
+			event.stopPropagation();
+			openProductDeleteModal(
+				deleteBtn.getAttribute('data-product-id'),
+				deleteBtn.getAttribute('data-product-name')
+			);
+		});
+	}
+
+	if (productConfirmDeleteBtn) {
+		productConfirmDeleteBtn.addEventListener('click', deleteProduct);
 	}
 
 	if (sortableTable) {
