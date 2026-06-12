@@ -24,14 +24,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						<div class="procedure-tab-nav-wrap">
 							<button
 								class="nav-link<?php echo $index === 0 ? ' active' : ''; ?>"
-								id="org-registration-tab-<?php echo (int) $tab['registration_id']; ?>-tab"
+								id="org-registration-tab-<?php echo (int) $tab['organization_registration_id']; ?>-tab"
 								data-mdb-tab-init
-								data-mdb-target="#org-registration-tab-<?php echo (int) $tab['registration_id']; ?>"
+								data-mdb-target="#org-registration-tab-<?php echo (int) $tab['organization_registration_id']; ?>"
 								type="button"
 								role="tab"
-								aria-controls="org-registration-tab-<?php echo (int) $tab['registration_id']; ?>"
+								aria-controls="org-registration-tab-<?php echo (int) $tab['organization_registration_id']; ?>"
 								aria-selected="<?php echo $index === 0 ? 'true' : 'false'; ?>"
-								data-registration-id="<?php echo (int) $tab['registration_id']; ?>"
+								data-organization-registration-id="<?php echo (int) $tab['organization_registration_id']; ?>"
 							>
 								<i class="fas fa-file-zipper me-1"></i><?php echo html_escape($tab['file_name']); ?>
 								<span class="badge bg-secondary ms-2"><?php echo count($tab['rows']); ?></span>
@@ -39,7 +39,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							<button
 								type="button"
 								class="procedure-tab-nav-close org-registration-tab-delete-btn"
-								data-registration-id="<?php echo (int) $tab['registration_id']; ?>"
+								data-organization-registration-id="<?php echo (int) $tab['organization_registration_id']; ?>"
 								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
 								aria-label="Stop registration"
 								data-mdb-ripple-init
@@ -55,10 +55,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				<?php foreach ($tabs as $index => $tab): ?>
 					<div
 						class="tab-pane fade<?php echo $index === 0 ? ' show active' : ''; ?>"
-						id="org-registration-tab-<?php echo (int) $tab['registration_id']; ?>"
+						id="org-registration-tab-<?php echo (int) $tab['organization_registration_id']; ?>"
 						role="tabpanel"
-						aria-labelledby="org-registration-tab-<?php echo (int) $tab['registration_id']; ?>-tab"
-						data-registration-id="<?php echo (int) $tab['registration_id']; ?>"
+						aria-labelledby="org-registration-tab-<?php echo (int) $tab['organization_registration_id']; ?>-tab"
+						data-organization-registration-id="<?php echo (int) $tab['organization_registration_id']; ?>"
 					>
 						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
 							<span><strong>Procedure #:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
@@ -69,7 +69,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							<button
 								type="button"
 								class="btn btn-sm btn-outline-danger ms-auto org-registration-tab-delete-btn"
-								data-registration-id="<?php echo (int) $tab['registration_id']; ?>"
+								data-organization-registration-id="<?php echo (int) $tab['organization_registration_id']; ?>"
 								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
 								data-mdb-ripple-init
 							>
@@ -195,8 +195,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
 <script>
-	window.ORG_REGISTRATION_CONFIG = {
-		baseUrl: <?php echo json_encode(site_url('org_registration')); ?>,
+	window.ORGANIZATION_REGISTRATION_CONFIG = {
+		baseUrl: <?php echo json_encode(site_url('organization_registration')); ?>,
 		initialTabs: <?php echo json_encode($tabs); ?>
 	};
 </script>

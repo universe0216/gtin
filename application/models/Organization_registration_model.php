@@ -1,18 +1,18 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Org_registration_model extends CI_Model {
+class Organization_registration_model extends CI_Model {
 
-	protected $table = 'org_registrations';
+	protected $table = 'organization_registrations';
 
 	public function get_incomplete_by_account($account_id)
 	{
 		return $this->db
-			->select('org_registrations.*, accounts.full_name AS processor_name')
-			->join('accounts', 'accounts.id = org_registrations.account_id', 'left')
-			->where('org_registrations.account_id', (int) $account_id)
-			->where('org_registrations.status !=', 'completed')
-			->order_by('org_registrations.id', 'DESC')
+			->select('organization_registrations.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = organization_registrations.account_id', 'left')
+			->where('organization_registrations.account_id', (int) $account_id)
+			->where('organization_registrations.status !=', 'completed')
+			->order_by('organization_registrations.id', 'DESC')
 			->get($this->table)
 			->result_array();
 	}
@@ -20,9 +20,9 @@ class Org_registration_model extends CI_Model {
 	public function get($id)
 	{
 		return $this->db
-			->select('org_registrations.*, accounts.full_name AS processor_name')
-			->join('accounts', 'accounts.id = org_registrations.account_id', 'left')
-			->where('org_registrations.id', $id)
+			->select('organization_registrations.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = organization_registrations.account_id', 'left')
+			->where('organization_registrations.id', $id)
 			->get($this->table)
 			->row_array();
 	}
@@ -45,11 +45,11 @@ class Org_registration_model extends CI_Model {
 	public function get_all($limit = NULL, $offset = 0, $search = '')
 	{
 		$this->db
-			->select('org_registrations.*, accounts.full_name AS processor_name')
-			->join('accounts', 'accounts.id = org_registrations.account_id', 'left');
+			->select('organization_registrations.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = organization_registrations.account_id', 'left');
 
 		$this->apply_search_filters($search);
-		$this->db->order_by('org_registrations.id', 'DESC');
+		$this->db->order_by('organization_registrations.id', 'DESC');
 
 		if ($limit !== NULL)
 		{
@@ -69,8 +69,8 @@ class Org_registration_model extends CI_Model {
 		}
 
 		$this->db->group_start();
-		$this->db->like('org_registrations.file_name', $search);
-		$this->db->or_like('org_registrations.procedure_number', $search);
+		$this->db->like('organization_registrations.file_name', $search);
+		$this->db->or_like('organization_registrations.procedure_number', $search);
 		$this->db->or_like('accounts.full_name', $search);
 		$this->db->group_end();
 	}

@@ -33,7 +33,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								class="history-organization-row"
 								role="button"
 								tabindex="0"
-								data-registration-id="<?php echo (int) $registration['id']; ?>"
+								data-organization-registration-id="<?php echo (int) $registration['id']; ?>"
 							>
 								<td class="procedure-row-index text-muted"><?php echo (int) $row_offset + $index + 1; ?></td>
 								<td>

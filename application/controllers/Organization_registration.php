@@ -3,15 +3,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 require_once APPPATH.'core/AuthenticatedController.php';
 
-class Org_registration extends AuthenticatedController {
+class Organization_registration extends AuthenticatedController {
 
 	public function __construct()
 	{
 		parent::__construct();
 		$this->load->helper(array('url', 'file'));
-		$this->load->model('org_registration_model');
-		$this->load->model('org_registration_item_model');
-		$this->load->library('org_registration_processor');
+		$this->load->model('organization_registration_model');
+		$this->load->model('organization_registration_item_model');
+		$this->load->library('organization_registration_processor');
 	}
 
 	public function index()
@@ -19,13 +19,13 @@ class Org_registration extends AuthenticatedController {
 		$this->auth->require_permission('organization.edit');
 
 		$user = $this->auth->user();
-		$registrations = $this->org_registration_model->get_incomplete_by_account($user['id']);
+		$registrations = $this->organization_registration_model->get_incomplete_by_account($user['id']);
 		$tabs = array();
 
 		foreach ($registrations as $registration)
 		{
-			$items = $this->org_registration_item_model->get_by_registration($registration['id']);
-			$tabs[] = $this->org_registration_processor->format_registration_tab($registration, $items);
+			$items = $this->organization_registration_item_model->get_by_organization_registration($registration['id']);
+			$tabs[] = $this->organization_registration_processor->format_registration_tab($registration, $items);
 		}
 
 		$data = array(
@@ -34,7 +34,7 @@ class Org_registration extends AuthenticatedController {
 			'tabs'       => $tabs,
 		);
 
-		$data['content'] = $this->load->view('org_registration/index', $data, TRUE);
+		$data['content'] = $this->load->view('organization_registration/index', $data, TRUE);
 		$this->load->view('layouts/main', $data);
 	}
 
@@ -55,7 +55,7 @@ class Org_registration extends AuthenticatedController {
 		try
 		{
 			$user = $this->auth->user();
-			$result = $this->org_registration_processor->process_uploads($_FILES['zip_files'], $user['id']);
+			$result = $this->organization_registration_processor->process_uploads($_FILES['zip_files'], $user['id']);
 		}
 		catch (RuntimeException $exception)
 		{
@@ -88,7 +88,7 @@ class Org_registration extends AuthenticatedController {
 			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
 		}
 
-		$registration = $this->org_registration_model->get($id);
+		$registration = $this->organization_registration_model->get($id);
 
 		if ( ! $registration)
 		{
@@ -106,7 +106,7 @@ class Org_registration extends AuthenticatedController {
 			}
 		}
 
-		if ( ! $this->org_registration_model->delete($id))
+		if ( ! $this->organization_registration_model->delete($id))
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete registration.'), 500);
 		}

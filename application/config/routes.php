@@ -54,5 +54,7 @@ $route['procedure'] = 'product_registration';
 $route['procedure/(:any)'] = 'product_registration/$1';
 $route['history/procedure'] = 'history/products';
 $route['history/procedure/(:any)'] = 'history/products/$1';
+$route['org_registration'] = 'organization_registration';
+$route['org_registration/(:any)'] = 'organization_registration/$1';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;

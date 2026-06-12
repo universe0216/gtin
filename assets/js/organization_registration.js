@@ -1,11 +1,11 @@
 (function () {
 	'use strict';
 
-	if (typeof window.ORG_REGISTRATION_CONFIG === 'undefined') {
+	if (typeof window.ORGANIZATION_REGISTRATION_CONFIG === 'undefined') {
 		return;
 	}
 
-	const config = window.ORG_REGISTRATION_CONFIG;
+	const config = window.ORGANIZATION_REGISTRATION_CONFIG;
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
 	const uploadForms = document.querySelectorAll('.org-registration-upload-form');
@@ -191,18 +191,18 @@
 		return '<li class="nav-item procedure-tab-nav-item" role="presentation">' +
 			'<div class="procedure-tab-nav-wrap">' +
 				'<button class="nav-link' + (isActive ? ' active' : '') + '" ' +
-					'id="org-registration-tab-' + tab.registration_id + '-tab" ' +
+					'id="org-registration-tab-' + tab.organization_registration_id + '-tab" ' +
 					'data-mdb-tab-init ' +
-					'data-mdb-target="#org-registration-tab-' + tab.registration_id + '" ' +
+					'data-mdb-target="#org-registration-tab-' + tab.organization_registration_id + '" ' +
 					'type="button" role="tab" ' +
-					'aria-controls="org-registration-tab-' + tab.registration_id + '" ' +
+					'aria-controls="org-registration-tab-' + tab.organization_registration_id + '" ' +
 					'aria-selected="' + (isActive ? 'true' : 'false') + '" ' +
-					'data-registration-id="' + tab.registration_id + '">' +
+					'data-organization-registration-id="' + tab.organization_registration_id + '">' +
 					'<i class="fas fa-file-zipper me-1"></i>' + escapeHtml(tab.file_name) +
 					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
 				'</button>' +
 				'<button type="button" class="procedure-tab-nav-close org-registration-tab-delete-btn"' +
-					' data-registration-id="' + tab.registration_id + '"' +
+					' data-organization-registration-id="' + tab.organization_registration_id + '"' +
 					' data-file-name="' + escapeAttr(tab.file_name) + '"' +
 					' aria-label="Stop registration" data-mdb-ripple-init>' +
 					'<i class="fas fa-times" aria-hidden="true"></i>' +
@@ -213,9 +213,9 @@
 
 	function buildTabPane(tab, isActive) {
 		return '<div class="tab-pane fade' + (isActive ? ' show active' : '') + '" ' +
-			'id="org-registration-tab-' + tab.registration_id + '" role="tabpanel" ' +
-			'aria-labelledby="org-registration-tab-' + tab.registration_id + '-tab" ' +
-			'data-registration-id="' + tab.registration_id + '">' +
+			'id="org-registration-tab-' + tab.organization_registration_id + '" role="tabpanel" ' +
+			'aria-labelledby="org-registration-tab-' + tab.organization_registration_id + '-tab" ' +
+			'data-organization-registration-id="' + tab.organization_registration_id + '">' +
 			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
 				'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name || '') + '</span>' +
@@ -223,7 +223,7 @@
 				'<span><strong>Status:</strong> ' + escapeHtml(tab.status || 'uploaded') + '</span>' +
 				'<span><strong>Uploaded:</strong> ' + escapeHtml(tab.created_at || '') + '</span>' +
 				'<button type="button" class="btn btn-sm btn-outline-danger ms-auto org-registration-tab-delete-btn"' +
-					' data-registration-id="' + tab.registration_id + '"' +
+					' data-organization-registration-id="' + tab.organization_registration_id + '"' +
 					' data-file-name="' + escapeAttr(tab.file_name) + '" data-mdb-ripple-init>' +
 					'<i class="fas fa-trash me-1"></i> Delete' +
 				'</button>' +
@@ -233,7 +233,7 @@
 	}
 
 	function tabExists(registrationId) {
-		return !!tabsNav.querySelector('.nav-link[data-registration-id="' + registrationId + '"]');
+		return !!tabsNav.querySelector('.nav-link[data-organization-registration-id="' + registrationId + '"]');
 	}
 
 	function deactivateTabs() {
@@ -249,8 +249,8 @@
 	function activateTab(registrationId) {
 		deactivateTabs();
 
-		const button = tabsNav.querySelector('.nav-link[data-registration-id="' + registrationId + '"]');
-		const pane = tabsContent.querySelector('.tab-pane[data-registration-id="' + registrationId + '"]');
+		const button = tabsNav.querySelector('.nav-link[data-organization-registration-id="' + registrationId + '"]');
+		const pane = tabsContent.querySelector('.tab-pane[data-organization-registration-id="' + registrationId + '"]');
 
 		if (button) {
 			button.classList.add('active');
@@ -287,9 +287,9 @@
 	}
 
 	function removeTabFromDom(registrationId) {
-		const tabBtn = tabsNav.querySelector('.nav-link[data-registration-id="' + registrationId + '"]');
+		const tabBtn = tabsNav.querySelector('.nav-link[data-organization-registration-id="' + registrationId + '"]');
 		const navItem = tabBtn ? tabBtn.closest('.nav-item') : null;
-		const pane = tabsContent.querySelector('.tab-pane[data-registration-id="' + registrationId + '"]');
+		const pane = tabsContent.querySelector('.tab-pane[data-organization-registration-id="' + registrationId + '"]');
 		const wasActive = tabBtn && tabBtn.classList.contains('active');
 
 		if (navItem) {
@@ -314,7 +314,7 @@
 			const nextTab = tabsNav.querySelector('.nav-link');
 
 			if (nextTab) {
-				activateTab(nextTab.getAttribute('data-registration-id'));
+				activateTab(nextTab.getAttribute('data-organization-registration-id'));
 			}
 		}
 	}
@@ -378,7 +378,7 @@
 		tabsWrapper.classList.remove('d-none');
 
 		const newTabs = tabs.filter(function (tab) {
-			return !tabExists(tab.registration_id);
+			return !tabExists(tab.organization_registration_id);
 		});
 
 		newTabs.slice().reverse().forEach(function (tab) {
@@ -506,7 +506,7 @@
 
 		if (deleteBtn) {
 			openDeleteModal(
-				deleteBtn.getAttribute('data-registration-id'),
+				deleteBtn.getAttribute('data-organization-registration-id'),
 				deleteBtn.getAttribute('data-file-name')
 			);
 		}

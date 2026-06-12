@@ -100,7 +100,7 @@ class Organizations extends BasicController {
 			'entity'     => $this->entity,
 			'nav_active' => $this->entity,
 			'can_edit'   => $this->auth->can($this->permission_edit),
-			'add_url'    => $this->auth->can($this->permission_edit) ? site_url('org_registration') : NULL,
+			'add_url'    => $this->auth->can($this->permission_edit) ? site_url('organization_registration') : NULL,
 		));
 	}
 }

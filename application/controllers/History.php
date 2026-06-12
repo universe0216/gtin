@@ -13,10 +13,10 @@ class History extends AuthenticatedController {
 		$this->load->helper('url');
 		$this->load->model('product_registration_model');
 		$this->load->model('product_registration_item_model');
-		$this->load->model('org_registration_model');
-		$this->load->model('org_registration_item_model');
+		$this->load->model('organization_registration_model');
+		$this->load->model('organization_registration_item_model');
 		$this->load->library('product_registration_processor');
-		$this->load->library('org_registration_processor');
+		$this->load->library('organization_registration_processor');
 	}
 
 	public function products($id = NULL)
@@ -71,7 +71,7 @@ class History extends AuthenticatedController {
 
 		$per_page = $this->history_per_page;
 		$page = max(1, (int) $this->input->get('page'));
-		$total = $this->org_registration_model->count_all();
+		$total = $this->organization_registration_model->count_all();
 		$total_pages = max(1, (int) ceil($total / $per_page));
 
 		if ($page > $total_pages)
@@ -80,7 +80,7 @@ class History extends AuthenticatedController {
 		}
 
 		$offset = ($page - 1) * $per_page;
-		$registrations = $this->org_registration_model->get_all($per_page, $offset);
+		$registrations = $this->organization_registration_model->get_all($per_page, $offset);
 
 		foreach ($registrations as $index => $registration)
 		{
@@ -210,16 +210,16 @@ class History extends AuthenticatedController {
 
 	protected function build_organization_history_tab($id)
 	{
-		$registration = $this->org_registration_model->get($id);
+		$registration = $this->organization_registration_model->get($id);
 
 		if ( ! $registration)
 		{
 			return NULL;
 		}
 
-		$items = $this->org_registration_item_model->get_by_registration($id);
+		$items = $this->organization_registration_item_model->get_by_organization_registration($id);
 
-		return $this->org_registration_processor->format_registration_tab($registration, $items);
+		return $this->organization_registration_processor->format_registration_tab($registration, $items);
 	}
 
 	protected function organization_name_from_file($file_name)

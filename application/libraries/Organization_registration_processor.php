@@ -4,7 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-class Org_registration_processor {
+class Organization_registration_processor {
 
 	protected $CI;
 	protected $storage_root;
@@ -12,7 +12,7 @@ class Org_registration_processor {
 	public function __construct()
 	{
 		$this->CI =& get_instance();
-		$this->storage_root = FCPATH.'storage'.DIRECTORY_SEPARATOR.'org-registrations'.DIRECTORY_SEPARATOR;
+		$this->storage_root = FCPATH.'storage'.DIRECTORY_SEPARATOR.'organization-registrations'.DIRECTORY_SEPARATOR;
 	}
 
 	public function process_uploads($files, $account_id)
@@ -56,7 +56,7 @@ class Org_registration_processor {
 
 	protected function validate_no_duplicate_registrations($files)
 	{
-		$this->CI->load->model('org_registration_model');
+		$this->CI->load->model('organization_registration_model');
 		$seen = array();
 
 		foreach ($files as $file)
@@ -71,7 +71,7 @@ class Org_registration_processor {
 
 			$seen[$key] = TRUE;
 
-			if ($this->CI->org_registration_model->exists_by_file_and_procedure($file['name'], $parsed['procedure_number']))
+			if ($this->CI->organization_registration_model->exists_by_file_and_procedure($file['name'], $parsed['procedure_number']))
 			{
 				throw new RuntimeException(
 					'Registration '.$parsed['procedure_number'].' with file '.$file['name'].' already exists.'
@@ -107,12 +107,12 @@ class Org_registration_processor {
 		$sheet = $this->parse_spreadsheet($xls_path);
 		$organizations = $sheet['rows'];
 		$now = date('Y-m-d H:i:s');
-		$relative_storage = 'storage/org-registrations/'.date('Y-m').'/'.$folder_name.'/';
+		$relative_storage = 'storage/organization-registrations/'.date('Y-m').'/'.$folder_name.'/';
 
-		$this->CI->load->model('org_registration_model');
-		$this->CI->load->model('org_registration_item_model');
+		$this->CI->load->model('organization_registration_model');
+		$this->CI->load->model('organization_registration_item_model');
 
-		$registration_id = $this->CI->org_registration_model->insert(array(
+		$organization_registration_id = $this->CI->organization_registration_model->insert(array(
 			'file_name'        => $original_name,
 			'procedure_number' => $parsed['procedure_number'],
 			'status'           => 'uploaded',
@@ -121,7 +121,7 @@ class Org_registration_processor {
 			'storage_path'     => $relative_storage,
 		));
 
-		if ( ! $registration_id)
+		if ( ! $organization_registration_id)
 		{
 			throw new RuntimeException('Failed to save registration record for '.$original_name.'.');
 		}
@@ -131,18 +131,18 @@ class Org_registration_processor {
 		foreach ($organizations as $organization)
 		{
 			$db_items[] = array(
-				'registration_id'          => $registration_id,
-				'org_registration_id'      => $organization['org_registration_id'],
-				'gs1_prefix'               => $organization['gs1_prefix'],
-				'name'                     => $organization['name'],
-				'parent_organization_name' => $organization['parent_organization_name'],
-				'created_at'               => $now,
+				'organization_registration_id' => $organization_registration_id,
+				'org_registration_id'        => $organization['org_registration_id'],
+				'gs1_prefix'                   => $organization['gs1_prefix'],
+				'name'                         => $organization['name'],
+				'parent_organization_name'     => $organization['parent_organization_name'],
+				'created_at'                   => $now,
 			);
 		}
 
-		$this->CI->org_registration_item_model->insert_batch($db_items);
-		$registration = $this->CI->org_registration_model->get($registration_id);
-		$saved_items = $this->CI->org_registration_item_model->get_by_registration($registration_id);
+		$this->CI->organization_registration_item_model->insert_batch($db_items);
+		$registration = $this->CI->organization_registration_model->get($organization_registration_id);
+		$saved_items = $this->CI->organization_registration_item_model->get_by_organization_registration($organization_registration_id);
 
 		return array(
 			'registration' => $registration,
@@ -417,16 +417,16 @@ class Org_registration_processor {
 		$organization_name = $this->organization_name_from_file($registration['file_name']);
 
 		return array(
-			'registration_id'   => (int) $registration['id'],
-			'file_name'           => $registration['file_name'],
-			'procedure_number'    => $registration['procedure_number'],
-			'organization_name'   => $organization_name,
-			'processor_name'      => $registration['processor_name'] ?? '',
-			'status'              => $registration['status'],
-			'created_at'          => $registration['created_at'],
-			'total_items'         => (int) $registration['total_items'],
-			'columns'             => $columns,
-			'rows'                => $rows,
+			'organization_registration_id' => (int) $registration['id'],
+			'file_name'                    => $registration['file_name'],
+			'procedure_number'             => $registration['procedure_number'],
+			'organization_name'            => $organization_name,
+			'processor_name'               => $registration['processor_name'] ?? '',
+			'status'                       => $registration['status'],
+			'created_at'                   => $registration['created_at'],
+			'total_items'                  => (int) $registration['total_items'],
+			'columns'                      => $columns,
+			'rows'                         => $rows,
 		);
 	}
 

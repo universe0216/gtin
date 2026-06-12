@@ -306,7 +306,7 @@
 	initModal();
 
 	if (historyType === 'organizations') {
-		bindRows('.history-organization-row', 'data-registration-id');
+		bindRows('.history-organization-row', 'data-organization-registration-id');
 	} else {
 		bindRows('.history-procedure-row', 'data-product-registration-id');
 	}
