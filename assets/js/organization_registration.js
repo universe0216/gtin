@@ -15,15 +15,10 @@
 	const tabsNav = document.getElementById('orgRegistrationTabs');
 	const tabsContent = document.getElementById('orgRegistrationTabContent');
 	const initialUpload = document.getElementById('orgRegistrationInitialUpload');
-	const deleteModalEl = document.getElementById('orgRegistrationDeleteModal');
-	const deleteModalTitle = document.getElementById('orgRegistrationDeleteModalLabel');
-	const confirmDeleteBtn = document.getElementById('orgRegistrationConfirmDeleteBtn');
 
 	let selectedFiles = [];
 	let filePickerOpenUntil = 0;
-	let pendingDeleteRegistrationId = null;
 	let uploadModal;
-	let deleteModal;
 
 	function initUploadModal() {
 		if (typeof mdb === 'undefined' || !uploadModalEl) {
@@ -32,14 +27,6 @@
 
 		uploadModal = mdb.Modal.getOrCreateInstance(uploadModalEl);
 		uploadModalEl.addEventListener('hidden.mdb.modal', resetUploadForm);
-	}
-
-	function initDeleteModal() {
-		if (typeof mdb === 'undefined' || !deleteModalEl) {
-			return;
-		}
-
-		deleteModal = mdb.Modal.getOrCreateInstance(deleteModalEl);
 	}
 
 	function getUploadControls(form) {
@@ -234,18 +221,35 @@
 		});
 	}
 
+	function deleteRegistration(registrationId) {
+		return fetchApi(baseUrl + '/delete/' + registrationId, {
+			method: 'POST',
+		}).then(function (result) {
+			removeTabFromDom(registrationId);
+			showToast(result.message, 'success');
+		});
+	}
+
 	function openDeleteModal(registrationId, fileName) {
-		if (!deleteModal || !registrationId) {
+		if (!registrationId) {
 			return;
 		}
 
-		pendingDeleteRegistrationId = registrationId;
+		showConfirm({
+			title: fileName || '—',
+			message: 'This registration is not completed yet. Stop registration for this file?',
+			confirmLabel: 'Stop Registration',
+		})
+			.then(function () {
+				return deleteRegistration(registrationId);
+			})
+			.catch(function (error) {
+				if (isConfirmCancelled(error)) {
+					return;
+				}
 
-		if (deleteModalTitle) {
-			deleteModalTitle.textContent = fileName || '—';
-		}
-
-		deleteModal.show();
+				showToast(error.message || 'Failed to delete registration.', 'error');
+			});
 	}
 
 	function removeTabFromDom(registrationId) {
@@ -279,51 +283,6 @@
 				activateTab(nextTab.getAttribute('data-organization-registration-id'));
 			}
 		}
-	}
-
-	function confirmDeleteRegistration() {
-		if (!pendingDeleteRegistrationId) {
-			return;
-		}
-
-		const registrationId = pendingDeleteRegistrationId;
-
-		if (confirmDeleteBtn) {
-			confirmDeleteBtn.disabled = true;
-		}
-
-		fetch(baseUrl + '/delete/' + registrationId, {
-			method: 'POST',
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
-		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
-			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Failed to delete registration.', 'error');
-					return;
-				}
-
-				removeTabFromDom(registrationId);
-
-				if (deleteModal) {
-					deleteModal.hide();
-				}
-
-				showToast(result.data.message, 'success');
-			})
-			.catch(function () {
-				showToast('Failed to delete registration.', 'error');
-			})
-			.finally(function () {
-				if (confirmDeleteBtn) {
-					confirmDeleteBtn.disabled = false;
-				}
-				pendingDeleteRegistrationId = null;
-			});
 	}
 
 	function prependTabs(tabs) {
@@ -478,12 +437,7 @@
 		openUploadBtn.addEventListener('click', openUploadModal);
 	}
 
-	if (confirmDeleteBtn) {
-		confirmDeleteBtn.addEventListener('click', confirmDeleteRegistration);
-	}
-
 	uploadForms.forEach(bindUploadForm);
 	initUploadModal();
-	initDeleteModal();
 	initTabControls(tabsWrapper);
 })();

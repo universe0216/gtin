@@ -35,20 +35,15 @@
 	const productsPaginationNav = document.getElementById('organizationProductsPaginationNav');
 	const productsPaginationList = document.getElementById('organizationProductsPaginationList');
 	const productsPageMeta = document.getElementById('organizationProductsPageMeta');
-	const productDeleteModalEl = document.getElementById('organizationProductDeleteModal');
-	const productDeleteNameEl = document.getElementById('organizationProductDeleteName');
-	const productConfirmDeleteBtn = document.getElementById('organizationProductConfirmDeleteBtn');
 	const tableBody = document.getElementById('entityListTableBody');
 	const sortableTable = window.SortableTable;
 
 	let modal;
-	let productDeleteModal;
 	let detailRequest = null;
 	let updateRequest = null;
 	let productsRequest = null;
 	let productDeleteRequest = null;
 	let productsLoaded = false;
-	let pendingDeleteProductId = null;
 
 	const detailState = {
 		organizationId: null,
@@ -70,13 +65,6 @@
 
 		modal = mdb.Modal.getOrCreateInstance(modalEl);
 		modalEl.addEventListener('hidden.mdb.modal', resetModal);
-
-		if (productDeleteModalEl) {
-			productDeleteModal = mdb.Modal.getOrCreateInstance(productDeleteModalEl);
-			productDeleteModalEl.addEventListener('hidden.mdb.modal', function () {
-				pendingDeleteProductId = null;
-			});
-		}
 	}
 
 	function getProductsColSpan() {
@@ -528,7 +516,6 @@
 				'<tr><td colspan="' + getProductsColSpan() + '" class="text-center text-muted py-4">Select an organization to view products.</td></tr>';
 		}
 
-		pendingDeleteProductId = null;
 		if (productsPaginationList) {
 			productsPaginationList.innerHTML = '';
 		}
@@ -570,58 +557,48 @@
 		loadDetail(organizationId);
 	}
 
-	function openProductDeleteModal(productId, productName) {
-		if (!productDeleteModal || !productId) {
-			return;
-		}
-
-		pendingDeleteProductId = productId;
-
-		if (productDeleteNameEl) {
-			productDeleteNameEl.textContent = productName || 'this product';
-		}
-
-		productDeleteModal.show();
-	}
-
-	function deleteProduct() {
-		if (!canDeleteProduct || !productDeleteUrl || !pendingDeleteProductId) {
-			return;
-		}
-
-		if (productConfirmDeleteBtn) {
-			productConfirmDeleteBtn.disabled = true;
+	function deleteProduct(productId) {
+		if (!canDeleteProduct || !productDeleteUrl || !productId) {
+			return Promise.reject(new Error('Unable to delete this product.'));
 		}
 
 		productDeleteRequest = createAbortableRequest(productDeleteRequest);
 
-		fetchApi(productDeleteUrl + '/' + pendingDeleteProductId, {
+		return fetchApi(productDeleteUrl + '/' + productId, {
 			method: 'POST',
 			signal: productDeleteRequest.signal,
-		})
-			.then(function (result) {
-				if (productDeleteModal) {
-					productDeleteModal.hide();
-				}
+		}).finally(function () {
+			productDeleteRequest = null;
+		});
+	}
 
+	function openProductDeleteModal(productId, productName) {
+		if (!productId) {
+			return;
+		}
+
+		const label = escapeHtml(productName || 'this product');
+
+		showConfirm({
+			title: 'Delete product',
+			message: 'Are you sure you want to delete <strong>' + label + '</strong>?',
+			allowHtml: true,
+			confirmLabel: 'Delete',
+		})
+			.then(function () {
+				return deleteProduct(productId);
+			})
+			.then(function (result) {
 				showToast(result.message || 'Product deleted successfully.', 'success');
 				productsLoaded = false;
 				loadProducts();
 			})
 			.catch(function (error) {
-				if (isAbortError(error)) {
+				if (isConfirmCancelled(error) || isAbortError(error)) {
 					return;
 				}
 
 				showToast(error.message || 'Failed to delete product.', 'error');
-			})
-			.finally(function () {
-				if (productConfirmDeleteBtn) {
-					productConfirmDeleteBtn.disabled = false;
-				}
-
-				productDeleteRequest = null;
-				pendingDeleteProductId = null;
 			});
 	}
 
@@ -715,10 +692,6 @@
 				deleteBtn.getAttribute('data-product-name')
 			);
 		});
-	}
-
-	if (productConfirmDeleteBtn) {
-		productConfirmDeleteBtn.addEventListener('click', deleteProduct);
 	}
 
 	if (sortableTable) {

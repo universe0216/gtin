@@ -40,9 +40,6 @@
 	const procedureQrCode = document.getElementById('procedureQrCode');
 	const procedureQrEmpty = document.getElementById('procedureQrEmpty');
 	const procedureDetailTabsEl = document.getElementById('procedureDetailTabs');
-	const deleteModalEl = document.getElementById('procedureDeleteModal');
-	const deleteModalTitle = document.getElementById('procedureDeleteModalLabel');
-	const confirmDeleteBtn = document.getElementById('procedureConfirmDeleteBtn');
 	const rejectModalEl = document.getElementById('procedureRejectModal');
 	const rejectModalMeta = document.getElementById('procedureRejectModalMeta');
 	const rejectReasonInput = document.getElementById('procedureRejectReasonInput');
@@ -53,11 +50,9 @@
 
 	let selectedFiles = [];
 	let filePickerOpenUntil = 0;
-	let pendingDeleteRegistrationId = null;
 	let uploadModal;
 	let importModal;
 	let productModal;
-	let deleteModal;
 	let rejectModal;
 	let importListRequest = null;
 	const importState = {
@@ -339,19 +334,6 @@
 			clearActiveDetailRow();
 		});
 		initDetailTabs();
-	}
-
-	function ensureDeleteModal() {
-		if (deleteModal || typeof mdb === 'undefined' || !deleteModalEl) {
-			return deleteModal;
-		}
-
-		deleteModal = mdb.Modal.getOrCreateInstance(deleteModalEl);
-		return deleteModal;
-	}
-
-	function initDeleteModal() {
-		ensureDeleteModal();
 	}
 
 	function ensureRejectModal() {
@@ -1481,20 +1463,35 @@
 		tabCount.textContent = count + ' zip file(s)';
 	}
 
-	function openDeleteModal(registrationId, fileName) {
-		const modal = ensureDeleteModal();
+	function deleteRegistration(registrationId) {
+		return fetchApi(baseUrl + '/delete/' + registrationId, {
+			method: 'POST',
+		}).then(function (result) {
+			removeTabFromDom(registrationId);
+			showToast(result.message, 'success');
+		});
+	}
 
-		if (!modal || !registrationId) {
+	function openDeleteModal(registrationId, fileName) {
+		if (!registrationId) {
 			return;
 		}
 
-		pendingDeleteRegistrationId = registrationId;
+		showConfirm({
+			title: fileName || '—',
+			message: 'This procedure is not completed yet, will you stop procedure for this factory?',
+			confirmLabel: 'Stop Procedure',
+		})
+			.then(function () {
+				return deleteRegistration(registrationId);
+			})
+			.catch(function (error) {
+				if (isConfirmCancelled(error)) {
+					return;
+				}
 
-		if (deleteModalTitle) {
-			deleteModalTitle.textContent = fileName || '—';
-		}
-
-		modal.show();
+				showToast(error.message || 'Failed to delete procedure.', 'error');
+			});
 	}
 
 	function removeTabFromDom(registrationId) {
@@ -1534,51 +1531,6 @@
 
 	function closeTab(registrationId) {
 		removeTabFromDom(registrationId);
-	}
-
-	function confirmDeleteRegistration() {
-		if (!pendingDeleteRegistrationId) {
-			return;
-		}
-
-		const registrationId = pendingDeleteRegistrationId;
-
-		if (confirmDeleteBtn) {
-			confirmDeleteBtn.disabled = true;
-		}
-
-		fetch(baseUrl + '/delete/' + registrationId, {
-			method: 'POST',
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
-		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
-			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Failed to delete procedure.', 'error');
-					return;
-				}
-
-				removeTabFromDom(registrationId);
-
-				if (deleteModal) {
-					deleteModal.hide();
-				}
-
-				showToast(result.data.message, 'success');
-			})
-			.catch(function () {
-				showToast('Failed to delete procedure.', 'error');
-			})
-			.finally(function () {
-				if (confirmDeleteBtn) {
-					confirmDeleteBtn.disabled = false;
-				}
-				pendingDeleteRegistrationId = null;
-			});
 	}
 
 	function prependTabs(tabs, options) {
@@ -1670,12 +1622,7 @@
 	initUploadModal();
 	initImportModal();
 	initProductModal();
-	initDeleteModal();
 	initRejectModal();
-
-	if (confirmDeleteBtn) {
-		confirmDeleteBtn.addEventListener('click', confirmDeleteRegistration);
-	}
 
 	if (confirmRejectBtn) {
 		confirmRejectBtn.addEventListener('click', confirmRejectProduct);

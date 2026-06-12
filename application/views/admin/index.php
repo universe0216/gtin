@@ -147,22 +147,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered modal-sm">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title">Confirm Delete</h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">Are you sure you want to delete this user?</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Cancel</button>
-				<button type="button" class="btn btn-danger" id="confirmDeleteAccountBtn">Delete</button>
-			</div>
-		</div>
-	</div>
-</div>
-
 <script>
 	window.ADMIN_CONFIG = <?php echo json_encode(array(
 		'baseUrl'         => site_url('admin'),

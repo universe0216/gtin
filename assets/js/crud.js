@@ -14,7 +14,6 @@
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
 	const modalEl = document.getElementById('basicModal');
-	const deleteModalEl = document.getElementById('deleteModal');
 	const formEl = document.getElementById('basicModalForm');
 	const alertEl = document.getElementById('basicModalAlert');
 	const saveBtn = document.getElementById('basicModalSaveBtn');
@@ -22,16 +21,12 @@
 	const recordIdInput = document.getElementById('record_id');
 	const tableBody = document.querySelector('#crudTable tbody');
 	const addBtn = document.getElementById('btnAddRecord');
-	const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
 	let basicModal;
-	let deleteModal;
-	let pendingDeleteId = null;
 
 	function initModals() {
 		if (typeof mdb !== 'undefined') {
 			basicModal = mdb.Modal.getOrCreateInstance(modalEl);
-			deleteModal = mdb.Modal.getOrCreateInstance(deleteModalEl);
 			modalEl.addEventListener('shown.mdb.modal', syncFormOutlines);
 		}
 	}
@@ -206,31 +201,26 @@
 			});
 	}
 
-	function confirmDelete() {
-		if (!pendingDeleteId) {
-			return;
-		}
-
-		fetch(baseUrl + '/delete/' + pendingDeleteId, {
-			method: 'POST',
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+	function confirmDeleteRecord(id) {
+		showConfirm({
+			title: 'Confirm Delete',
+			message: 'Are you sure you want to delete this record?',
+			confirmLabel: 'Delete',
+			size: 'sm',
 		})
-			.then(function (response) { return response.json(); })
+			.then(function () {
+				return fetchApi(baseUrl + '/delete/' + id, { method: 'POST' });
+			})
 			.then(function (result) {
-				if (!result.success) {
-					showToast(result.message || 'Failed to delete record.', 'error');
+				removeRow(id);
+				showToast(result.message, 'success');
+			})
+			.catch(function (error) {
+				if (isConfirmCancelled(error)) {
 					return;
 				}
 
-				removeRow(pendingDeleteId);
-				deleteModal.hide();
-				showToast(result.message, 'success');
-			})
-			.catch(function () {
-				showToast('Failed to delete record.', 'error');
-			})
-			.finally(function () {
-				pendingDeleteId = null;
+				showToast(error.message || 'Failed to delete record.', 'error');
 			});
 	}
 
@@ -240,10 +230,6 @@
 
 	if (formEl) {
 		formEl.addEventListener('submit', submitForm);
-	}
-
-	if (confirmDeleteBtn) {
-		confirmDeleteBtn.addEventListener('click', confirmDelete);
 	}
 
 	tableBody.addEventListener('click', function (event) {
@@ -262,8 +248,7 @@
 		}
 
 		if (deleteBtn) {
-			pendingDeleteId = id;
-			deleteModal.show();
+			confirmDeleteRecord(id);
 		}
 	});
 

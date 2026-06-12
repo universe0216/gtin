@@ -61,28 +61,3 @@ $form_id = 'basicModalForm';
 		</div>
 	</div>
 </div>
-
-<div
-	class="modal fade"
-	id="deleteModal"
-	tabindex="-1"
-	aria-labelledby="deleteModalLabel"
-	aria-hidden="true"
-	data-entity="<?php echo html_escape($entity); ?>"
->
-	<div class="modal-dialog modal-dialog-centered modal-sm">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-				Are you sure you want to delete this record?
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Cancel</button>
-				<button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-			</div>
-		</div>
-	</div>
-</div>

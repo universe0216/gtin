@@ -174,24 +174,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div class="modal fade" id="orgRegistrationDeleteModal" tabindex="-1" aria-labelledby="orgRegistrationDeleteModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="orgRegistrationDeleteModalLabel">—</h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-				This registration is not completed yet. Stop registration for this file?
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
-				<button type="button" class="btn btn-danger" id="orgRegistrationConfirmDeleteBtn" data-mdb-ripple-init>Stop Registration</button>
-			</div>
-		</div>
-	</div>
-</div>
-
 <script>
 	window.ORGANIZATION_REGISTRATION_CONFIG = {
 		baseUrl: <?php echo json_encode(site_url('organization_registration')); ?>,

@@ -9,7 +9,6 @@
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
 	const modalEl = document.getElementById('accountModal');
-	const deleteModalEl = document.getElementById('deleteAccountModal');
 	const formEl = document.getElementById('accountForm');
 	const alertEl = document.getElementById('accountModalAlert');
 	const saveBtn = document.getElementById('accountSaveBtn');
@@ -17,20 +16,16 @@
 	const recordIdInput = document.getElementById('record_id');
 	const tableBody = document.querySelector('#adminTable tbody');
 	const addBtn = document.getElementById('btnAddAccount');
-	const confirmDeleteBtn = document.getElementById('confirmDeleteAccountBtn');
 	const isAdminCheck = document.getElementById('is_admin');
 	const permissionsPanel = document.getElementById('permissionsPanel');
 	const passwordInput = document.getElementById('account_password');
 	const passwordHint = document.getElementById('passwordHint');
 
 	let accountModal;
-	let deleteModal;
-	let pendingDeleteId = null;
 
 	function initModals() {
 		if (typeof mdb !== 'undefined') {
 			accountModal = mdb.Modal.getOrCreateInstance(modalEl);
-			deleteModal = mdb.Modal.getOrCreateInstance(deleteModalEl);
 			modalEl.addEventListener('shown.mdb.modal', syncFormOutlines);
 		}
 	}
@@ -204,32 +199,31 @@
 			.finally(function () { saveBtn.disabled = false; });
 	}
 
-	function confirmDelete() {
-		if (!pendingDeleteId) {
-			return;
-		}
-
-		fetch(baseUrl + '/delete/' + pendingDeleteId, {
-			method: 'POST',
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+	function confirmDeleteAccount(id) {
+		showConfirm({
+			title: 'Confirm Delete',
+			message: 'Are you sure you want to delete this user?',
+			confirmLabel: 'Delete',
+			size: 'sm',
 		})
-			.then(function (response) { return response.json(); })
+			.then(function () {
+				return fetchApi(baseUrl + '/delete/' + id, { method: 'POST' });
+			})
 			.then(function (result) {
-				if (!result.success) {
-					showToast(result.message || 'Failed to delete user.', 'error');
-					return;
-				}
-				removeRow(pendingDeleteId);
-				deleteModal.hide();
+				removeRow(id);
 				showToast(result.message, 'success');
 			})
-			.catch(function () { showToast('Failed to delete user.', 'error'); })
-			.finally(function () { pendingDeleteId = null; });
+			.catch(function (error) {
+				if (isConfirmCancelled(error)) {
+					return;
+				}
+
+				showToast(error.message || 'Failed to delete user.', 'error');
+			});
 	}
 
 	addBtn.addEventListener('click', openCreateModal);
 	formEl.addEventListener('submit', submitForm);
-	confirmDeleteBtn.addEventListener('click', confirmDelete);
 	isAdminCheck.addEventListener('change', togglePermissionsPanel);
 
 	tableBody.addEventListener('click', function (event) {
@@ -242,8 +236,7 @@
 			openEditModal(id);
 		}
 		if (event.target.closest('.btn-delete')) {
-			pendingDeleteId = id;
-			deleteModal.show();
+			confirmDeleteAccount(id);
 		}
 	});
 

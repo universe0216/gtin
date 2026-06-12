@@ -217,14 +217,130 @@
 		}
 	}
 
+	let confirmModalInstance = null;
+
+	function getConfirmElements() {
+		return {
+			modalEl: document.getElementById('appConfirmModal'),
+			dialogEl: document.querySelector('#appConfirmModal .modal-dialog'),
+			titleEl: document.getElementById('appConfirmModalTitle'),
+			bodyEl: document.getElementById('appConfirmModalBody'),
+			confirmBtn: document.getElementById('appConfirmModalConfirmBtn'),
+			cancelBtn: document.getElementById('appConfirmModalCancelBtn'),
+		};
+	}
+
+	function initConfirmModal() {
+		const els = getConfirmElements();
+
+		if (!els.modalEl || typeof mdb === 'undefined') {
+			return null;
+		}
+
+		if (!confirmModalInstance) {
+			confirmModalInstance = mdb.Modal.getOrCreateInstance(els.modalEl);
+		}
+
+		return confirmModalInstance;
+	}
+
+	function isConfirmCancelled(error) {
+		return !!(error && error.cancelled === true);
+	}
+
+	function showConfirm(options) {
+		const settings = Object.assign({
+			title: 'Confirm',
+			message: 'Are you sure?',
+			confirmLabel: 'Confirm',
+			cancelLabel: 'Cancel',
+			confirmClass: 'btn-danger',
+			size: '',
+			allowHtml: false,
+		}, options || {});
+
+		const modal = initConfirmModal();
+		const els = getConfirmElements();
+
+		if (!modal || !els.confirmBtn || !els.bodyEl) {
+			return Promise.reject(new Error('Confirmation modal is not available.'));
+		}
+
+		return new Promise(function (resolve, reject) {
+			let settled = false;
+
+			function cleanup() {
+				els.confirmBtn.disabled = false;
+				els.confirmBtn.removeEventListener('click', onConfirm);
+				els.modalEl.removeEventListener('hidden.mdb.modal', onHidden);
+			}
+
+			function settle(type, value) {
+				if (settled) {
+					return;
+				}
+
+				settled = true;
+				cleanup();
+
+				if (type === 'resolve') {
+					resolve(value);
+				} else {
+					reject(value);
+				}
+			}
+
+			function onConfirm() {
+				modal.hide();
+				settle('resolve');
+			}
+
+			function onHidden() {
+				if (!settled) {
+					settle('reject', { cancelled: true });
+				}
+			}
+
+			els.titleEl.textContent = settings.title;
+
+			if (settings.allowHtml) {
+				els.bodyEl.innerHTML = settings.message;
+			} else {
+				els.bodyEl.textContent = settings.message;
+			}
+
+			els.confirmBtn.textContent = settings.confirmLabel;
+			els.cancelBtn.textContent = settings.cancelLabel;
+			els.confirmBtn.className = settings.confirmClass.indexOf('btn') === 0
+				? settings.confirmClass
+				: 'btn ' + settings.confirmClass;
+
+			const dialogClasses = ['modal-dialog', 'modal-dialog-centered'];
+
+			if (settings.size === 'sm') {
+				dialogClasses.push('modal-sm');
+			}
+
+			if (els.dialogEl) {
+				els.dialogEl.className = dialogClasses.join(' ');
+			}
+
+			els.confirmBtn.addEventListener('click', onConfirm);
+			els.modalEl.addEventListener('hidden.mdb.modal', onHidden);
+			modal.show();
+		});
+	}
+
 	window.escapeAttr = escapeAttr;
 	window.escapeHtml = escapeHtml;
 	window.debounce = debounce;
 	window.isAbortError = isAbortError;
+	window.isConfirmCancelled = isConfirmCancelled;
 	window.fetchJson = fetchJson;
 	window.fetchApi = fetchApi;
 	window.createAbortableRequest = createAbortableRequest;
 	window.showToast = showToast;
+	window.showConfirm = showConfirm;
 	window.Pagination = {
 		render: renderPagination,
 		update: updatePaginationView,
