@@ -335,10 +335,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						</table>
 					</div>
 				</div>
-				<div id="procedureImportPagination" class="procedure-import-pagination d-none d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
+				<div id="procedureImportPagination" class="procedure-import-pagination app-pagination d-none d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
 					<p class="text-muted small mb-0" id="procedureImportFooterMeta"></p>
-					<nav aria-label="Import procedure pages">
-						<ul class="pagination pagination-sm mb-0" id="procedureImportPaginationList"></ul>
+					<nav class="app-pagination-nav" aria-label="Import procedure pages">
+						<ul class="pagination pagination-sm pagination-circle mb-0" id="procedureImportPaginationList"></ul>
 					</nav>
 				</div>
 			</div>

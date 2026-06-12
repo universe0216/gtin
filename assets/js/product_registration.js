@@ -56,7 +56,7 @@
 	const importState = {
 		page: 1,
 		search: '',
-		perPage: 15,
+		perPage: 10,
 	};
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
@@ -236,7 +236,7 @@
 			if (disabled || active) {
 				html += '<span class="page-link">' + label + '</span>';
 			} else {
-				html += '<button type="button" class="page-link procedure-import-page-btn" data-page="' + targetPage + '">' + label + '</button>';
+				html += '<button type="button" class="page-link procedure-import-page-btn" data-page="' + targetPage + '" data-mdb-ripple-init>' + label + '</button>';
 			}
 
 			html += '</li>';

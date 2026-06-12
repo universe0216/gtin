@@ -11,6 +11,13 @@ class BasicController extends AuthenticatedController {
 	protected $fields = array();
 	protected $permission_view = '';
 	protected $permission_edit = '';
+	protected $list_per_page = 10;
+	protected $list_view = 'entity_list/index';
+	protected $list_columns = array();
+	protected $list_search_placeholder = 'Search...';
+	protected $list_empty_message = 'No records found.';
+	protected $list_empty_search_message = 'No records match your search.';
+	protected $add_url_route = '';
 
 	public function __construct()
 	{
@@ -22,6 +29,11 @@ class BasicController extends AuthenticatedController {
 	public function index()
 	{
 		$this->auth->require_permission($this->permission_view);
+
+		if ( ! empty($this->list_columns))
+		{
+			return $this->render_entity_list();
+		}
 
 		$records = array();
 
@@ -38,6 +50,26 @@ class BasicController extends AuthenticatedController {
 			'nav_active' => $this->entity,
 			'can_edit'   => $this->auth->can($this->permission_edit),
 		));
+	}
+
+	public function list()
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->auth->require_permission($this->permission_view);
+
+		if (empty($this->list_columns))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'List API not configured for this entity.',
+			), 404);
+		}
+
+		return $this->json_list_response();
 	}
 
 	public function get($id = NULL)
@@ -156,6 +188,90 @@ class BasicController extends AuthenticatedController {
 	{
 		$data['content'] = $this->load->view($view, $data, TRUE);
 		$this->load->view('layouts/main', $data);
+	}
+
+	protected function render_entity_list()
+	{
+		$this->render($this->list_view, array(
+			'title'                   => $this->entity_label,
+			'nav_active'              => $this->entity,
+			'entity'                  => $this->entity,
+			'can_edit'                => $this->auth->can($this->permission_edit),
+			'add_url'                 => $this->get_add_url(),
+			'add_label'               => $this->get_add_label(),
+			'list_columns'            => $this->list_columns,
+			'list_api_url'            => site_url($this->entity.'/list'),
+			'list_search_placeholder' => $this->list_search_placeholder,
+			'list_empty_message'      => $this->list_empty_message,
+			'list_empty_search_message' => $this->list_empty_search_message,
+			'list_per_page'           => $this->list_per_page,
+		));
+	}
+
+	protected function json_list_response()
+	{
+		if ( ! $this->model)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'Model not configured.',
+			), 500);
+		}
+
+		$params = $this->list_query_params();
+		$total = $this->model->count_filtered($params['search']);
+		$total_pages = max(1, (int) ceil($total / $params['per_page']));
+		$page = min($params['page'], $total_pages);
+		$offset = ($page - 1) * $params['per_page'];
+		$records = $this->model->get_paginated($params['per_page'], $offset, $params['search']);
+		$range_start = $total > 0 ? $offset + 1 : 0;
+		$range_end = min($offset + count($records), $total);
+
+		return $this->json_response(array(
+			'success'     => TRUE,
+			'data'        => $records,
+			'columns'     => $this->list_columns,
+			'total'       => $total,
+			'page'        => $page,
+			'per_page'    => $params['per_page'],
+			'total_pages' => $total_pages,
+			'row_offset'  => $offset,
+			'range_start' => $range_start,
+			'range_end'   => $range_end,
+			'search'      => $params['search'],
+		));
+	}
+
+	protected function list_query_params()
+	{
+		$per_page = (int) $this->input->get('per_page');
+		$page = max(1, (int) $this->input->get('page'));
+
+		if ($per_page < 1)
+		{
+			$per_page = $this->list_per_page;
+		}
+
+		return array(
+			'page'     => $page,
+			'per_page' => $per_page,
+			'search'   => trim((string) $this->input->get('q')),
+		);
+	}
+
+	protected function get_add_url()
+	{
+		if ( ! $this->auth->can($this->permission_edit) || $this->add_url_route === '')
+		{
+			return NULL;
+		}
+
+		return site_url($this->add_url_route);
+	}
+
+	protected function get_add_label()
+	{
+		return 'Add New';
 	}
 
 	protected function json_response($payload, $status = 200)

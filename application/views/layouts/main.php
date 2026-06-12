@@ -26,6 +26,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	window.APP_BASE_URL = <?php echo json_encode(base_url()); ?>;
 </script>
 <script src="<?php echo base_url('assets/js/app.js'); ?>"></script>
+<script src="<?php echo base_url('assets/js/entity_list.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/crud.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/admin.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/image-viewer.js'); ?>"></script>

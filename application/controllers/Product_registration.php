@@ -5,7 +5,7 @@ require_once APPPATH.'core/AuthenticatedController.php';
 
 class Product_registration extends AuthenticatedController {
 
-	protected $import_per_page = 15;
+	protected $import_per_page = 10;
 
 	public function __construct()
 	{

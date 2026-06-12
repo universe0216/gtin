@@ -7,6 +7,20 @@ class Organizations extends BasicController {
 
 	protected $entity = 'organizations';
 	protected $entity_label = 'Organizations';
+	protected $add_url_route = 'organization_registration';
+	protected $list_search_placeholder = 'Search name, registration number, GS1 prefix, procedure number...';
+	protected $list_empty_message = 'No organizations found.';
+	protected $list_empty_search_message = 'No organizations match your search.';
+	protected $list_columns = array(
+		array('key' => 'name', 'label' => 'Name'),
+		array('key' => 'registration_number', 'label' => 'Registration Number'),
+		array('key' => 'gs1_prefix', 'label' => 'GS1 Prefix'),
+		array('key' => 'procedure_number', 'label' => 'Procedure Number'),
+		array('key' => 'registration_date', 'label' => 'Registration Date'),
+		array('key' => 'reregistration_date', 'label' => 'Re-registration Date'),
+		array('key' => 'expiry_date', 'label' => 'Expiry Date'),
+		array('key' => 'address', 'label' => 'Address'),
+	);
 	protected $fields = array(
 		array(
 			'name'     => 'name',
@@ -82,25 +96,8 @@ class Organizations extends BasicController {
 		$this->load->model('organization_model', 'model');
 	}
 
-	public function index()
+	protected function get_add_label()
 	{
-		$this->auth->require_permission($this->permission_view);
-
-		$records = array();
-
-		if ($this->model)
-		{
-			$records = $this->model->get_all();
-		}
-
-		$this->render('crud/index', array(
-			'title'      => $this->entity_label,
-			'records'    => $records,
-			'fields'     => $this->fields,
-			'entity'     => $this->entity,
-			'nav_active' => $this->entity,
-			'can_edit'   => $this->auth->can($this->permission_edit),
-			'add_url'    => $this->auth->can($this->permission_edit) ? site_url('organization_registration') : NULL,
-		));
+		return 'Register Organizations';
 	}
 }

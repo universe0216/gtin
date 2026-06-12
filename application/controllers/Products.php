@@ -7,6 +7,20 @@ class Products extends BasicController {
 
 	protected $entity = 'products';
 	protected $entity_label = 'Products';
+	protected $add_url_route = 'product_registration';
+	protected $list_search_placeholder = 'Search name, barcode, standard number, organization...';
+	protected $list_empty_message = 'No products found.';
+	protected $list_empty_search_message = 'No products match your search.';
+	protected $list_columns = array(
+		array('key' => 'name', 'label' => 'Name'),
+		array('key' => 'standard_number', 'label' => 'Standard Number'),
+		array('key' => 'barcode', 'label' => 'Barcode'),
+		array('key' => 'barcode_type', 'label' => 'Barcode Type'),
+		array('key' => 'package_type', 'label' => 'Package Type'),
+		array('key' => 'organization_name', 'label' => 'Organization'),
+		array('key' => 'registration_date', 'label' => 'Registration Date'),
+		array('key' => 'expiry_date', 'label' => 'Expiry Date'),
+	);
 	protected $fields = array(
 		array(
 			'name'     => 'name',
@@ -103,25 +117,8 @@ class Products extends BasicController {
 		$this->load->model('product_model', 'model');
 	}
 
-	public function index()
+	protected function get_add_label()
 	{
-		$this->auth->require_permission($this->permission_view);
-
-		$records = array();
-
-		if ($this->model)
-		{
-			$records = $this->model->get_all();
-		}
-
-		$this->render('crud/index', array(
-			'title'      => $this->entity_label,
-			'records'    => $records,
-			'fields'     => $this->fields,
-			'entity'     => $this->entity,
-			'nav_active' => $this->entity,
-			'can_edit'   => $this->auth->can($this->permission_edit),
-			'add_url'    => $this->auth->can($this->permission_edit) ? site_url('product_registration') : NULL,
-		));
+		return 'Register Products';
 	}
 }

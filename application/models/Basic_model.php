@@ -5,6 +5,7 @@ class Basic_model extends CI_Model {
 
 	protected $table = '';
 	protected $primary_key = 'id';
+	protected $searchable_columns = array();
 
 	public function get_all()
 	{
@@ -20,6 +21,26 @@ class Basic_model extends CI_Model {
 			->where($this->primary_key, $id)
 			->get($this->table)
 			->row_array();
+	}
+
+	public function count_filtered($search = '')
+	{
+		$this->prepare_list_query();
+		$this->apply_search_filters($search);
+
+		return (int) $this->db->count_all_results();
+	}
+
+	public function get_paginated($limit, $offset = 0, $search = '')
+	{
+		$this->prepare_list_query();
+		$this->apply_search_filters($search);
+
+		return $this->db
+			->order_by($this->list_order_column(), 'DESC')
+			->limit((int) $limit, (int) $offset)
+			->get()
+			->result_array();
 	}
 
 	public function insert($data)
@@ -49,5 +70,41 @@ class Basic_model extends CI_Model {
 		return $this->db
 			->where($this->primary_key, $id)
 			->delete($this->table);
+	}
+
+	protected function prepare_list_query()
+	{
+		$this->db->from($this->table);
+	}
+
+	protected function list_order_column()
+	{
+		return $this->table.'.'.$this->primary_key;
+	}
+
+	protected function apply_search_filters($search)
+	{
+		$search = trim((string) $search);
+
+		if ($search === '' || empty($this->searchable_columns))
+		{
+			return;
+		}
+
+		$this->db->group_start();
+
+		foreach ($this->searchable_columns as $index => $column)
+		{
+			if ($index === 0)
+			{
+				$this->db->like($column, $search);
+			}
+			else
+			{
+				$this->db->or_like($column, $search);
+			}
+		}
+
+		$this->db->group_end();
 	}
 }

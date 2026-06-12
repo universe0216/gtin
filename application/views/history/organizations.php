@@ -54,7 +54,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		</div>
 
 		<?php if ($total > 0): ?>
-			<div class="history-procedure-pagination d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
+			<div class="app-pagination d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
 				<p class="text-muted small mb-0">
 					Showing <?php echo (int) $range_start; ?>–<?php echo (int) $range_end; ?> of <?php echo (int) $total; ?>
 				</p>
