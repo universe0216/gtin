@@ -5,11 +5,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
 		<div>
 			<h1 class="h4 mb-0">Organization Registration</h1>
-			<p class="text-muted small mb-0 mt-1">
-				<a href="<?php echo site_url('organizations'); ?>"><i class="fas fa-arrow-left me-1"></i>Back to Organizations</a>
-			</p>
 		</div>
 		<div class="d-flex flex-wrap gap-2">
+		<p class="text-muted small mb-0 mt-1">
+				<a href="<?php echo site_url('organizations'); ?>"><i class="fas fa-arrow-left me-1"></i>Back to Organizations</a>
+			</p>
 			<button type="button" class="btn btn-sm btn-primary <?php echo empty($tabs) ? 'd-none' : ''; ?>" id="btnOpenUploadModal" data-mdb-ripple-init>
 				<i class="fas fa-upload me-1"></i> Upload Files
 			</button>
@@ -192,7 +192,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
 
 <script>
 	window.ORGANIZATION_REGISTRATION_CONFIG = {

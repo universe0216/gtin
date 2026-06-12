@@ -10,7 +10,11 @@
 
 	const detailUrl = detailConfig.detailUrl.replace(/\/$/, '');
 	const productsUrl = detailConfig.productsUrl.replace(/\/$/, '');
+	const updateUrl = (detailConfig.updateUrl || '').replace(/\/$/, '');
 	const infoFields = detailConfig.infoFields || [];
+	const editableFields = detailConfig.editableFields || [];
+	const readOnlyFields = detailConfig.readOnlyFields || [];
+	const canEdit = !!detailConfig.canEdit;
 	const productColumns = detailConfig.productColumns || [];
 	const perPage = detailConfig.perPage || 10;
 
@@ -34,6 +38,7 @@
 
 	let modal;
 	let detailRequest = null;
+	let updateRequest = null;
 	let productsRequest = null;
 	let productsSearchTimer = null;
 	let productsLoaded = false;
@@ -84,14 +89,47 @@
 		}
 	}
 
-	function renderInfoFields(data) {
-		if (!infoWrap) {
+	function normalizeDateValue(value) {
+		const raw = String(value ?? '').trim();
+
+		if (raw === '') {
+			return '';
+		}
+
+		return raw.length >= 10 ? raw.slice(0, 10) : raw;
+	}
+
+	function getInfoAlert() {
+		return document.getElementById('organizationDetailInfoAlert');
+	}
+
+	function hideInfoAlert() {
+		const alertEl = getInfoAlert();
+
+		if (!alertEl) {
 			return;
 		}
 
-		let html = '<div class="entity-detail-info-grid">';
+		alertEl.className = 'alert d-none mx-4 mt-4 mb-0';
+		alertEl.textContent = '';
+	}
 
-		infoFields.forEach(function (field) {
+	function showInfoAlert(message, type) {
+		const alertEl = getInfoAlert();
+
+		if (!alertEl) {
+			return;
+		}
+
+		const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+		alertEl.className = 'alert ' + alertClass + ' mx-4 mt-4 mb-0';
+		alertEl.textContent = message;
+	}
+
+	function renderReadOnlyItems(fields, data, gridClass) {
+		let html = '<div class="' + gridClass + '">';
+
+		fields.forEach(function (field) {
 			const value = data[field.key] ?? '';
 			html +=
 				'<div class="entity-detail-info-item">' +
@@ -101,7 +139,167 @@
 		});
 
 		html += '</div>';
+		return html;
+	}
+
+	function renderEditableField(field, data) {
+		const fieldName = field.name;
+		const value = data[fieldName] ?? '';
+		const inputId = 'organizationDetailField_' + fieldName;
+		let inputHtml = '';
+
+		if (field.type === 'textarea') {
+			inputHtml =
+				'<textarea class="form-control form-control-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '" rows="3">' +
+				escapeHtml(value) +
+				'</textarea>';
+		} else if (field.type === 'date') {
+			inputHtml =
+				'<input type="date" class="form-control form-control-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '" value="' +
+				escapeHtml(normalizeDateValue(value)) +
+				'">';
+		} else {
+			inputHtml =
+				'<input type="text" class="form-control form-control-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '" value="' +
+				escapeHtml(value) +
+				'">';
+		}
+
+		return (
+			'<div class="entity-detail-info-item">' +
+				'<label class="entity-detail-info-label" for="' + inputId + '">' +
+					escapeHtml(field.label) +
+					(field.required ? ' <span class="text-danger">*</span>' : '') +
+				'</label>' +
+				inputHtml +
+			'</div>'
+		);
+	}
+
+	function setInfoUpdateLoading(isLoading) {
+		const updateBtn = document.getElementById('organizationDetailUpdateBtn');
+
+		if (!updateBtn) {
+			return;
+		}
+
+		updateBtn.disabled = isLoading;
+		const spinner = updateBtn.querySelector('.organization-detail-update-spinner');
+		const label = updateBtn.querySelector('.organization-detail-update-label');
+
+		if (spinner) {
+			spinner.classList.toggle('d-none', !isLoading);
+		}
+
+		if (label) {
+			label.textContent = isLoading ? 'Updating...' : 'Update';
+		}
+	}
+
+	function renderInfoFields(data) {
+		if (!infoWrap) {
+			return;
+		}
+
+		hideInfoAlert();
+
+		let html = '';
+
+		if (canEdit && updateUrl && editableFields.length) {
+			html += '<form id="organizationDetailInfoForm" class="entity-detail-info-form">';
+
+			if (readOnlyFields.length) {
+				html += renderReadOnlyItems(readOnlyFields, data, 'entity-detail-info-grid entity-detail-info-readonly-grid');
+			}
+
+			html += '<div class="entity-detail-info-grid">';
+
+			editableFields.forEach(function (field) {
+				html += renderEditableField(field, data);
+			});
+
+			html += '</div>';
+			html += '<div class="entity-detail-info-actions mt-4">';
+			html +=
+				'<button type="submit" class="btn btn-primary btn-sm" id="organizationDetailUpdateBtn" data-mdb-ripple-init>' +
+					'<span class="organization-detail-update-label">Update</span>' +
+					'<span class="organization-detail-update-spinner spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>' +
+				'</button>';
+			html += '</div>';
+			html += '</form>';
+		} else {
+			html += renderReadOnlyItems(infoFields, data, 'entity-detail-info-grid');
+		}
+
 		infoWrap.innerHTML = html;
+
+		const form = document.getElementById('organizationDetailInfoForm');
+
+		if (form) {
+			form.addEventListener('submit', submitInfoUpdate);
+		}
+	}
+
+	function submitInfoUpdate(event) {
+		event.preventDefault();
+
+		if (!canEdit || !updateUrl || !detailState.organizationId) {
+			return;
+		}
+
+		const form = document.getElementById('organizationDetailInfoForm');
+
+		if (!form) {
+			return;
+		}
+
+		hideInfoAlert();
+		setInfoUpdateLoading(true);
+
+		if (updateRequest) {
+			updateRequest.abort();
+		}
+
+		updateRequest = new AbortController();
+
+		fetch(updateUrl + '/' + detailState.organizationId, {
+			method: 'POST',
+			body: new FormData(form),
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+			signal: updateRequest.signal,
+		})
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				if (!result.ok || !result.data.success) {
+					throw new Error(result.data.message || 'Failed to update organization.');
+				}
+
+				const record = result.data.data || {};
+				detailState.organizationName = record.name || detailState.organizationName;
+
+				if (modalTitle) {
+					modalTitle.textContent = detailState.organizationName;
+				}
+
+				renderInfoFields(record);
+				showInfoAlert(result.data.message || 'Organization updated successfully.', 'success');
+				document.dispatchEvent(new CustomEvent('entityListRefresh'));
+			})
+			.catch(function (error) {
+				if (error.name === 'AbortError') {
+					return;
+				}
+
+				showInfoAlert(error.message || 'Failed to update organization.', 'error');
+			})
+			.finally(function () {
+				setInfoUpdateLoading(false);
+				updateRequest = null;
+			});
 	}
 
 	function renderProductTableHead() {
@@ -332,6 +530,11 @@
 			detailRequest = null;
 		}
 
+		if (updateRequest) {
+			updateRequest.abort();
+			updateRequest = null;
+		}
+
 		if (productsRequest) {
 			productsRequest.abort();
 			productsRequest = null;
@@ -351,6 +554,7 @@
 		if (infoWrap) {
 			infoWrap.innerHTML = '';
 		}
+		hideInfoAlert();
 		if (footerMeta) {
 			footerMeta.textContent = '';
 		}

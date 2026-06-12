@@ -515,6 +515,8 @@ class Product_registration_processor {
 				'cells'                    => $this->normalize_row_cells($cells, count($columns)),
 				'image_urls'               => $info['image_urls'] ?? array(),
 				'has_image'                => ! empty($info['has_image']),
+				'item_status'              => $item['status'] ?? 'pending',
+				'message'                  => $item['message'] ?? '',
 			);
 		}
 

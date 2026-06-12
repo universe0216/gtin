@@ -2,13 +2,20 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
 <div class="books-gtin-page">
-	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
 		<div>
 			<h1 class="h4 mb-1">GTIN Country Codes</h1>
-			<p class="text-muted small mb-0">GS1 prefix ranges used in GTIN-13 / EAN-13 barcodes.</p>
 		</div>
 		<div class="d-flex flex-wrap align-items-center gap-2 books-gtin-actions">
-			<div class="books-gtin-search-wrap">
+			
+			<a href="<?php echo site_url('books/gtin_country_code_export'); ?>" class="btn btn-sm btn-outline-primary" data-mdb-ripple-init>
+				<i class="fas fa-file-excel me-1"></i> Download Excel
+			</a>
+		</div>
+	</div>
+
+	<div class="app-panel p-0">
+		<div class="books-gtin-search-wrap p-2">
 				<div class="input-group input-group-sm">
 					<span class="input-group-text"><i class="fas fa-search"></i></span>
 					<input
@@ -20,13 +27,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					>
 				</div>
 			</div>
-			<a href="<?php echo site_url('books/gtin_country_code_export'); ?>" class="btn btn-sm btn-outline-primary" data-mdb-ripple-init>
-				<i class="fas fa-file-excel me-1"></i> Download Excel
-			</a>
-		</div>
-	</div>
-
-	<div class="app-panel p-0">
 		<div class="table-responsive books-gtin-table-scroll">
 			<table class="table table-hover align-middle mb-0 procedure-data-table" id="gtinCountryCodeTable">
 				<thead>

@@ -163,7 +163,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
 
 <script>
 	window.ADMIN_CONFIG = <?php echo json_encode(array(

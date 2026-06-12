@@ -395,6 +395,10 @@
 		});
 	}
 
+	document.addEventListener('entityListRefresh', function () {
+		loadList();
+	});
+
 	readUrlState();
 	loadList();
 })();

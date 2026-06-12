@@ -5,6 +5,14 @@ class Product_registration_item_model extends CI_Model {
 
 	protected $table = 'product_registration_items';
 
+	public function get($id)
+	{
+		return $this->db
+			->where('id', $id)
+			->get($this->table)
+			->row_array();
+	}
+
 	public function get_by_product_registration($product_registration_id)
 	{
 		return $this->db
@@ -12,6 +20,13 @@ class Product_registration_item_model extends CI_Model {
 			->order_by('id', 'ASC')
 			->get($this->table)
 			->result_array();
+	}
+
+	public function update($id, $data)
+	{
+		return $this->db
+			->where('id', $id)
+			->update($this->table, $data);
 	}
 
 	public function insert_batch($items)

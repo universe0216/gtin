@@ -192,6 +192,14 @@ html[data-mdb-theme="dark"] body {
 	min-width: 280px;
 }
 
+.toast-container {
+	top: 4.75rem;
+	right: 1rem;
+	bottom: auto !important;
+	left: auto;
+	z-index: 1080;
+}
+
 .btn-outline-primary {
 	--mdb-btn-color: #93b4f5;
 	--mdb-btn-border-color: rgba(77, 127, 212, 0.55);
@@ -671,6 +679,32 @@ html[data-mdb-theme="dark"] body {
 	word-break: break-word;
 }
 
+.entity-detail-info-form .entity-detail-info-item .form-control {
+	background-color: rgba(15, 23, 42, 0.6);
+	border-color: rgba(148, 163, 184, 0.25);
+	color: #e2e8f0;
+}
+
+.entity-detail-info-form .entity-detail-info-item .form-control:focus {
+	background-color: rgba(15, 23, 42, 0.85);
+	border-color: var(--mdb-primary);
+	color: #e2e8f0;
+	box-shadow: 0 0 0 0.2rem rgba(var(--mdb-primary-rgb), 0.2);
+}
+
+.entity-detail-info-readonly-grid {
+	margin-bottom: 1.25rem;
+	padding-bottom: 1.25rem;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.entity-detail-info-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem;
+}
+
 .entity-detail-products-toolbar {
 	flex-shrink: 0;
 }
@@ -791,6 +825,29 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	background-color: var(--app-table-row-hover);
 }
 
+.procedure-data-table .procedure-item-status-col,
+.procedure-data-table .procedure-item-status-cell {
+	width: 6.5rem;
+	white-space: nowrap;
+}
+
+.procedure-data-table .procedure-item-status-cell {
+	text-align: center;
+}
+
+.procedure-data-table .procedure-item-status-icon {
+	font-size: 0.95rem;
+	line-height: 1;
+}
+
+.procedure-data-table .procedure-item-status-icon-rejected {
+	color: #ef4444;
+}
+
+.procedure-data-table .procedure-item-status-icon-approved {
+	color: #22c55e;
+}
+
 .procedure-data-table .procedure-row-index {
 	width: 2.5rem;
 	text-align: center;
@@ -813,6 +870,60 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 
 .procedure-data-table tbody tr.procedure-data-row.procedure-data-row-active {
 	box-shadow: inset 3px 0 0 #4d7fd4;
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-rejected > td {
+	background-color: rgba(239, 68, 68, 0.08);
+	color: #ff5f5f;
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-rejected {
+	box-shadow:
+		inset 0 0 0 1px rgba(239, 68, 68, 0.35),
+		inset 0 0 22px rgba(239, 68, 68, 0.2);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-rejected:hover > td {
+	background-color: rgba(239, 68, 68, 0.12);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-rejected.procedure-data-row-active > td,
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-rejected.procedure-data-row-active:hover > td {
+	background-color: rgba(239, 68, 68, 0.16);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-rejected.procedure-data-row-active {
+	box-shadow:
+		inset 3px 0 0 #ef4444,
+		inset 0 0 0 1px rgba(239, 68, 68, 0.4),
+		inset 0 0 24px rgba(239, 68, 68, 0.28);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-approved > td {
+	background-color: rgba(34, 197, 94, 0.08);
+	color: #43dd7b;
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-approved {
+	box-shadow:
+		inset 0 0 0 1px rgba(34, 197, 94, 0.35),
+		inset 0 0 22px rgba(34, 197, 94, 0.2);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-approved:hover > td {
+	background-color: rgba(34, 197, 94, 0.12);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-approved.procedure-data-row-active > td,
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-approved.procedure-data-row-active:hover > td {
+	background-color: rgba(34, 197, 94, 0.16);
+}
+
+.procedure-data-table tbody tr.procedure-data-row.procedure-data-row-approved.procedure-data-row-active {
+	box-shadow:
+		inset 3px 0 0 #22c55e,
+		inset 0 0 0 1px rgba(34, 197, 94, 0.4),
+		inset 0 0 24px rgba(34, 197, 94, 0.28);
 }
 
 .procedure-detail-modal .modal-content {
@@ -1289,6 +1400,80 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	border-bottom: 1px solid var(--app-border);
 	background: linear-gradient(180deg, var(--app-surface) 0%, var(--app-bg) 100%);
 	padding: 1rem 1.5rem;
+}
+
+.entity-detail-modal-header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.entity-detail-modal-header-start {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.75rem 1rem;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.entity-detail-modal-title {
+	flex-shrink: 1;
+	min-width: 0;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.entity-detail-tab-options {
+	flex-shrink: 0;
+	border-radius: 999px;
+	overflow: hidden;
+	border: 1px solid rgba(148, 163, 184, 0.25);
+	background-color: rgba(15, 23, 42, 0.45);
+}
+
+.entity-detail-tab-options .btn {
+	border: none;
+	border-radius: 0;
+	padding: 0.35rem 0.9rem;
+	color: var(--app-text-muted);
+	background-color: transparent;
+	box-shadow: none;
+}
+
+.entity-detail-tab-options .btn + .btn {
+	border-left: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.entity-detail-tab-options .btn:hover,
+.entity-detail-tab-options .btn:focus {
+	color: #e2e8f0;
+	background-color: rgba(148, 163, 184, 0.08);
+}
+
+.entity-detail-tab-options .btn.active {
+	color: #fff;
+	background-color: var(--mdb-primary);
+}
+
+.entity-detail-tab-options .btn.active:hover,
+.entity-detail-tab-options .btn.active:focus {
+	color: #fff;
+	background-color: var(--mdb-primary);
+}
+
+.entity-detail-modal-body {
+	padding: 1rem 1.5rem 1.5rem;
+}
+
+.entity-detail-panel {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .history-procedure-modal-body {

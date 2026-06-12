@@ -88,6 +88,6 @@ $form_id = 'basicModalForm';
 </div>
 
 <div
-	class="toast-container position-fixed bottom-0 end-0 p-3"
+	class="toast-container position-fixed top-0 end-0 p-3"
 	id="toastContainer"
 ></div>

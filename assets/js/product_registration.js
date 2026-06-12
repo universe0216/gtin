@@ -43,6 +43,13 @@
 	const deleteModalEl = document.getElementById('procedureDeleteModal');
 	const deleteModalTitle = document.getElementById('procedureDeleteModalLabel');
 	const confirmDeleteBtn = document.getElementById('procedureConfirmDeleteBtn');
+	const rejectModalEl = document.getElementById('procedureRejectModal');
+	const rejectModalMeta = document.getElementById('procedureRejectModalMeta');
+	const rejectReasonInput = document.getElementById('procedureRejectReasonInput');
+	const rejectReasonError = document.getElementById('procedureRejectReasonError');
+	const confirmRejectBtn = document.getElementById('procedureConfirmRejectBtn');
+	const productDetailRejectBtn = document.getElementById('procedureDetailRejectBtn');
+	const productDetailAcceptBtn = document.getElementById('procedureDetailAcceptBtn');
 
 	let selectedFiles = [];
 	let filePickerOpenUntil = 0;
@@ -51,6 +58,7 @@
 	let importModal;
 	let productModal;
 	let deleteModal;
+	let rejectModal;
 	let importListRequest = null;
 	let importSearchTimer = null;
 	const importState = {
@@ -420,6 +428,319 @@
 		ensureDeleteModal();
 	}
 
+	function ensureRejectModal() {
+		if (rejectModal || typeof mdb === 'undefined' || !rejectModalEl) {
+			return rejectModal;
+		}
+
+		rejectModal = mdb.Modal.getOrCreateInstance(rejectModalEl);
+		rejectModalEl.addEventListener('hidden.mdb.modal', resetRejectModal);
+		return rejectModal;
+	}
+
+	function initRejectModal() {
+		ensureRejectModal();
+	}
+
+	function resetRejectModal() {
+		if (rejectReasonInput) {
+			rejectReasonInput.value = '';
+		}
+
+		if (rejectReasonError) {
+			rejectReasonError.classList.add('d-none');
+		}
+
+		if (confirmRejectBtn) {
+			confirmRejectBtn.disabled = false;
+		}
+	}
+
+	function openRejectModal() {
+		const modal = ensureRejectModal();
+
+		if (!modal || !activeDetailRow || !isRowPending(activeDetailRow)) {
+			return;
+		}
+
+		const payload = parseRowPayload(activeDetailRow);
+		const productLabel = payload
+			? (payload.product_procedure_number || 'Product #' + payload.row_index)
+			: 'this product';
+
+		if (rejectModalMeta) {
+			rejectModalMeta.textContent = 'Provide a reason for rejecting ' + productLabel + '.';
+		}
+
+		resetRejectModal();
+		modal.show();
+
+		if (rejectReasonInput) {
+			rejectReasonInput.focus();
+		}
+	}
+
+	function normalizeItemStatus(itemStatus) {
+		const status = String(itemStatus || 'pending').toLowerCase();
+
+		if (status === 'accepted') {
+			return 'approved';
+		}
+
+		return status;
+	}
+
+	function isRowRejected(row) {
+		return !!row && normalizeItemStatus(row.getAttribute('data-item-status')) === 'rejected';
+	}
+
+	function isRowApproved(row) {
+		return !!row && normalizeItemStatus(row.getAttribute('data-item-status')) === 'approved';
+	}
+
+	function isRowPending(row) {
+		return !!row && normalizeItemStatus(row.getAttribute('data-item-status')) === 'pending';
+	}
+
+	function formatItemStatusIcon(itemStatus) {
+		const status = normalizeItemStatus(itemStatus);
+
+		if (status === 'rejected') {
+			return '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="Rejected"></i>';
+		}
+
+		if (status === 'approved') {
+			return '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="Accepted"></i>';
+		}
+
+		return '';
+	}
+
+	function renderItemStatusCell(itemStatus) {
+		return '<td class="procedure-item-status-cell">' + formatItemStatusIcon(itemStatus) + '</td>';
+	}
+
+	function updateRowStatusCell(row, itemStatus) {
+		const statusCell = row ? row.querySelector('.procedure-item-status-cell') : null;
+
+		if (statusCell) {
+			statusCell.innerHTML = formatItemStatusIcon(itemStatus);
+		}
+	}
+
+	function buildProcedureDataRowClass(row) {
+		const itemStatus = normalizeItemStatus(row.item_status || row.status || 'pending');
+		let rowClass = 'procedure-data-row';
+
+		if (itemStatus === 'rejected') {
+			rowClass += ' procedure-data-row-rejected';
+		} else if (itemStatus === 'approved') {
+			rowClass += ' procedure-data-row-approved';
+		}
+
+		return rowClass;
+	}
+
+	function updateRowPayload(row, updates) {
+		const payload = parseRowPayload(row);
+
+		if (!payload) {
+			return null;
+		}
+
+		Object.keys(updates).forEach(function (key) {
+			payload[key] = updates[key];
+		});
+		row.setAttribute('data-row-payload', JSON.stringify(payload));
+		return payload;
+	}
+
+	function markDetailRowRejected(row, reason) {
+		if (!row) {
+			return;
+		}
+
+		row.classList.add('procedure-data-row-rejected');
+		row.classList.remove('procedure-data-row-approved', 'procedure-data-row-active');
+		row.setAttribute('data-item-status', 'rejected');
+		updateRowPayload(row, {
+			item_status: 'rejected',
+			rejection_reason: reason,
+		});
+		updateRowStatusCell(row, 'rejected');
+	}
+
+	function markDetailRowAccepted(row) {
+		if (!row) {
+			return;
+		}
+
+		row.classList.remove('procedure-data-row-rejected', 'procedure-data-row-active');
+		row.classList.add('procedure-data-row-approved');
+		row.setAttribute('data-item-status', 'approved');
+		updateRowPayload(row, {
+			item_status: 'approved',
+			rejection_reason: '',
+		});
+		updateRowStatusCell(row, 'approved');
+	}
+
+	function updateReviewButtonState(row) {
+		const pending = isRowPending(row);
+
+		if (productDetailRejectBtn) {
+			productDetailRejectBtn.disabled = !pending;
+			productDetailRejectBtn.classList.toggle('d-none', !pending);
+		}
+
+		if (productDetailAcceptBtn) {
+			productDetailAcceptBtn.disabled = !pending;
+			productDetailAcceptBtn.classList.toggle('d-none', !pending);
+		}
+	}
+
+	function advanceToNextRowAfterReview(currentRow) {
+		const rows = getActiveTabRows();
+		const currentIndex = rows.indexOf(currentRow);
+		const nextRow = currentIndex >= 0 && currentIndex < rows.length - 1 ? rows[currentIndex + 1] : null;
+
+		activeDetailRow = null;
+		updateDetailNavButtons();
+
+		if (nextRow) {
+			const payload = parseRowPayload(nextRow);
+
+			if (payload) {
+				openProductDetailModal(payload, nextRow);
+				return;
+			}
+		}
+
+		if (productModal) {
+			productModal.hide();
+		}
+	}
+
+	function confirmRejectProduct() {
+		if (!activeDetailRow) {
+			return;
+		}
+
+		const reason = rejectReasonInput ? rejectReasonInput.value.trim() : '';
+
+		if (!reason) {
+			if (rejectReasonError) {
+				rejectReasonError.classList.remove('d-none');
+			}
+
+			if (rejectReasonInput) {
+				rejectReasonInput.focus();
+			}
+
+			return;
+		}
+
+		if (rejectReasonError) {
+			rejectReasonError.classList.add('d-none');
+		}
+
+		const itemId = activeDetailRow.getAttribute('data-id');
+
+		if (!itemId) {
+			showToast('Unable to reject this product.', 'error');
+			return;
+		}
+
+		if (confirmRejectBtn) {
+			confirmRejectBtn.disabled = true;
+		}
+
+		const formData = new FormData();
+		formData.append('reason', reason);
+
+		fetch(baseUrl + '/reject_item/' + itemId, {
+			method: 'POST',
+			body: formData,
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		})
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				if (!result.ok || !result.data.success) {
+					showToast(result.data.message || 'Failed to reject product.', 'error');
+					return;
+				}
+
+				const rejectedRow = activeDetailRow;
+				const reasonText = result.data.data && result.data.data.message
+					? result.data.data.message
+					: reason;
+
+				if (rejectModal) {
+					rejectModal.hide();
+				}
+
+				markDetailRowRejected(rejectedRow, reasonText);
+				advanceToNextRowAfterReview(rejectedRow);
+				showToast(result.data.message, 'success');
+			})
+			.catch(function () {
+				showToast('Failed to reject product.', 'error');
+			})
+			.finally(function () {
+				if (confirmRejectBtn) {
+					confirmRejectBtn.disabled = false;
+				}
+			});
+	}
+
+	function acceptProduct() {
+		if (!activeDetailRow || !isRowPending(activeDetailRow)) {
+			return;
+		}
+
+		const itemId = activeDetailRow.getAttribute('data-id');
+
+		if (!itemId) {
+			showToast('Unable to accept this product.', 'error');
+			return;
+		}
+
+		if (productDetailAcceptBtn) {
+			productDetailAcceptBtn.disabled = true;
+		}
+
+		fetch(baseUrl + '/accept_item/' + itemId, {
+			method: 'POST',
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		})
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				if (!result.ok || !result.data.success) {
+					showToast(result.data.message || 'Failed to accept product.', 'error');
+					return;
+				}
+
+				const acceptedRow = activeDetailRow;
+				markDetailRowAccepted(acceptedRow);
+				advanceToNextRowAfterReview(acceptedRow);
+				showToast(result.data.message, 'success');
+			})
+			.catch(function () {
+				showToast('Failed to accept product.', 'error');
+			})
+			.finally(function () {
+				updateReviewButtonState(activeDetailRow);
+			});
+	}
+
 	function initDetailTabs() {
 		if (typeof mdb === 'undefined' || !procedureDetailTabsEl) {
 			return;
@@ -566,6 +887,8 @@
 			file_name: tab.file_name,
 			processor_name: tab.processor_name || '',
 			status: tab.status || 'uploaded',
+			item_status: row.item_status || row.status || 'pending',
+			rejection_reason: row.message || '',
 			created_at: tab.created_at || '',
 		};
 	}
@@ -718,6 +1041,8 @@
 			productDetailNextBtn.disabled = currentIndex < 0 || currentIndex >= rows.length - 1;
 		}
 
+		updateReviewButtonState(activeDetailRow);
+
 		if (productDetailFooterMeta) {
 			if (currentIndex >= 0) {
 				productDetailFooterMeta.textContent = 'Row ' + (currentIndex + 1) + ' of ' + rows.length;
@@ -867,18 +1192,21 @@
 	}
 
 	function buildTableHtml(tab) {
-		const headerHtml = '<th class="procedure-row-index">#</th>' +
+		const headerHtml = '<th class="procedure-item-status-col"></th>' +
+			'<th class="procedure-row-index">#</th>' +
 			(tab.columns || []).map(function (column) {
 				return '<th>' + escapeHtml(column) + '</th>';
 			}).join('');
 
 		const bodyHtml = (tab.rows || []).map(function (row, index) {
 			const payload = buildRowPayload(tab, row, index);
+			const itemStatus = payload.item_status || 'pending';
 			const cellsHtml = (row.cells || []).map(function (cell) {
 				return '<td>' + escapeHtml(cell) + '</td>';
 			}).join('');
 
-			return '<tr class="procedure-data-row" data-id="' + row.id + '" data-product-number="' + escapeAttr(row.product_procedure_number) + '" data-row-payload="' + escapeAttr(JSON.stringify(payload)) + '">' +
+			return '<tr class="' + buildProcedureDataRowClass(row) + '" data-id="' + row.id + '" data-item-status="' + escapeAttr(itemStatus) + '" data-product-number="' + escapeAttr(row.product_procedure_number) + '" data-row-payload="' + escapeAttr(JSON.stringify(payload)) + '">' +
+				renderItemStatusCell(itemStatus) +
 				'<td class="procedure-row-index text-muted">' + (index + 1) + '</td>' +
 				cellsHtml +
 			'</tr>';
@@ -1209,9 +1537,30 @@
 	initImportModal();
 	initProductModal();
 	initDeleteModal();
+	initRejectModal();
 
 	if (confirmDeleteBtn) {
 		confirmDeleteBtn.addEventListener('click', confirmDeleteRegistration);
+	}
+
+	if (confirmRejectBtn) {
+		confirmRejectBtn.addEventListener('click', confirmRejectProduct);
+	}
+
+	if (productDetailRejectBtn) {
+		productDetailRejectBtn.addEventListener('click', openRejectModal);
+	}
+
+	if (productDetailAcceptBtn) {
+		productDetailAcceptBtn.addEventListener('click', acceptProduct);
+	}
+
+	if (rejectReasonInput) {
+		rejectReasonInput.addEventListener('input', function () {
+			if (rejectReasonError && rejectReasonInput.value.trim()) {
+				rejectReasonError.classList.add('d-none');
+			}
+		});
 	}
 
 	document.addEventListener('click', function (event) {

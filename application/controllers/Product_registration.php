@@ -138,6 +138,163 @@ class Product_registration extends AuthenticatedController {
 		));
 	}
 
+	public function reject_item($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+		}
+
+		$reason = trim((string) $this->input->post('reason'));
+
+		if ($reason === '')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'Please enter a rejection reason.',
+			), 422);
+		}
+
+		$item = $this->product_registration_item_model->get($id);
+
+		if ( ! $item)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Product item not found.'), 404);
+		}
+
+		$registration = $this->product_registration_model->get($item['product_registration_id']);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Registration not found.'), 404);
+		}
+
+		if ($registration['status'] === 'completed')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'Completed procedures cannot be changed.',
+			), 422);
+		}
+
+		if ($item['status'] === 'rejected')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'This product has already been rejected.',
+			), 422);
+		}
+
+		if ($item['status'] === 'approved')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'This product has already been accepted.',
+			), 422);
+		}
+
+		$was_pending = $item['status'] === 'pending';
+
+		if ( ! $this->product_registration_item_model->update($id, array(
+			'status'  => 'rejected',
+			'message' => $reason,
+		)))
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to reject product.'), 500);
+		}
+
+		if ($was_pending)
+		{
+			$this->product_registration_model->update($registration['id'], array(
+				'rejected' => (int) $registration['rejected'] + 1,
+			));
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => 'Product rejected successfully.',
+			'data'    => array(
+				'id'                      => (int) $id,
+				'product_registration_id' => (int) $item['product_registration_id'],
+				'status'                  => 'rejected',
+				'message'                 => $reason,
+			),
+		));
+	}
+
+	public function accept_item($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+		}
+
+		$item = $this->product_registration_item_model->get($id);
+
+		if ( ! $item)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Product item not found.'), 404);
+		}
+
+		$registration = $this->product_registration_model->get($item['product_registration_id']);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Registration not found.'), 404);
+		}
+
+		if ($registration['status'] === 'completed')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'Completed procedures cannot be changed.',
+			), 422);
+		}
+
+		if ($item['status'] === 'approved')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'This product has already been accepted.',
+			), 422);
+		}
+
+		if ($item['status'] === 'rejected')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => 'Rejected products cannot be accepted.',
+			), 422);
+		}
+
+		$was_pending = $item['status'] === 'pending';
+
+		if ( ! $this->product_registration_item_model->update($id, array(
+			'status'  => 'approved',
+			'message' => NULL,
+		)))
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to accept product.'), 500);
+		}
+
+		if ($was_pending)
+		{
+			$this->product_registration_model->update($registration['id'], array(
+				'approved' => (int) $registration['approved'] + 1,
+			));
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => 'Product accepted successfully.',
+			'data'    => array(
+				'id'                      => (int) $id,
+				'product_registration_id' => (int) $item['product_registration_id'],
+				'status'                  => 'approved',
+			),
+		));
+	}
+
 	public function delete($id = NULL)
 	{
 		if ($this->input->method(TRUE) !== 'POST')

@@ -18,7 +18,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 	<div class="app-panel p-2">
 		<div id="procedureTabsWrapper" class="<?php echo empty($tabs) ? 'd-none' : ''; ?>">
-			<ul class="nav nav-tabs procedure-tabs mb-4" id="procedureTabs" role="tablist">
+			<ul class="nav nav-tabs procedure-tabs mb-3" id="procedureTabs" role="tablist">
 				<?php foreach ($tabs as $index => $tab): ?>
 					<li class="nav-item procedure-tab-nav-item" role="presentation">
 						<div class="procedure-tab-nav-wrap">
@@ -81,6 +81,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							<table class="table table-hover align-middle mb-0 procedure-data-table">
 								<thead>
 									<tr>
+										<th class="procedure-item-status-col"></th>
 										<th class="procedure-row-index">#</th>
 										<?php foreach ($tab['columns'] as $column): ?>
 											<th><?php echo html_escape($column); ?></th>
@@ -102,15 +103,35 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 											'file_name'                => $tab['file_name'],
 											'processor_name'           => $tab['processor_name'],
 											'status'                   => $tab['status'],
+											'item_status'              => $row['item_status'] ?? 'pending',
+											'rejection_reason'         => $row['message'] ?? '',
 											'created_at'               => $tab['created_at'],
 										);
+										$item_status = $row['item_status'] ?? 'pending';
+										$is_rejected = $item_status === 'rejected';
+										$is_approved = $item_status === 'approved' || $item_status === 'accepted';
+										$row_state_class = $is_rejected
+											? ' procedure-data-row-rejected'
+											: ($is_approved ? ' procedure-data-row-approved' : '');
+										$status_icon_html = '';
+
+										if ($item_status === 'rejected')
+										{
+											$status_icon_html = '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="Rejected"></i>';
+										}
+										elseif ($item_status === 'approved' || $item_status === 'accepted')
+										{
+											$status_icon_html = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="Accepted"></i>';
+										}
 										?>
 										<tr
-											class="procedure-data-row"
+											class="procedure-data-row<?php echo $row_state_class; ?>"
 											data-id="<?php echo (int) $row['id']; ?>"
+											data-item-status="<?php echo html_escape($row['item_status'] ?? 'pending'); ?>"
 											data-product-number="<?php echo html_escape($row['product_procedure_number']); ?>"
 											data-row-payload="<?php echo html_escape(json_encode($row_payload), ENT_QUOTES, 'UTF-8'); ?>"
 										>
+											<td class="procedure-item-status-cell"><?php echo $status_icon_html; ?></td>
 											<td class="procedure-row-index text-muted"><?php echo (int) $row_index + 1; ?></td>
 											<?php foreach ($row['cells'] as $cell): ?>
 												<td><?php echo html_escape($cell); ?></td>
@@ -349,6 +370,33 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
+<div class="modal fade" id="procedureRejectModal" tabindex="-1" aria-labelledby="procedureRejectModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="procedureRejectModalLabel">Reject Product</h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<p class="text-muted small mb-3" id="procedureRejectModalMeta">—</p>
+				<label class="form-label" for="procedureRejectReasonInput">Reason</label>
+				<textarea
+					class="form-control"
+					id="procedureRejectReasonInput"
+					rows="4"
+					placeholder="Enter rejection reason..."
+					autocomplete="off"
+				></textarea>
+				<div class="text-danger small mt-2 d-none" id="procedureRejectReasonError">Please enter a rejection reason.</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
+				<button type="button" class="btn btn-danger" id="procedureConfirmRejectBtn" data-mdb-ripple-init>Reject</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 <div class="modal fade" id="procedureDeleteModal" tabindex="-1" aria-labelledby="procedureDeleteModalLabel" aria-hidden="true">
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
@@ -367,7 +415,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
-<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
 
 <script src="<?php echo base_url('assets/vendor/jsbarcode/JsBarcode.all.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/qrcode/qrcode.min.js'); ?>"></script>
