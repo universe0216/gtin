@@ -265,9 +265,17 @@
 			});
 	}
 
-	addBtn.addEventListener('click', openCreateModal);
-	formEl.addEventListener('submit', submitForm);
-	confirmDeleteBtn.addEventListener('click', confirmDelete);
+	if (addBtn) {
+		addBtn.addEventListener('click', openCreateModal);
+	}
+
+	if (formEl) {
+		formEl.addEventListener('submit', submitForm);
+	}
+
+	if (confirmDeleteBtn) {
+		confirmDeleteBtn.addEventListener('click', confirmDelete);
+	}
 
 	tableBody.addEventListener('click', function (event) {
 		const editBtn = event.target.closest('.btn-edit');

@@ -1,11 +1,11 @@
 (function () {
 	'use strict';
 
-	if (typeof window.PROCEDURE_CONFIG === 'undefined') {
+	if (typeof window.PRODUCT_REGISTRATION_CONFIG === 'undefined') {
 		return;
 	}
 
-	const config = window.PROCEDURE_CONFIG;
+	const config = window.PRODUCT_REGISTRATION_CONFIG;
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
 	const uploadForms = document.querySelectorAll('.procedure-upload-form');
@@ -46,7 +46,7 @@
 
 	let selectedFiles = [];
 	let filePickerOpenUntil = 0;
-	let pendingDeleteProcedureId = null;
+	let pendingDeleteRegistrationId = null;
 	let uploadModal;
 	let importModal;
 	let productModal;
@@ -165,31 +165,31 @@
 		}
 	}
 
-	function renderImportList(procedures, meta) {
+	function renderImportList(registrations, meta) {
 		if (!importTableBody) {
 			return;
 		}
 
 		const rowOffset = meta && meta.range_start > 0 ? meta.range_start - 1 : 0;
 
-		if (!procedures.length) {
+		if (!registrations.length) {
 			importTableBody.innerHTML =
 				'<tr><td colspan="9" class="text-center text-muted py-4">No completed procedures found.</td></tr>';
 			renderImportPagination(meta || {});
 			return;
 		}
 
-		importTableBody.innerHTML = procedures.map(function (procedure, index) {
-			return '<tr class="procedure-import-row" role="button" tabindex="0" data-procedure-id="' + procedure.id + '">' +
+		importTableBody.innerHTML = registrations.map(function (registration, index) {
+			return '<tr class="procedure-import-row" role="button" tabindex="0" data-product-registration-id="' + registration.id + '">' +
 				'<td class="procedure-row-index text-muted">' + (rowOffset + index + 1) + '</td>' +
-				'<td><i class="fas fa-file-zipper me-1 text-primary"></i>' + escapeHtml(procedure.file_name) + '</td>' +
-				'<td>' + escapeHtml(procedure.procedure_number) + '</td>' +
-				'<td>' + escapeHtml(procedure.organization_name) + '</td>' +
-				'<td>' + escapeHtml(procedure.processor_name || '') + '</td>' +
-				'<td>' + escapeHtml(procedure.total_products) + '</td>' +
-				'<td>' + escapeHtml(procedure.approved) + '</td>' +
-				'<td>' + escapeHtml(procedure.rejected) + '</td>' +
-				'<td>' + escapeHtml(procedure.created_at) + '</td>' +
+				'<td><i class="fas fa-file-zipper me-1 text-primary"></i>' + escapeHtml(registration.file_name) + '</td>' +
+				'<td>' + escapeHtml(registration.procedure_number) + '</td>' +
+				'<td>' + escapeHtml(registration.organization_name) + '</td>' +
+				'<td>' + escapeHtml(registration.processor_name || '') + '</td>' +
+				'<td>' + escapeHtml(registration.total_products) + '</td>' +
+				'<td>' + escapeHtml(registration.approved) + '</td>' +
+				'<td>' + escapeHtml(registration.rejected) + '</td>' +
+				'<td>' + escapeHtml(registration.created_at) + '</td>' +
 			'</tr>';
 		}).join('');
 
@@ -314,7 +314,7 @@
 				importState.perPage = result.data.per_page || importState.perPage;
 				importState.search = result.data.search || importState.search;
 
-				renderImportList(result.data.procedures || [], {
+				renderImportList(result.data.registrations || [], {
 					total: result.data.total,
 					page: result.data.page,
 					per_page: result.data.per_page,
@@ -350,24 +350,24 @@
 		}, 300);
 	}
 
-	function importProcedureTab(procedureId) {
-		if (!procedureId) {
+	function importRegistrationTab(registrationId) {
+		if (!registrationId) {
 			return;
 		}
 
-		if (tabExists(procedureId)) {
+		if (tabExists(registrationId)) {
 			if (importModal) {
 				importModal.hide();
 			}
 
-			activateTab(procedureId);
+			activateTab(registrationId);
 			showToast('Procedure is already open.', 'success');
 			return;
 		}
 
 		setImportLoading(true);
 
-		fetch(baseUrl + '/import_tab/' + procedureId, {
+		fetch(baseUrl + '/import_tab/' + registrationId, {
 			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 		})
 			.then(function (response) {
@@ -894,16 +894,16 @@
 
 	function buildTabNavCloseButton(tab, isCompleted) {
 		if (isCompleted) {
-			return '<button type="button" class="procedure-tab-nav-close procedure-tab-close-btn"' +
-				' data-procedure-id="' + tab.procedure_id + '"' +
+			return '<button type="button" class="product-registration-tab-nav-close product-registration-tab-close-btn"' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
 				' aria-label="Close tab"' +
 				' data-mdb-ripple-init>' +
 				'<i class="fas fa-times" aria-hidden="true"></i>' +
 			'</button>';
 		}
 
-		return '<button type="button" class="procedure-tab-nav-close procedure-tab-delete-btn"' +
-			' data-procedure-id="' + tab.procedure_id + '"' +
+		return '<button type="button" class="product-registration-tab-nav-close product-registration-tab-delete-btn"' +
+			' data-product-registration-id="' + tab.product_registration_id + '"' +
 			' data-file-name="' + escapeAttr(tab.file_name) + '"' +
 			' aria-label="Stop procedure"' +
 			' data-mdb-ripple-init>' +
@@ -914,21 +914,21 @@
 	function buildTabButton(tab, isActive, isImported) {
 		const isCompleted = isImported || tab.status === 'completed';
 
-		return '<li class="nav-item procedure-tab-nav-item" role="presentation">' +
-			'<div class="procedure-tab-nav-wrap">' +
+		return '<li class="nav-item product-registration-tab-nav-item" role="presentation">' +
+			'<div class="product-registration-tab-nav-wrap">' +
 				'<button class="nav-link' + (isActive ? ' active' : '') + '" ' +
-					'id="procedure-tab-' + tab.procedure_id + '-tab" ' +
+					'id="product-registration-tab-' + tab.product_registration_id + '-tab" ' +
 					'data-mdb-tab-init ' +
-					'data-mdb-target="#procedure-tab-' + tab.procedure_id + '" ' +
+					'data-mdb-target="#product-registration-tab-' + tab.product_registration_id + '" ' +
 					'type="button" role="tab" ' +
-					'aria-controls="procedure-tab-' + tab.procedure_id + '" ' +
+					'aria-controls="product-registration-tab-' + tab.product_registration_id + '" ' +
 					'aria-selected="' + (isActive ? 'true' : 'false') + '" ' +
-					'data-procedure-id="' + tab.procedure_id + '"' +
+					'data-product-registration-id="' + tab.product_registration_id + '"' +
 					(isCompleted ? ' data-completed="true"' : '') + '>' +
 					'<i class="fas fa-file-zipper me-1"></i>' + escapeHtml(tab.file_name) +
 					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
 					(isCompleted
-						? '<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>'
+						? '<i class="fas fa-check ms-2 product-registration-tab-completed-icon" aria-hidden="true"></i>'
 						: '') +
 				'</button>' +
 				buildTabNavCloseButton(tab, isCompleted) +
@@ -938,15 +938,15 @@
 
 	function buildTabActionButton(tab, isImported) {
 		if (isImported) {
-			return '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto procedure-tab-close-btn"' +
-				'data-procedure-id="' + tab.procedure_id + '" ' +
+			return '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto product-registration-tab-close-btn"' +
+				'data-product-registration-id="' + tab.product_registration_id + '" ' +
 				'data-mdb-ripple-init>' +
 				'<i class="fas fa-times me-1"></i> Close' +
 			'</button>';
 		}
 
-		return '<button type="button" class="btn btn-sm btn-outline-danger ms-auto procedure-tab-delete-btn"' +
-			'data-procedure-id="' + tab.procedure_id + '" ' +
+		return '<button type="button" class="btn btn-sm btn-outline-danger ms-auto product-registration-tab-delete-btn"' +
+			'data-product-registration-id="' + tab.product_registration_id + '" ' +
 			'data-file-name="' + escapeAttr(tab.file_name) + '" ' +
 			'data-mdb-ripple-init>' +
 			'<i class="fas fa-trash me-1"></i> Delete' +
@@ -955,11 +955,11 @@
 
 	function buildTabPane(tab, isActive, isImported) {
 		return '<div class="tab-pane fade' + (isActive ? ' show active' : '') + '" ' +
-			'id="procedure-tab-' + tab.procedure_id + '" role="tabpanel" ' +
-			'aria-labelledby="procedure-tab-' + tab.procedure_id + '-tab" ' +
-			'data-procedure-id="' + tab.procedure_id + '"' +
+			'id="product-registration-tab-' + tab.product_registration_id + '" role="tabpanel" ' +
+			'aria-labelledby="product-registration-tab-' + tab.product_registration_id + '-tab" ' +
+			'data-product-registration-id="' + tab.product_registration_id + '"' +
 			(isImported ? ' data-imported="true"' : '') + '>' +
-			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
+			'<div class="product-registration-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
 				'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
 				'<span><strong>Processor:</strong> ' + escapeHtml(tab.processor_name || '') + '</span>' +
@@ -971,8 +971,8 @@
 		'</div>';
 	}
 
-	function tabExists(procedureId) {
-		return !!tabsNav.querySelector('.nav-link[data-procedure-id="' + procedureId + '"]');
+	function tabExists(registrationId) {
+		return !!tabsNav.querySelector('.nav-link[data-product-registration-id="' + registrationId + '"]');
 	}
 
 	function deactivateTabs() {
@@ -985,11 +985,11 @@
 		});
 	}
 
-	function activateTab(procedureId) {
+	function activateTab(registrationId) {
 		deactivateTabs();
 
-		const button = tabsNav.querySelector('.nav-link[data-procedure-id="' + procedureId + '"]');
-		const pane = tabsContent.querySelector('.tab-pane[data-procedure-id="' + procedureId + '"]');
+		const button = tabsNav.querySelector('.nav-link[data-product-registration-id="' + registrationId + '"]');
+		const pane = tabsContent.querySelector('.tab-pane[data-product-registration-id="' + registrationId + '"]');
 
 		if (button) {
 			button.classList.add('active');
@@ -1020,14 +1020,14 @@
 		tabCount.textContent = count + ' zip file(s)';
 	}
 
-	function openDeleteModal(procedureId, fileName) {
+	function openDeleteModal(registrationId, fileName) {
 		const modal = ensureDeleteModal();
 
-		if (!modal || !procedureId) {
+		if (!modal || !registrationId) {
 			return;
 		}
 
-		pendingDeleteProcedureId = procedureId;
+		pendingDeleteRegistrationId = registrationId;
 
 		if (deleteModalTitle) {
 			deleteModalTitle.textContent = fileName || '—';
@@ -1036,10 +1036,10 @@
 		modal.show();
 	}
 
-	function removeTabFromDom(procedureId) {
-		const tabBtn = tabsNav.querySelector('.nav-link[data-procedure-id="' + procedureId + '"]');
+	function removeTabFromDom(registrationId) {
+		const tabBtn = tabsNav.querySelector('.nav-link[data-product-registration-id="' + registrationId + '"]');
 		const navItem = tabBtn ? tabBtn.closest('.nav-item') : null;
-		const pane = tabsContent.querySelector('.tab-pane[data-procedure-id="' + procedureId + '"]');
+		const pane = tabsContent.querySelector('.tab-pane[data-product-registration-id="' + registrationId + '"]');
 		const wasActive = tabBtn && tabBtn.classList.contains('active');
 
 		if (navItem) {
@@ -1064,29 +1064,29 @@
 			const nextTab = tabsNav.querySelector('.nav-link');
 
 			if (nextTab) {
-				activateTab(nextTab.getAttribute('data-procedure-id'));
+				activateTab(nextTab.getAttribute('data-product-registration-id'));
 			}
 		}
 
 		updateTabCount();
 	}
 
-	function closeTab(procedureId) {
-		removeTabFromDom(procedureId);
+	function closeTab(registrationId) {
+		removeTabFromDom(registrationId);
 	}
 
-	function confirmDeleteProcedure() {
-		if (!pendingDeleteProcedureId) {
+	function confirmDeleteRegistration() {
+		if (!pendingDeleteRegistrationId) {
 			return;
 		}
 
-		const procedureId = pendingDeleteProcedureId;
+		const registrationId = pendingDeleteRegistrationId;
 
 		if (confirmDeleteBtn) {
 			confirmDeleteBtn.disabled = true;
 		}
 
-		fetch(baseUrl + '/delete/' + procedureId, {
+		fetch(baseUrl + '/delete/' + registrationId, {
 			method: 'POST',
 			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 		})
@@ -1101,7 +1101,7 @@
 					return;
 				}
 
-				removeTabFromDom(procedureId);
+				removeTabFromDom(registrationId);
 
 				if (deleteModal) {
 					deleteModal.hide();
@@ -1116,7 +1116,7 @@
 				if (confirmDeleteBtn) {
 					confirmDeleteBtn.disabled = false;
 				}
-				pendingDeleteProcedureId = null;
+				pendingDeleteRegistrationId = null;
 			});
 	}
 
@@ -1136,7 +1136,7 @@
 		tabsWrapper.classList.remove('d-none');
 
 		const newTabs = tabs.filter(function (tab) {
-			return !tabExists(tab.procedure_id);
+			return !tabExists(tab.product_registration_id);
 		});
 
 		newTabs.slice().reverse().forEach(function (tab) {
@@ -1147,7 +1147,7 @@
 		initTabControls(tabsWrapper);
 
 		if (newTabs.length) {
-			activateTab(newTabs[0].procedure_id);
+			activateTab(newTabs[0].product_registration_id);
 		}
 
 		updateTabCount();
@@ -1211,26 +1211,26 @@
 	initDeleteModal();
 
 	if (confirmDeleteBtn) {
-		confirmDeleteBtn.addEventListener('click', confirmDeleteProcedure);
+		confirmDeleteBtn.addEventListener('click', confirmDeleteRegistration);
 	}
 
 	document.addEventListener('click', function (event) {
-		const closeBtn = event.target.closest('.procedure-tab-close-btn');
+		const closeBtn = event.target.closest('.product-registration-tab-close-btn');
 
 		if (closeBtn) {
 			event.preventDefault();
 			event.stopPropagation();
-			closeTab(closeBtn.getAttribute('data-procedure-id'));
+			closeTab(closeBtn.getAttribute('data-product-registration-id'));
 			return;
 		}
 
-		const deleteBtn = event.target.closest('.procedure-tab-delete-btn');
+		const deleteBtn = event.target.closest('.product-registration-tab-delete-btn');
 
 		if (deleteBtn) {
 			event.preventDefault();
 			event.stopPropagation();
 			openDeleteModal(
-				deleteBtn.getAttribute('data-procedure-id'),
+				deleteBtn.getAttribute('data-product-registration-id'),
 				deleteBtn.getAttribute('data-file-name')
 			);
 			return;
@@ -1249,7 +1249,7 @@
 
 		if (importRow) {
 			event.preventDefault();
-			importProcedureTab(importRow.getAttribute('data-procedure-id'));
+			importRegistrationTab(importRow.getAttribute('data-product-registration-id'));
 		}
 	});
 
@@ -1265,7 +1265,7 @@
 		}
 
 		event.preventDefault();
-		importProcedureTab(importRow.getAttribute('data-procedure-id'));
+		importRegistrationTab(importRow.getAttribute('data-product-registration-id'));
 	});
 
 	uploadForms.forEach(function (form) {

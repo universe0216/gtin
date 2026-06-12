@@ -4,7 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-class Procedure_processor {
+class Product_registration_processor {
 
 	protected $CI;
 	protected $storage_root;
@@ -29,21 +29,21 @@ class Procedure_processor {
 			throw new RuntimeException('No valid zip files were uploaded.');
 		}
 
-		$this->validate_no_duplicate_procedures($normalized);
+		$this->validate_no_duplicate_registrations($normalized);
 
 		$month_dir = $this->storage_root.date('Y-m').DIRECTORY_SEPARATOR;
 		$this->ensure_directory($month_dir);
 
 		$results = array(
-			'procedures' => array(),
-			'tabs'       => array(),
-			'items'      => array(),
+			'registrations' => array(),
+			'tabs'          => array(),
+			'items'         => array(),
 		);
 
 		foreach ($normalized as $file)
 		{
 			$result = $this->process_single_zip($file, $month_dir, $account_id);
-			$results['procedures'][] = $result['procedure'];
+			$results['registrations'][] = $result['registration'];
 			$results['tabs'][] = $result['tab'];
 			$results['items'] = array_merge($results['items'], $result['items']);
 		}
@@ -51,14 +51,14 @@ class Procedure_processor {
 		return $results;
 	}
 
-	public function format_procedure_tab($procedure, $saved_items)
+	public function format_product_registration_tab($registration, $saved_items)
 	{
-		return $this->build_tab_data($procedure, $saved_items);
+		return $this->build_tab_data($registration, $saved_items);
 	}
 
-	protected function validate_no_duplicate_procedures($files)
+	protected function validate_no_duplicate_registrations($files)
 	{
-		$this->CI->load->model('procedure_model');
+		$this->CI->load->model('product_registration_model');
 		$seen = array();
 
 		foreach ($files as $file)
@@ -75,10 +75,10 @@ class Procedure_processor {
 
 			$seen[$key] = TRUE;
 
-			if ($this->CI->procedure_model->exists_by_file_and_procedure($file['name'], $parsed['procedure_number']))
+			if ($this->CI->product_registration_model->exists_by_file_and_procedure($file['name'], $parsed['procedure_number']))
 			{
 				throw new RuntimeException(
-					'Procedure '.$parsed['procedure_number'].' with file '.$file['name'].' already exists.'
+					'Registration '.$parsed['procedure_number'].' with file '.$file['name'].' already exists.'
 				);
 			}
 		}
@@ -89,19 +89,19 @@ class Procedure_processor {
 		$original_name = $file['name'];
 		$parsed = $this->parse_zip_filename($original_name);
 		$folder_name = $parsed['procedure_number'].'_'.$parsed['organization_name'];
-		$procedure_dir = $month_dir.$folder_name.DIRECTORY_SEPARATOR;
-		$this->ensure_directory($procedure_dir);
+		$registration_dir = $month_dir.$folder_name.DIRECTORY_SEPARATOR;
+		$this->ensure_directory($registration_dir);
 
-		$zip_path = $procedure_dir.$original_name;
+		$zip_path = $registration_dir.$original_name;
 
 		if ( ! move_uploaded_file($file['tmp_name'], $zip_path))
 		{
 			throw new RuntimeException('Failed to store '.$original_name.'.');
 		}
 
-		$this->extract_zip($zip_path, $procedure_dir);
+		$this->extract_zip($zip_path, $registration_dir);
 
-		$xls_path = $this->find_spreadsheet($procedure_dir);
+		$xls_path = $this->find_spreadsheet($registration_dir);
 
 		if ( ! $xls_path)
 		{
@@ -111,28 +111,28 @@ class Procedure_processor {
 		$sheet = $this->parse_spreadsheet($xls_path);
 		$headers = $sheet['headers'];
 		$products = $sheet['rows'];
-		$images = $this->collect_images($procedure_dir);
+		$images = $this->collect_images($registration_dir);
 		$now = date('Y-m-d H:i:s');
 		$relative_storage = 'storage/'.date('Y-m').'/'.$folder_name.'/';
 
-		$this->CI->load->model('procedure_model');
-		$this->CI->load->model('procedure_item_model');
+		$this->CI->load->model('product_registration_model');
+		$this->CI->load->model('product_registration_item_model');
 
-		$procedure_id = $this->CI->procedure_model->insert(array(
-			'file_name'          => $original_name,
-			'procedure_number'   => $parsed['procedure_number'],
-			'organization_name'  => $parsed['organization_name'],
-			'account_id'         => (int) $account_id,
-			'status'             => 'uploaded',
-			'total_products'     => count($products),
-			'approved'           => 0,
-			'rejected'           => 0,
-			'storage_path'       => $relative_storage,
+		$product_registration_id = $this->CI->product_registration_model->insert(array(
+			'file_name'         => $original_name,
+			'procedure_number'  => $parsed['procedure_number'],
+			'organization_name' => $parsed['organization_name'],
+			'account_id'        => (int) $account_id,
+			'status'            => 'uploaded',
+			'total_products'    => count($products),
+			'approved'          => 0,
+			'rejected'          => 0,
+			'storage_path'      => $relative_storage,
 		));
 
-		if ( ! $procedure_id)
+		if ( ! $product_registration_id)
 		{
-			throw new RuntimeException('Failed to save procedure record for '.$original_name.'.');
+			throw new RuntimeException('Failed to save product registration record for '.$original_name.'.');
 		}
 
 		$db_items = array();
@@ -162,7 +162,7 @@ class Procedure_processor {
 			);
 
 			$db_items[] = array(
-				'procedure_id'             => $procedure_id,
+				'product_registration_id'    => $product_registration_id,
 				'product_procedure_number' => $product['product_procedure_number'],
 				'name'                     => $product['name'],
 				'info'                     => json_encode($info),
@@ -173,14 +173,14 @@ class Procedure_processor {
 			);
 		}
 
-		$this->CI->procedure_item_model->insert_batch($db_items);
-		$procedure = $this->CI->procedure_model->get($procedure_id);
-		$saved_items = $this->CI->procedure_item_model->get_by_procedure($procedure_id);
+		$this->CI->product_registration_item_model->insert_batch($db_items);
+		$registration = $this->CI->product_registration_model->get($product_registration_id);
+		$saved_items = $this->CI->product_registration_item_model->get_by_product_registration($product_registration_id);
 
 		return array(
-			'procedure' => $procedure,
-			'tab'       => $this->build_tab_data($procedure, $saved_items, $headers),
-			'items'     => $this->build_response_items($saved_items, $parsed, $original_name),
+			'registration' => $registration,
+			'tab'          => $this->build_tab_data($registration, $saved_items, $headers),
+			'items'        => $this->build_response_items($saved_items, $parsed, $original_name),
 		);
 	}
 
@@ -225,7 +225,7 @@ class Procedure_processor {
 
 		return array(
 			'procedure_number'  => $matches[1],
-			'organization_name'   => trim($matches[2]),
+			'organization_name' => trim($matches[2]),
 		);
 	}
 
@@ -460,25 +460,25 @@ class Procedure_processor {
 			}
 
 			$items[] = array(
-				'id'                       => (int) $item['id'],
-				'procedure_id'             => (int) $item['procedure_id'],
-				'product_procedure_number' => $item['product_procedure_number'],
-				'name'                     => $item['name'],
-				'procedure_number'         => $parsed['procedure_number'],
-				'organization_name'        => $parsed['organization_name'],
-				'file_name'                => $original_name,
-				'columns'                  => $info['columns'] ?? array(),
-				'cells'                    => $info['cells'] ?? array(),
-				'has_image'                => ! empty($info['has_image']),
-				'image_urls'               => $info['image_urls'] ?? array(),
-				'info'                     => $info,
+				'id'                         => (int) $item['id'],
+				'product_registration_id'    => (int) $item['product_registration_id'],
+				'product_procedure_number'   => $item['product_procedure_number'],
+				'name'                       => $item['name'],
+				'procedure_number'           => $parsed['procedure_number'],
+				'organization_name'          => $parsed['organization_name'],
+				'file_name'                  => $original_name,
+				'columns'                    => $info['columns'] ?? array(),
+				'cells'                      => $info['cells'] ?? array(),
+				'has_image'                  => ! empty($info['has_image']),
+				'image_urls'                 => $info['image_urls'] ?? array(),
+				'info'                       => $info,
 			);
 		}
 
 		return $items;
 	}
 
-	protected function build_tab_data($procedure, $saved_items, $fallback_headers = array())
+	protected function build_tab_data($registration, $saved_items, $fallback_headers = array())
 	{
 		$columns = $fallback_headers;
 		$rows = array();
@@ -519,16 +519,16 @@ class Procedure_processor {
 		}
 
 		return array(
-			'procedure_id'      => (int) $procedure['id'],
-			'file_name'         => $procedure['file_name'],
-			'procedure_number'  => $procedure['procedure_number'],
-			'organization_name' => $procedure['organization_name'],
-			'processor_name'    => $procedure['processor_name'] ?? '',
-			'status'            => $procedure['status'],
-			'created_at'        => $procedure['created_at'],
-			'total_products'    => (int) $procedure['total_products'],
-			'columns'           => $columns,
-			'rows'              => $rows,
+			'product_registration_id' => (int) $registration['id'],
+			'file_name'               => $registration['file_name'],
+			'procedure_number'        => $registration['procedure_number'],
+			'organization_name'       => $registration['organization_name'],
+			'processor_name'          => $registration['processor_name'] ?? '',
+			'status'                  => $registration['status'],
+			'created_at'              => $registration['created_at'],
+			'total_products'          => (int) $registration['total_products'],
+			'columns'                 => $columns,
+			'rows'                    => $rows,
 		);
 	}
 

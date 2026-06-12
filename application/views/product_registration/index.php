@@ -4,7 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <div class="procedure-page">
 	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
 		<div>
-			<h1 class="h4 mb-0">Procedure</h1>
+			<h1 class="h4 mb-0">Product Registration</h1>
 		</div>
 		<div class="d-flex flex-wrap gap-2">
 			<button type="button" class="btn btn-sm btn-success" id="btnOpenImportModal" data-mdb-ripple-init>
@@ -20,26 +20,26 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div id="procedureTabsWrapper" class="<?php echo empty($tabs) ? 'd-none' : ''; ?>">
 			<ul class="nav nav-tabs procedure-tabs mb-4" id="procedureTabs" role="tablist">
 				<?php foreach ($tabs as $index => $tab): ?>
-					<li class="nav-item procedure-tab-nav-item" role="presentation">
-						<div class="procedure-tab-nav-wrap">
+					<li class="nav-item product-registration-tab-nav-item" role="presentation">
+						<div class="product-registration-tab-nav-wrap">
 							<button
 								class="nav-link<?php echo $index === 0 ? ' active' : ''; ?>"
-								id="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>-tab"
+								id="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>-tab"
 								data-mdb-tab-init
-								data-mdb-target="#procedure-tab-<?php echo (int) $tab['procedure_id']; ?>"
+								data-mdb-target="#product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>"
 								type="button"
 								role="tab"
-								aria-controls="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>"
+								aria-controls="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>"
 								aria-selected="<?php echo $index === 0 ? 'true' : 'false'; ?>"
-								data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
+								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 							>
 								<i class="fas fa-file-zipper me-1"></i><?php echo html_escape($tab['file_name']); ?>
 								<span class="badge bg-secondary ms-2"><?php echo count($tab['rows']); ?></span>
 							</button>
 							<button
 								type="button"
-								class="procedure-tab-nav-close procedure-tab-delete-btn"
-								data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
+								class="product-registration-tab-nav-close product-registration-tab-delete-btn"
+								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
 								aria-label="Stop procedure"
 								data-mdb-ripple-init
@@ -55,12 +55,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				<?php foreach ($tabs as $index => $tab): ?>
 					<div
 						class="tab-pane fade<?php echo $index === 0 ? ' show active' : ''; ?>"
-						id="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>"
+						id="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>"
 						role="tabpanel"
-						aria-labelledby="procedure-tab-<?php echo (int) $tab['procedure_id']; ?>-tab"
-						data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
+						aria-labelledby="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>-tab"
+						data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 					>
-						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
+						<div class="product-registration-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
 							<span><strong>Procedure #:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
 							<span><strong>Organization:</strong> <?php echo html_escape($tab['organization_name']); ?></span>
 							<span><strong>Processor:</strong> <?php echo html_escape($tab['processor_name']); ?></span>
@@ -68,8 +68,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							<span><strong>Uploaded:</strong> <?php echo html_escape($tab['created_at']); ?></span>
 							<button
 								type="button"
-								class="btn btn-sm btn-outline-danger ms-auto procedure-tab-delete-btn"
-								data-procedure-id="<?php echo (int) $tab['procedure_id']; ?>"
+								class="btn btn-sm btn-outline-danger ms-auto product-registration-tab-delete-btn"
+								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
 								data-mdb-ripple-init
 							>
@@ -372,8 +372,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/vendor/jsbarcode/JsBarcode.all.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/qrcode/qrcode.min.js'); ?>"></script>
 <script>
-	window.PROCEDURE_CONFIG = {
-		baseUrl: <?php echo json_encode(site_url('procedure')); ?>,
+	window.PRODUCT_REGISTRATION_CONFIG = {
+		baseUrl: <?php echo json_encode(site_url('product_registration')); ?>,
 		initialTabs: <?php echo json_encode($tabs); ?>
 	};
 </script>

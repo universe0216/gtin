@@ -1,16 +1,16 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Procedure_model extends CI_Model {
+class Product_registration_model extends CI_Model {
 
-	protected $table = 'procedures';
+	protected $table = 'product_registrations';
 
 	public function get_all()
 	{
 		return $this->db
-			->select('procedures.*, accounts.full_name AS processor_name')
-			->join('accounts', 'accounts.id = procedures.account_id', 'left')
-			->order_by('procedures.id', 'DESC')
+			->select('product_registrations.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = product_registrations.account_id', 'left')
+			->order_by('product_registrations.id', 'DESC')
 			->get($this->table)
 			->result_array();
 	}
@@ -18,11 +18,11 @@ class Procedure_model extends CI_Model {
 	public function get_incomplete_by_account($account_id)
 	{
 		return $this->db
-			->select('procedures.*, accounts.full_name AS processor_name')
-			->join('accounts', 'accounts.id = procedures.account_id', 'left')
-			->where('procedures.account_id', (int) $account_id)
-			->where('procedures.status !=', 'completed')
-			->order_by('procedures.id', 'DESC')
+			->select('product_registrations.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = product_registrations.account_id', 'left')
+			->where('product_registrations.account_id', (int) $account_id)
+			->where('product_registrations.status !=', 'completed')
+			->order_by('product_registrations.id', 'DESC')
 			->get($this->table)
 			->result_array();
 	}
@@ -30,13 +30,13 @@ class Procedure_model extends CI_Model {
 	public function get_by_status($status, $limit = NULL, $offset = 0, $search = '')
 	{
 		$this->db
-			->select('procedures.*, accounts.full_name AS processor_name')
-			->join('accounts', 'accounts.id = procedures.account_id', 'left')
-			->where('procedures.status', $status);
+			->select('product_registrations.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = product_registrations.account_id', 'left')
+			->where('product_registrations.status', $status);
 
 		$this->apply_search_filters($search);
 
-		$this->db->order_by('procedures.id', 'DESC');
+		$this->db->order_by('product_registrations.id', 'DESC');
 
 		if ($limit !== NULL)
 		{
@@ -49,8 +49,8 @@ class Procedure_model extends CI_Model {
 	public function count_by_status($status, $search = '')
 	{
 		$this->db
-			->join('accounts', 'accounts.id = procedures.account_id', 'left')
-			->where('procedures.status', $status);
+			->join('accounts', 'accounts.id = product_registrations.account_id', 'left')
+			->where('product_registrations.status', $status);
 
 		$this->apply_search_filters($search);
 
@@ -67,9 +67,9 @@ class Procedure_model extends CI_Model {
 		}
 
 		$this->db->group_start();
-		$this->db->like('procedures.file_name', $search);
-		$this->db->or_like('procedures.procedure_number', $search);
-		$this->db->or_like('procedures.organization_name', $search);
+		$this->db->like('product_registrations.file_name', $search);
+		$this->db->or_like('product_registrations.procedure_number', $search);
+		$this->db->or_like('product_registrations.organization_name', $search);
 		$this->db->or_like('accounts.full_name', $search);
 		$this->db->group_end();
 	}
@@ -77,9 +77,9 @@ class Procedure_model extends CI_Model {
 	public function get($id)
 	{
 		return $this->db
-			->select('procedures.*, accounts.full_name AS processor_name')
-			->join('accounts', 'accounts.id = procedures.account_id', 'left')
-			->where('procedures.id', $id)
+			->select('product_registrations.*, accounts.full_name AS processor_name')
+			->join('accounts', 'accounts.id = product_registrations.account_id', 'left')
+			->where('product_registrations.id', $id)
 			->get($this->table)
 			->row_array();
 	}

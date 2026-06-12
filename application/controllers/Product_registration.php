@@ -3,7 +3,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 require_once APPPATH.'core/AuthenticatedController.php';
 
-class Procedure extends AuthenticatedController {
+class Product_registration extends AuthenticatedController {
 
 	protected $import_per_page = 15;
 
@@ -11,30 +11,30 @@ class Procedure extends AuthenticatedController {
 	{
 		parent::__construct();
 		$this->load->helper(array('url', 'file'));
-		$this->load->model('procedure_model');
-		$this->load->model('procedure_item_model');
-		$this->load->library('procedure_processor');
+		$this->load->model('product_registration_model');
+		$this->load->model('product_registration_item_model');
+		$this->load->library('product_registration_processor');
 	}
 
 	public function index()
 	{
 		$user = $this->auth->user();
-		$procedures = $this->procedure_model->get_incomplete_by_account($user['id']);
+		$registrations = $this->product_registration_model->get_incomplete_by_account($user['id']);
 		$tabs = array();
 
-		foreach ($procedures as $procedure)
+		foreach ($registrations as $registration)
 		{
-			$items = $this->procedure_item_model->get_by_procedure($procedure['id']);
-			$tabs[] = $this->procedure_processor->format_procedure_tab($procedure, $items);
+			$items = $this->product_registration_item_model->get_by_product_registration($registration['id']);
+			$tabs[] = $this->product_registration_processor->format_product_registration_tab($registration, $items);
 		}
 
 		$data = array(
-			'title'      => 'Procedure',
-			'nav_active' => 'procedure',
+			'title'      => 'Product Registration',
+			'nav_active' => 'product_registration',
 			'tabs'       => $tabs,
 		);
 
-		$data['content'] = $this->load->view('procedure/index', $data, TRUE);
+		$data['content'] = $this->load->view('product_registration/index', $data, TRUE);
 		$this->load->view('layouts/main', $data);
 	}
 
@@ -53,7 +53,7 @@ class Procedure extends AuthenticatedController {
 		try
 		{
 			$user = $this->auth->user();
-			$result = $this->procedure_processor->process_uploads($_FILES['zip_files'], $user['id']);
+			$result = $this->product_registration_processor->process_uploads($_FILES['zip_files'], $user['id']);
 		}
 		catch (RuntimeException $exception)
 		{
@@ -71,11 +71,11 @@ class Procedure extends AuthenticatedController {
 		}
 
 		return $this->json_response(array(
-			'success'    => TRUE,
-			'message'    => count($result['procedures']).' procedure file(s) uploaded successfully.',
-			'procedures' => $result['procedures'],
-			'tabs'       => $result['tabs'],
-			'items'      => $result['items'],
+			'success'       => TRUE,
+			'message'       => count($result['registrations']).' registration file(s) uploaded successfully.',
+			'registrations' => $result['registrations'],
+			'tabs'          => $result['tabs'],
+			'items'         => $result['items'],
 		));
 	}
 
@@ -89,7 +89,7 @@ class Procedure extends AuthenticatedController {
 		$per_page = $this->import_per_page;
 		$page = max(1, (int) $this->input->get('page'));
 		$search = trim((string) $this->input->get('q'));
-		$total = $this->procedure_model->count_by_status('completed', $search);
+		$total = $this->product_registration_model->count_by_status('completed', $search);
 		$total_pages = max(1, (int) ceil($total / $per_page));
 
 		if ($page > $total_pages)
@@ -98,20 +98,20 @@ class Procedure extends AuthenticatedController {
 		}
 
 		$offset = ($page - 1) * $per_page;
-		$procedures = $this->procedure_model->get_by_status('completed', $per_page, $offset, $search);
+		$registrations = $this->product_registration_model->get_by_status('completed', $per_page, $offset, $search);
 		$range_start = $total > 0 ? $offset + 1 : 0;
-		$range_end = min($offset + count($procedures), $total);
+		$range_end = min($offset + count($registrations), $total);
 
 		return $this->json_response(array(
-			'success'     => TRUE,
-			'procedures'  => $procedures,
-			'total'       => $total,
-			'page'        => $page,
-			'per_page'    => $per_page,
-			'total_pages' => $total_pages,
-			'range_start' => $range_start,
-			'range_end'   => $range_end,
-			'search'      => $search,
+			'success'       => TRUE,
+			'registrations' => $registrations,
+			'total'         => $total,
+			'page'          => $page,
+			'per_page'      => $per_page,
+			'total_pages'   => $total_pages,
+			'range_start'   => $range_start,
+			'range_end'     => $range_end,
+			'search'        => $search,
 		));
 	}
 
@@ -128,7 +128,7 @@ class Procedure extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Procedure not found.',
+				'message' => 'Registration not found.',
 			), 404);
 		}
 
@@ -145,16 +145,16 @@ class Procedure extends AuthenticatedController {
 			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
 		}
 
-		$procedure = $this->procedure_model->get($id);
+		$registration = $this->product_registration_model->get($id);
 
-		if ( ! $procedure)
+		if ( ! $registration)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Procedure not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => 'Registration not found.'), 404);
 		}
 
-		if ( ! empty($procedure['storage_path']))
+		if ( ! empty($registration['storage_path']))
 		{
-			$storage_dir = FCPATH.str_replace('/', DIRECTORY_SEPARATOR, $procedure['storage_path']);
+			$storage_dir = FCPATH.str_replace('/', DIRECTORY_SEPARATOR, $registration['storage_path']);
 
 			if (is_dir($storage_dir))
 			{
@@ -163,28 +163,28 @@ class Procedure extends AuthenticatedController {
 			}
 		}
 
-		if ( ! $this->procedure_model->delete($id))
+		if ( ! $this->product_registration_model->delete($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete procedure.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete registration.'), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Procedure stopped successfully.',
+			'message' => 'Registration stopped successfully.',
 		));
 	}
 
 	protected function build_import_tab($id)
 	{
-		$procedure = $this->procedure_model->get($id);
+		$registration = $this->product_registration_model->get($id);
 
-		if ( ! $procedure || $procedure['status'] !== 'completed')
+		if ( ! $registration || $registration['status'] !== 'completed')
 		{
 			return NULL;
 		}
 
-		$items = $this->procedure_item_model->get_by_procedure($id);
-		$tab = $this->procedure_processor->format_procedure_tab($procedure, $items);
+		$items = $this->product_registration_item_model->get_by_product_registration($id);
+		$tab = $this->product_registration_processor->format_product_registration_tab($registration, $items);
 
 		foreach ($tab['rows'] as $index => $row)
 		{

@@ -9,9 +9,15 @@ $can_edit = $can_edit ?? TRUE;
 <div class="d-flex justify-content-between align-items-center mb-4">
 	<h1 class="h3 mb-0"><?php echo html_escape($title); ?></h1>
 	<?php if ($can_edit): ?>
-		<button type="button" class="btn btn-primary" id="btnAddRecord" data-mdb-ripple-init>
-			<i class="fas fa-plus me-1"></i> Add New
-		</button>
+		<?php if ( ! empty($add_url)): ?>
+			<a href="<?php echo html_escape($add_url); ?>" class="btn btn-primary" data-mdb-ripple-init>
+				<i class="fas fa-plus me-1"></i> Add New
+			</a>
+		<?php else: ?>
+			<button type="button" class="btn btn-primary" id="btnAddRecord" data-mdb-ripple-init>
+				<i class="fas fa-plus me-1"></i> Add New
+			</button>
+		<?php endif; ?>
 	<?php endif; ?>
 </div>
 

@@ -3,7 +3,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
 <div class="history-procedure-page">
 	<div class="mb-4">
-		<h1 class="h4 mb-1">Procedure History</h1>
+		<h1 class="h4 mb-1"><?php echo html_escape($title); ?></h1>
 		<p class="text-muted small mb-0">Completed procedure files.</p>
 	</div>
 
@@ -24,30 +24,30 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					</tr>
 				</thead>
 				<tbody>
-					<?php if (empty($procedures)): ?>
+					<?php if (empty($registrations)): ?>
 						<tr>
-							<td colspan="9" class="text-center text-muted py-4">No completed procedures found.</td>
+							<td colspan="9" class="text-center text-muted py-4">No completed registrations found.</td>
 						</tr>
 					<?php else: ?>
-						<?php foreach ($procedures as $index => $procedure): ?>
+						<?php foreach ($registrations as $index => $registration): ?>
 							<tr
 								class="history-procedure-row"
 								role="button"
 								tabindex="0"
-								data-procedure-id="<?php echo (int) $procedure['id']; ?>"
+								data-product-registration-id="<?php echo (int) $registration['id']; ?>"
 							>
 								<td class="procedure-row-index text-muted"><?php echo (int) $row_offset + $index + 1; ?></td>
 								<td>
 									<i class="fas fa-file-zipper me-1 text-primary"></i>
-									<?php echo html_escape($procedure['file_name']); ?>
+									<?php echo html_escape($registration['file_name']); ?>
 								</td>
-								<td><?php echo html_escape($procedure['procedure_number']); ?></td>
-								<td><?php echo html_escape($procedure['organization_name']); ?></td>
-								<td><?php echo html_escape($procedure['processor_name'] ?? ''); ?></td>
-								<td><?php echo (int) $procedure['total_products']; ?></td>
-								<td><?php echo (int) $procedure['approved']; ?></td>
-								<td><?php echo (int) $procedure['rejected']; ?></td>
-								<td><?php echo html_escape($procedure['created_at']); ?></td>
+								<td><?php echo html_escape($registration['procedure_number']); ?></td>
+								<td><?php echo html_escape($registration['organization_name']); ?></td>
+								<td><?php echo html_escape($registration['processor_name'] ?? ''); ?></td>
+								<td><?php echo (int) $registration['total_products']; ?></td>
+								<td><?php echo (int) $registration['approved']; ?></td>
+								<td><?php echo (int) $registration['rejected']; ?></td>
+								<td><?php echo html_escape($registration['created_at']); ?></td>
 							</tr>
 						<?php endforeach; ?>
 					<?php endif; ?>
@@ -100,6 +100,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 <script>
 	window.HISTORY_CONFIG = {
-		baseUrl: <?php echo json_encode(site_url('history/procedure')); ?>
+		type: 'products',
+		baseUrl: <?php echo json_encode(site_url($history_route)); ?>
 	};
 </script>

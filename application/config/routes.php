@@ -50,5 +50,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |		my-controller/my-method	-> my_controller/my_method
 */
 $route['default_controller'] = 'primary';
+$route['procedure'] = 'product_registration';
+$route['procedure/(:any)'] = 'product_registration/$1';
+$route['history/procedure'] = 'history/products';
+$route['history/procedure/(:any)'] = 'history/products/$1';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;

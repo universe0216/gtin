@@ -7,17 +7,48 @@
 
 	const config = window.HISTORY_CONFIG;
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
+	const historyType = config.type || 'products';
 
-	const modalEl = document.getElementById('historyProcedureModal');
-	const modalTitle = document.getElementById('historyProcedureModalTitle');
-	const modalMeta = document.getElementById('historyProcedureModalMeta');
-	const modalTableWrap = document.getElementById('historyProcedureModalTableWrap');
-	const modalLoading = document.getElementById('historyProcedureModalLoading');
-	const modalFooterMeta = document.getElementById('historyProcedureModalFooterMeta');
 	const toastContainer = document.getElementById('historyToastContainer');
 
 	let modal;
 	let activeRequest = null;
+
+	const procedureModalEl = document.getElementById('historyProcedureModal');
+	const procedureModalTitle = document.getElementById('historyProcedureModalTitle');
+	const procedureModalMeta = document.getElementById('historyProcedureModalMeta');
+	const procedureModalTableWrap = document.getElementById('historyProcedureModalTableWrap');
+	const procedureModalLoading = document.getElementById('historyProcedureModalLoading');
+	const procedureModalFooterMeta = document.getElementById('historyProcedureModalFooterMeta');
+
+	const organizationModalEl = document.getElementById('historyOrganizationModal');
+	const organizationModalTitle = document.getElementById('historyOrganizationModalTitle');
+	const organizationModalMeta = document.getElementById('historyOrganizationModalMeta');
+	const organizationModalTableWrap = document.getElementById('historyOrganizationModalTableWrap');
+	const organizationModalLoading = document.getElementById('historyOrganizationModalLoading');
+	const organizationModalFooterMeta = document.getElementById('historyOrganizationModalFooterMeta');
+
+	function getModalElements() {
+		if (historyType === 'organizations') {
+			return {
+				modalEl: organizationModalEl,
+				titleEl: organizationModalTitle,
+				metaEl: organizationModalMeta,
+				tableWrapEl: organizationModalTableWrap,
+				loadingEl: organizationModalLoading,
+				footerMetaEl: organizationModalFooterMeta,
+			};
+		}
+
+		return {
+			modalEl: procedureModalEl,
+			titleEl: procedureModalTitle,
+			metaEl: procedureModalMeta,
+			tableWrapEl: procedureModalTableWrap,
+			loadingEl: procedureModalLoading,
+			footerMetaEl: procedureModalFooterMeta,
+		};
+	}
 
 	function escapeHtml(value) {
 		return String(value ?? '')
@@ -53,45 +84,77 @@
 	}
 
 	function initModal() {
-		if (typeof mdb === 'undefined' || !modalEl) {
+		const elements = getModalElements();
+
+		if (typeof mdb === 'undefined' || !elements.modalEl) {
 			return;
 		}
 
-		modal = mdb.Modal.getOrCreateInstance(modalEl);
-		modalEl.addEventListener('hidden.mdb.modal', resetModal);
+		modal = mdb.Modal.getOrCreateInstance(elements.modalEl);
+		elements.modalEl.addEventListener('hidden.mdb.modal', resetModal);
 	}
 
 	function resetModal() {
+		const elements = getModalElements();
+
 		if (activeRequest) {
 			activeRequest.abort();
 			activeRequest = null;
 		}
 
-		modalTitle.textContent = '—';
-		modalMeta.innerHTML = '';
-		modalTableWrap.innerHTML = '';
-		modalFooterMeta.textContent = '';
-		modalLoading.classList.add('d-none');
+		if (elements.titleEl) {
+			elements.titleEl.textContent = '—';
+		}
+		if (elements.metaEl) {
+			elements.metaEl.innerHTML = '';
+		}
+		if (elements.tableWrapEl) {
+			elements.tableWrapEl.innerHTML = '';
+		}
+		if (elements.footerMetaEl) {
+			elements.footerMetaEl.textContent = '';
+		}
+		if (elements.loadingEl) {
+			elements.loadingEl.classList.add('d-none');
+		}
 	}
 
 	function setLoading(isLoading) {
-		modalLoading.classList.toggle('d-none', !isLoading);
-		modalTableWrap.classList.toggle('d-none', isLoading);
+		const elements = getModalElements();
+
+		if (elements.loadingEl) {
+			elements.loadingEl.classList.toggle('d-none', !isLoading);
+		}
+		if (elements.tableWrapEl) {
+			elements.tableWrapEl.classList.toggle('d-none', isLoading);
+		}
 	}
 
-	function renderMeta(tab) {
-		modalTitle.textContent = tab.file_name || '—';
-		modalMeta.innerHTML =
+	function renderProcedureMeta(tab, elements) {
+		elements.titleEl.textContent = tab.file_name || '—';
+		elements.metaEl.innerHTML =
 			'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
 			'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
 			'<span><strong>Processor:</strong> ' + escapeHtml(tab.processor_name) + '</span>' +
 			'<span><strong>Status:</strong> ' + escapeHtml(tab.status) + '</span>' +
 			'<span><strong>Uploaded:</strong> ' + escapeHtml(tab.created_at) + '</span>' +
 			'<span><strong>Products:</strong> ' + escapeHtml(tab.total_products) + '</span>';
-		modalFooterMeta.textContent = (tab.rows || []).length + ' item(s)';
+		elements.footerMetaEl.textContent = (tab.rows || []).length + ' item(s)';
 	}
 
-	function renderTable(tab) {
+	function renderOrganizationMeta(tab, elements) {
+		elements.titleEl.textContent = tab.file_name || '—';
+		elements.metaEl.innerHTML =
+			'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
+			'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
+			'<span><strong>Processor:</strong> ' + escapeHtml(tab.processor_name) + '</span>' +
+			'<span><strong>Status:</strong> ' + escapeHtml(tab.status) + '</span>' +
+			'<span><strong>Uploaded:</strong> ' + escapeHtml(tab.created_at) + '</span>' +
+			'<span><strong>Items:</strong> ' + escapeHtml(tab.total_items) + '</span>';
+		elements.footerMetaEl.textContent = (tab.rows || []).length + ' item(s)';
+	}
+
+	function renderProcedureTable(tab, elements) {
 		const columns = tab.columns || [];
 		const rows = tab.rows || [];
 		const colSpan = columns.length + 4;
@@ -129,11 +192,46 @@
 		}
 
 		html += '</tbody></table>';
-		modalTableWrap.innerHTML = html;
+		elements.tableWrapEl.innerHTML = html;
 	}
 
-	function openProcedureModal(procedureId) {
-		if (!modal || !procedureId) {
+	function renderOrganizationTable(tab, elements) {
+		const columns = tab.columns || [];
+		const rows = tab.rows || [];
+		const colSpan = columns.length + 1;
+		let html =
+			'<table class="table table-hover align-middle mb-0 procedure-data-table">' +
+				'<thead><tr>' +
+					'<th class="procedure-row-index">#</th>';
+
+		columns.forEach(function (column) {
+			html += '<th>' + escapeHtml(column) + '</th>';
+		});
+
+		html += '</tr></thead><tbody>';
+
+		if (!rows.length) {
+			html += '<tr><td colspan="' + colSpan + '" class="text-center text-muted py-4">No registration items found.</td></tr>';
+		} else {
+			rows.forEach(function (row, index) {
+				html += '<tr><td class="procedure-row-index text-muted">' + (index + 1) + '</td>';
+
+				(row.cells || []).forEach(function (cell) {
+					html += '<td>' + escapeHtml(cell) + '</td>';
+				});
+
+				html += '</tr>';
+			});
+		}
+
+		html += '</tbody></table>';
+		elements.tableWrapEl.innerHTML = html;
+	}
+
+	function openHistoryModal(recordId) {
+		const elements = getModalElements();
+
+		if (!modal || !recordId) {
 			return;
 		}
 
@@ -147,7 +245,7 @@
 
 		activeRequest = new AbortController();
 
-		fetch(baseUrl + '/' + procedureId, {
+		fetch(baseUrl + '/' + recordId, {
 			headers: {
 				'X-Requested-With': 'XMLHttpRequest',
 				'Accept': 'application/json',
@@ -163,11 +261,19 @@
 				activeRequest = null;
 
 				if (!result.ok || !result.data.success) {
-					throw new Error(result.data.message || 'Failed to load procedure items.');
+					throw new Error(result.data.message || 'Failed to load history items.');
 				}
 
-				renderMeta(result.data.tab);
-				renderTable(result.data.tab);
+				const tab = result.data.tab;
+
+				if (historyType === 'organizations') {
+					renderOrganizationMeta(tab, elements);
+					renderOrganizationTable(tab, elements);
+				} else {
+					renderProcedureMeta(tab, elements);
+					renderProcedureTable(tab, elements);
+				}
+
 				setLoading(false);
 			})
 			.catch(function (error) {
@@ -177,14 +283,14 @@
 
 				activeRequest = null;
 				modal.hide();
-				showToast(error.message || 'Failed to load procedure items.', 'error');
+				showToast(error.message || 'Failed to load history items.', 'error');
 			});
 	}
 
-	function bindRows() {
-		document.querySelectorAll('.history-procedure-row').forEach(function (row) {
+	function bindRows(selector, attributeName) {
+		document.querySelectorAll(selector).forEach(function (row) {
 			function openRow() {
-				openProcedureModal(row.getAttribute('data-procedure-id'));
+				openHistoryModal(row.getAttribute(attributeName));
 			}
 
 			row.addEventListener('click', openRow);
@@ -198,5 +304,10 @@
 	}
 
 	initModal();
-	bindRows();
+
+	if (historyType === 'organizations') {
+		bindRows('.history-organization-row', 'data-registration-id');
+	} else {
+		bindRows('.history-procedure-row', 'data-product-registration-id');
+	}
 })();

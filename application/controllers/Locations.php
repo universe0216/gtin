@@ -30,6 +30,7 @@ class Locations extends BasicController {
 	public function __construct()
 	{
 		parent::__construct();
+		$this->auth->require_admin();
 		$this->load->model('location_model', 'model');
 	}
 }

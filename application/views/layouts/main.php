@@ -29,7 +29,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/js/crud.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/admin.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/image-viewer.js'); ?>"></script>
-<script src="<?php echo base_url('assets/js/procedure.js'); ?>"></script>
+<script src="<?php echo base_url('assets/js/product_registration.js'); ?>"></script>
+<script src="<?php echo base_url('assets/js/org_registration.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/history.js'); ?>"></script>
 
 </body>
