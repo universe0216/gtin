@@ -102,4 +102,26 @@ class Products extends BasicController {
 		parent::__construct();
 		$this->load->model('product_model', 'model');
 	}
+
+	public function index()
+	{
+		$this->auth->require_permission($this->permission_view);
+
+		$records = array();
+
+		if ($this->model)
+		{
+			$records = $this->model->get_all();
+		}
+
+		$this->render('crud/index', array(
+			'title'      => $this->entity_label,
+			'records'    => $records,
+			'fields'     => $this->fields,
+			'entity'     => $this->entity,
+			'nav_active' => $this->entity,
+			'can_edit'   => $this->auth->can($this->permission_edit),
+			'add_url'    => $this->auth->can($this->permission_edit) ? site_url('product_registration') : NULL,
+		));
+	}
 }

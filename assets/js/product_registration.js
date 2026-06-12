@@ -894,7 +894,7 @@
 
 	function buildTabNavCloseButton(tab, isCompleted) {
 		if (isCompleted) {
-			return '<button type="button" class="product-registration-tab-nav-close product-registration-tab-close-btn"' +
+			return '<button type="button" class="procedure-tab-nav-close product-registration-tab-close-btn"' +
 				' data-product-registration-id="' + tab.product_registration_id + '"' +
 				' aria-label="Close tab"' +
 				' data-mdb-ripple-init>' +
@@ -902,7 +902,7 @@
 			'</button>';
 		}
 
-		return '<button type="button" class="product-registration-tab-nav-close product-registration-tab-delete-btn"' +
+		return '<button type="button" class="procedure-tab-nav-close product-registration-tab-delete-btn"' +
 			' data-product-registration-id="' + tab.product_registration_id + '"' +
 			' data-file-name="' + escapeAttr(tab.file_name) + '"' +
 			' aria-label="Stop procedure"' +
@@ -914,8 +914,8 @@
 	function buildTabButton(tab, isActive, isImported) {
 		const isCompleted = isImported || tab.status === 'completed';
 
-		return '<li class="nav-item product-registration-tab-nav-item" role="presentation">' +
-			'<div class="product-registration-tab-nav-wrap">' +
+		return '<li class="nav-item procedure-tab-nav-item" role="presentation">' +
+			'<div class="procedure-tab-nav-wrap">' +
 				'<button class="nav-link' + (isActive ? ' active' : '') + '" ' +
 					'id="product-registration-tab-' + tab.product_registration_id + '-tab" ' +
 					'data-mdb-tab-init ' +
@@ -928,7 +928,7 @@
 					'<i class="fas fa-file-zipper me-1"></i>' + escapeHtml(tab.file_name) +
 					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
 					(isCompleted
-						? '<i class="fas fa-check ms-2 product-registration-tab-completed-icon" aria-hidden="true"></i>'
+						? '<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>'
 						: '') +
 				'</button>' +
 				buildTabNavCloseButton(tab, isCompleted) +
@@ -959,7 +959,7 @@
 			'aria-labelledby="product-registration-tab-' + tab.product_registration_id + '-tab" ' +
 			'data-product-registration-id="' + tab.product_registration_id + '"' +
 			(isImported ? ' data-imported="true"' : '') + '>' +
-			'<div class="product-registration-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
+			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
 				'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
 				'<span><strong>Processor:</strong> ' + escapeHtml(tab.processor_name || '') + '</span>' +

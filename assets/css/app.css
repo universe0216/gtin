@@ -315,7 +315,8 @@ html[data-mdb-theme="dark"] body {
 	flex-shrink: 0;
 }
 
-#procedureInitialUpload {
+#procedureInitialUpload,
+#orgRegistrationInitialUpload {
 	flex: 1 1 auto;
 	min-height: 0;
 	display: flex;
@@ -323,38 +324,45 @@ html[data-mdb-theme="dark"] body {
 	overflow: hidden;
 }
 
-#procedureInitialUpload .procedure-upload-form {
+#procedureInitialUpload .procedure-upload-form,
+#orgRegistrationInitialUpload .procedure-upload-form {
 	flex: 1 1 auto;
 }
 
-#procedureInitialUpload .procedure-upload-actions {
+#procedureInitialUpload .procedure-upload-actions,
+#orgRegistrationInitialUpload .procedure-upload-actions {
 	border-top: 1px solid var(--app-border-subtle);
 	padding-top: 0.75rem;
 	margin-top: 0.75rem;
 }
 
-#procedureUploadModal .modal-dialog {
+#procedureUploadModal .modal-dialog,
+#orgRegistrationUploadModal .modal-dialog {
 	max-height: calc(100dvh - 2rem);
 	margin: 1rem auto;
 }
 
-#procedureUploadModal .modal-content {
+#procedureUploadModal .modal-content,
+#orgRegistrationUploadModal .modal-content {
 	max-height: calc(100dvh - 2rem);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
 }
 
-#procedureUploadModal .procedure-upload-form {
+#procedureUploadModal .procedure-upload-form,
+#orgRegistrationUploadModal .procedure-upload-form {
 	flex: 1 1 auto;
 	min-height: 0;
 }
 
-#procedureUploadModal .modal-body {
+#procedureUploadModal .modal-body,
+#orgRegistrationUploadModal .modal-body {
 	overflow-y: auto;
 }
 
-#procedureUploadModal .modal-footer {
+#procedureUploadModal .modal-footer,
+#orgRegistrationUploadModal .modal-footer {
 	flex-shrink: 0;
 }
 
@@ -535,7 +543,8 @@ html[data-mdb-theme="dark"] body {
 	overflow: hidden;
 }
 
-#procedureTabsWrapper {
+#procedureTabsWrapper,
+#orgRegistrationTabsWrapper {
 	flex: 1 1 auto;
 	min-height: 0;
 	display: flex;
@@ -543,24 +552,28 @@ html[data-mdb-theme="dark"] body {
 	overflow: hidden;
 }
 
-#procedureTabsWrapper > .procedure-tabs {
+#procedureTabsWrapper > .procedure-tabs,
+#orgRegistrationTabsWrapper > .procedure-tabs {
 	flex-shrink: 0;
 }
 
-#procedureTabContent {
+#procedureTabContent,
+#orgRegistrationTabContent {
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: hidden;
 }
 
-#procedureTabContent > .tab-pane.active.show {
+#procedureTabContent > .tab-pane.active.show,
+#orgRegistrationTabContent > .tab-pane.active.show {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
 	height: 100%;
 }
 
-#procedureTabContent > .tab-pane > .procedure-tab-meta {
+#procedureTabContent > .tab-pane > .procedure-tab-meta,
+#orgRegistrationTabContent > .tab-pane > .procedure-tab-meta {
 	flex-shrink: 0;
 }
 
@@ -1013,11 +1026,13 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	background-color: var(--app-surface-raised);
 }
 
-.history-procedure-row {
+.history-procedure-row,
+.history-organization-row {
 	cursor: pointer;
 }
 
-.history-procedure-row:hover > td {
+.history-procedure-row:hover > td,
+.history-organization-row:hover > td {
 	background-color: var(--app-table-row-hover);
 }
 

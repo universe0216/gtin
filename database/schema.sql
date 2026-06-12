@@ -1,16 +1,9 @@
--- GTIN initial schema for database: goods_schema
+-- GTIN initial schema for database: national_gs1_registry
 
-CREATE DATABASE IF NOT EXISTS `goods_schema` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
-USE `goods_schema`;
+CREATE DATABASE IF NOT EXISTS `national_gs1_registry` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `national_gs1_registry`;
 
-CREATE TABLE IF NOT EXISTS `primaries` (
-	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-	`name` VARCHAR(255) NOT NULL,
-	`description` TEXT NULL,
-	`created_at` DATETIME NOT NULL,
-	`updated_at` DATETIME NOT NULL,
-	PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 CREATE TABLE IF NOT EXISTS `products` (
 	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,

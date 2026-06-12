@@ -20,8 +20,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div id="procedureTabsWrapper" class="<?php echo empty($tabs) ? 'd-none' : ''; ?>">
 			<ul class="nav nav-tabs procedure-tabs mb-4" id="procedureTabs" role="tablist">
 				<?php foreach ($tabs as $index => $tab): ?>
-					<li class="nav-item product-registration-tab-nav-item" role="presentation">
-						<div class="product-registration-tab-nav-wrap">
+					<li class="nav-item procedure-tab-nav-item" role="presentation">
+						<div class="procedure-tab-nav-wrap">
 							<button
 								class="nav-link<?php echo $index === 0 ? ' active' : ''; ?>"
 								id="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>-tab"
@@ -38,7 +38,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							</button>
 							<button
 								type="button"
-								class="product-registration-tab-nav-close product-registration-tab-delete-btn"
+								class="procedure-tab-nav-close product-registration-tab-delete-btn"
 								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
 								aria-label="Stop procedure"
@@ -60,7 +60,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						aria-labelledby="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>-tab"
 						data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 					>
-						<div class="product-registration-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
+						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
 							<span><strong>Procedure #:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
 							<span><strong>Organization:</strong> <?php echo html_escape($tab['organization_name']); ?></span>
 							<span><strong>Processor:</strong> <?php echo html_escape($tab['processor_name']); ?></span>
