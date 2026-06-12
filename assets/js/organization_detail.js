@@ -47,7 +47,6 @@
 	let updateRequest = null;
 	let productsRequest = null;
 	let productDeleteRequest = null;
-	let productsSearchTimer = null;
 	let productsLoaded = false;
 	let pendingDeleteProductId = null;
 
@@ -266,29 +265,15 @@
 		hideInfoAlert();
 		setInfoUpdateLoading(true);
 
-		if (updateRequest) {
-			updateRequest.abort();
-		}
+		updateRequest = createAbortableRequest(updateRequest);
 
-		updateRequest = new AbortController();
-
-		fetch(updateUrl + '/' + detailState.organizationId, {
+		fetchApi(updateUrl + '/' + detailState.organizationId, {
 			method: 'POST',
 			body: new FormData(form),
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 			signal: updateRequest.signal,
 		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
 			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					throw new Error(result.data.message || 'Failed to update organization.');
-				}
-
-				const record = result.data.data || {};
+				const record = result.data || {};
 				detailState.organizationName = record.name || detailState.organizationName;
 
 				if (modalTitle) {
@@ -296,11 +281,11 @@
 				}
 
 				renderInfoFields(record);
-				showInfoAlert(result.data.message || 'Organization updated successfully.', 'success');
+				showInfoAlert(result.message || 'Organization updated successfully.', 'success');
 				document.dispatchEvent(new CustomEvent('entityListRefresh'));
 			})
 			.catch(function (error) {
-				if (error.name === 'AbortError') {
+				if (isAbortError(error)) {
 					return;
 				}
 
@@ -327,54 +312,19 @@
 	}
 
 	function renderProductsPagination(meta) {
-		const total = meta.total || 0;
-		const page = meta.page || 1;
-		const totalPages = meta.total_pages || 1;
-
 		if (!productsPaginationList) {
 			return;
 		}
 
-		if (productsPaginationNav) {
-			productsPaginationNav.classList.toggle('d-none', total <= productsState.perPage);
-		}
-
-		if (productsPageMeta) {
-			productsPageMeta.textContent = total > 0 ? 'Page ' + page + ' of ' + totalPages : '';
-		}
-
-		let html = '';
-		const addPageItem = function (label, targetPage, disabled, active) {
-			html += '<li class="page-item' +
-				(disabled ? ' disabled' : '') +
-				(active ? ' active' : '') +
-				'">';
-
-			if (disabled || active) {
-				html += '<span class="page-link">' + label + '</span>';
-			} else {
-				html += '<button type="button" class="page-link organization-products-page-btn" data-page="' + targetPage + '" data-mdb-ripple-init>' + label + '</button>';
-			}
-
-			html += '</li>';
-		};
-
-		addPageItem('&laquo;', page - 1, page <= 1, false);
-
-		const windowSize = 5;
-		let startPage = Math.max(1, page - Math.floor(windowSize / 2));
-		let endPage = Math.min(totalPages, startPage + windowSize - 1);
-
-		if (endPage - startPage + 1 < windowSize) {
-			startPage = Math.max(1, endPage - windowSize + 1);
-		}
-
-		for (let i = startPage; i <= endPage; i++) {
-			addPageItem(String(i), i, false, i === page);
-		}
-
-		addPageItem('&raquo;', page + 1, page >= totalPages, false);
-		productsPaginationList.innerHTML = html;
+		Pagination.update({
+			listEl: productsPaginationList,
+			navEl: productsPaginationNav,
+			metaEl: productsPageMeta,
+			meta: meta,
+			perPage: productsState.perPage,
+			buttonClass: 'organization-products-page-btn',
+			showEllipsis: false,
+		});
 	}
 
 	function renderProductsRows(records, rowOffset) {
@@ -442,24 +392,12 @@
 
 		setProductsLoading(true);
 
-		if (productsRequest) {
-			productsRequest.abort();
-		}
+		productsRequest = createAbortableRequest(productsRequest);
 
-		productsRequest = new AbortController();
-
-		fetch(buildProductsUrl(), {
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		fetchApi(buildProductsUrl(), {
 			signal: productsRequest.signal,
 		})
-			.then(function (response) {
-				return response.json();
-			})
 			.then(function (result) {
-				if (!result.success) {
-					throw new Error(result.message || 'Failed to load products.');
-				}
-
 				productsState.sort = result.sort || '';
 				productsState.dir = result.sort_dir === 'asc' || result.sort_dir === 'desc' ? result.sort_dir : '';
 				renderProductTableHead();
@@ -492,7 +430,7 @@
 				productsLoaded = true;
 			})
 			.catch(function (error) {
-				if (error.name === 'AbortError') {
+				if (isAbortError(error)) {
 					return;
 				}
 
@@ -512,24 +450,12 @@
 	function loadDetail(organizationId) {
 		setInfoLoading(true);
 
-		if (detailRequest) {
-			detailRequest.abort();
-		}
+		detailRequest = createAbortableRequest(detailRequest);
 
-		detailRequest = new AbortController();
-
-		fetch(detailUrl + '/' + organizationId, {
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		fetchApi(detailUrl + '/' + organizationId, {
 			signal: detailRequest.signal,
 		})
-			.then(function (response) {
-				return response.json();
-			})
 			.then(function (result) {
-				if (!result.success) {
-					throw new Error(result.message || 'Failed to load organization.');
-				}
-
 				detailState.organizationName = result.data.name || '—';
 				if (modalTitle) {
 					modalTitle.textContent = detailState.organizationName;
@@ -538,7 +464,7 @@
 				renderInfoFields(result.data);
 			})
 			.catch(function (error) {
-				if (error.name === 'AbortError') {
+				if (isAbortError(error)) {
 					return;
 				}
 
@@ -667,37 +593,23 @@
 			productConfirmDeleteBtn.disabled = true;
 		}
 
-		if (productDeleteRequest) {
-			productDeleteRequest.abort();
-		}
+		productDeleteRequest = createAbortableRequest(productDeleteRequest);
 
-		productDeleteRequest = new AbortController();
-
-		fetch(productDeleteUrl + '/' + pendingDeleteProductId, {
+		fetchApi(productDeleteUrl + '/' + pendingDeleteProductId, {
 			method: 'POST',
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 			signal: productDeleteRequest.signal,
 		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
 			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					throw new Error(result.data.message || 'Failed to delete product.');
-				}
-
 				if (productDeleteModal) {
 					productDeleteModal.hide();
 				}
 
-				showToast(result.data.message || 'Product deleted successfully.', 'success');
+				showToast(result.message || 'Product deleted successfully.', 'success');
 				productsLoaded = false;
 				loadProducts();
 			})
 			.catch(function (error) {
-				if (error.name === 'AbortError') {
+				if (isAbortError(error)) {
 					return;
 				}
 
@@ -713,16 +625,10 @@
 			});
 	}
 
-	function scheduleProductsSearch() {
-		if (productsSearchTimer) {
-			clearTimeout(productsSearchTimer);
-		}
-
-		productsSearchTimer = setTimeout(function () {
-			productsState.page = 1;
-			loadProducts();
-		}, 300);
-	}
+	const scheduleProductsSearch = debounce(function () {
+		productsState.page = 1;
+		loadProducts();
+	}, 300);
 
 	if (tableBody) {
 		tableBody.addEventListener('click', function (event) {

@@ -60,7 +60,6 @@
 	let deleteModal;
 	let rejectModal;
 	let importListRequest = null;
-	let importSearchTimer = null;
 	const importState = {
 		page: 1,
 		search: '',
@@ -127,10 +126,7 @@
 			importListRequest = null;
 		}
 
-		if (importSearchTimer) {
-			clearTimeout(importSearchTimer);
-			importSearchTimer = null;
-		}
+		scheduleImportSearch.cancel();
 
 		importState.page = 1;
 		importState.search = '';
@@ -209,9 +205,7 @@
 
 	function renderImportPagination(meta) {
 		const total = meta.total || 0;
-		const page = meta.page || 1;
 		const perPage = meta.per_page || importState.perPage;
-		const totalPages = meta.total_pages || 1;
 		const rangeStart = meta.range_start || 0;
 		const rangeEnd = meta.range_end || 0;
 
@@ -225,64 +219,13 @@
 			}
 		}
 
-		if (!importPaginationEl || !importPaginationList) {
-			return;
-		}
-
-		if (total <= perPage) {
-			importPaginationEl.classList.add('d-none');
-			importPaginationList.innerHTML = '';
-			return;
-		}
-
-		importPaginationEl.classList.remove('d-none');
-
-		let html = '';
-		const addPageItem = function (label, targetPage, disabled, active) {
-			html += '<li class="page-item' +
-				(disabled ? ' disabled' : '') +
-				(active ? ' active' : '') +
-				'">';
-
-			if (disabled || active) {
-				html += '<span class="page-link">' + label + '</span>';
-			} else {
-				html += '<button type="button" class="page-link procedure-import-page-btn" data-page="' + targetPage + '" data-mdb-ripple-init>' + label + '</button>';
-			}
-
-			html += '</li>';
-		};
-
-		addPageItem('&laquo;', page - 1, page <= 1, false);
-
-		const windowSize = 5;
-		let startPage = Math.max(1, page - Math.floor(windowSize / 2));
-		let endPage = Math.min(totalPages, startPage + windowSize - 1);
-
-		if (endPage - startPage + 1 < windowSize) {
-			startPage = Math.max(1, endPage - windowSize + 1);
-		}
-
-		if (startPage > 1) {
-			addPageItem('1', 1, false, page === 1);
-			if (startPage > 2) {
-				addPageItem('&hellip;', page, true, false);
-			}
-		}
-
-		for (let i = startPage; i <= endPage; i++) {
-			addPageItem(String(i), i, false, i === page);
-		}
-
-		if (endPage < totalPages) {
-			if (endPage < totalPages - 1) {
-				addPageItem('&hellip;', page, true, false);
-			}
-			addPageItem(String(totalPages), totalPages, false, page === totalPages);
-		}
-
-		addPageItem('&raquo;', page + 1, page >= totalPages, false);
-		importPaginationList.innerHTML = html;
+		Pagination.update({
+			listEl: importPaginationList,
+			wrapperEl: importPaginationEl,
+			meta: meta,
+			perPage: perPage,
+			buttonClass: 'procedure-import-page-btn',
+		});
 	}
 
 	function buildImportListUrl() {
@@ -299,47 +242,31 @@
 	function loadImportList() {
 		setImportLoading(true);
 
-		if (importListRequest) {
-			importListRequest.abort();
-		}
+		importListRequest = createAbortableRequest(importListRequest);
 
-		importListRequest = new AbortController();
-
-		fetch(buildImportListUrl(), {
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		fetchApi(buildImportListUrl(), {
 			signal: importListRequest.signal,
 		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
 			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Failed to load completed procedures.', 'error');
-					renderImportList([], {});
-					return;
-				}
+				importState.page = result.page || 1;
+				importState.perPage = result.per_page || importState.perPage;
+				importState.search = result.search || importState.search;
 
-				importState.page = result.data.page || 1;
-				importState.perPage = result.data.per_page || importState.perPage;
-				importState.search = result.data.search || importState.search;
-
-				renderImportList(result.data.registrations || [], {
-					total: result.data.total,
-					page: result.data.page,
-					per_page: result.data.per_page,
-					total_pages: result.data.total_pages,
-					range_start: result.data.range_start,
-					range_end: result.data.range_end,
+				renderImportList(result.registrations || [], {
+					total: result.total,
+					page: result.page,
+					per_page: result.per_page,
+					total_pages: result.total_pages,
+					range_start: result.range_start,
+					range_end: result.range_end,
 				});
 			})
 			.catch(function (error) {
-				if (error.name === 'AbortError') {
+				if (isAbortError(error)) {
 					return;
 				}
 
-				showToast('Failed to load completed procedures.', 'error');
+				showToast(error.message || 'Failed to load completed procedures.', 'error');
 				renderImportList([], {});
 			})
 			.finally(function () {
@@ -348,18 +275,11 @@
 			});
 	}
 
-	function scheduleImportSearch() {
-		if (importSearchTimer) {
-			clearTimeout(importSearchTimer);
-		}
-
-		importSearchTimer = setTimeout(function () {
-			importSearchTimer = null;
-			importState.search = importSearchInput ? importSearchInput.value.trim() : '';
-			importState.page = 1;
-			loadImportList();
-		}, 300);
-	}
+	const scheduleImportSearch = debounce(function () {
+		importState.search = importSearchInput ? importSearchInput.value.trim() : '';
+		importState.page = 1;
+		loadImportList();
+	}, 300);
 
 	function importRegistrationTab(registrationId) {
 		if (!registrationId) {

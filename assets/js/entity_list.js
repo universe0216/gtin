@@ -33,7 +33,6 @@
 		sort: '',
 		dir: '',
 		request: null,
-		searchTimer: null,
 	};
 
 	function setLoading(isLoading) {
@@ -130,68 +129,18 @@
 	}
 
 	function renderPagination(meta) {
-		const total = meta.total || 0;
-		const page = meta.page || 1;
-		const totalPages = meta.total_pages || 1;
-
 		if (!paginationList) {
 			return;
 		}
 
-		if (paginationNav) {
-			paginationNav.classList.toggle('d-none', total <= state.perPage);
-		}
-
-		if (pageMeta) {
-			pageMeta.textContent = total > 0 ? 'Page ' + page + ' of ' + totalPages : '';
-		}
-
-		let html = '';
-		const addPageItem = function (label, targetPage, disabled, active) {
-			html += '<li class="page-item' +
-				(disabled ? ' disabled' : '') +
-				(active ? ' active' : '') +
-				'">';
-
-			if (disabled || active) {
-				html += '<span class="page-link">' + label + '</span>';
-			} else {
-				html += '<button type="button" class="page-link entity-list-page-btn" data-page="' + targetPage + '" data-mdb-ripple-init>' + label + '</button>';
-			}
-
-			html += '</li>';
-		};
-
-		addPageItem('&laquo;', page - 1, page <= 1, false);
-
-		const windowSize = 5;
-		let startPage = Math.max(1, page - Math.floor(windowSize / 2));
-		let endPage = Math.min(totalPages, startPage + windowSize - 1);
-
-		if (endPage - startPage + 1 < windowSize) {
-			startPage = Math.max(1, endPage - windowSize + 1);
-		}
-
-		if (startPage > 1) {
-			addPageItem('1', 1, false, page === 1);
-			if (startPage > 2) {
-				addPageItem('&hellip;', page, true, false);
-			}
-		}
-
-		for (let i = startPage; i <= endPage; i++) {
-			addPageItem(String(i), i, false, i === page);
-		}
-
-		if (endPage < totalPages) {
-			if (endPage < totalPages - 1) {
-				addPageItem('&hellip;', page, true, false);
-			}
-			addPageItem(String(totalPages), totalPages, false, page === totalPages);
-		}
-
-		addPageItem('&raquo;', page + 1, page >= totalPages, false);
-		paginationList.innerHTML = html;
+		Pagination.update({
+			listEl: paginationList,
+			navEl: paginationNav,
+			metaEl: pageMeta,
+			meta: meta,
+			perPage: state.perPage,
+			buttonClass: 'entity-list-page-btn',
+		});
 	}
 
 	function renderRows(records, rowOffset) {
@@ -247,24 +196,12 @@
 		setLoading(true);
 		updateUrl();
 
-		if (state.request) {
-			state.request.abort();
-		}
+		state.request = createAbortableRequest(state.request);
 
-		state.request = new AbortController();
-
-		fetch(buildListUrl(), {
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+		fetchApi(buildListUrl(), {
 			signal: state.request.signal,
 		})
-			.then(function (response) {
-				return response.json();
-			})
 			.then(function (result) {
-				if (!result.success) {
-					throw new Error(result.message || 'Failed to load records.');
-				}
-
 				state.perPage = normalizePerPage(result.per_page);
 				state.sort = result.sort || '';
 				state.dir = result.sort_dir === 'asc' || result.sort_dir === 'desc' ? result.sort_dir : '';
@@ -285,7 +222,7 @@
 				renderPagination(meta);
 			})
 			.catch(function (error) {
-				if (error.name === 'AbortError') {
+				if (isAbortError(error)) {
 					return;
 				}
 
@@ -302,16 +239,10 @@
 			});
 	}
 
-	function scheduleSearch() {
-		if (state.searchTimer) {
-			clearTimeout(state.searchTimer);
-		}
-
-		state.searchTimer = setTimeout(function () {
-			state.page = 1;
-			loadList();
-		}, 300);
-	}
+	const scheduleSearch = debounce(function () {
+		state.page = 1;
+		loadList();
+	}, 300);
 
 	if (searchForm) {
 		searchForm.addEventListener('submit', function (event) {
