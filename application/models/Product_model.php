@@ -88,4 +88,16 @@ class Product_model extends Basic_model {
 		$this->db->or_like('products.barcode_2d_value', $search);
 		$this->db->group_end();
 	}
+
+	public function get_barcodes_by_organization($organization_id)
+	{
+		return $this->db
+			->select('barcode')
+			->from($this->table)
+			->where('organization_id', (int) $organization_id)
+			->where('barcode IS NOT NULL', NULL, FALSE)
+			->where('barcode !=', '')
+			->get()
+			->result_array();
+	}
 }

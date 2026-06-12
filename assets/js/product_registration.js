@@ -34,6 +34,7 @@
 	const productDetailPrevBtn = document.getElementById('procedureDetailPrevBtn');
 	const productDetailNextBtn = document.getElementById('procedureDetailNextBtn');
 	const procedureBarcodeInput = document.getElementById('procedureBarcodeInput');
+	const assignableBarcodeEl = document.getElementById('assignable_barcode');
 	const procedureBarcodeFullValue = document.getElementById('procedureBarcodeFullValue');
 	const procedureBarcodeSvg = document.getElementById('procedureBarcodeSvg');
 	const procedureBarcodeEmpty = document.getElementById('procedureBarcodeEmpty');
@@ -69,6 +70,9 @@
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
 	let activeDetailRow = null;
+	let barcodeTypingTimer = null;
+	const tabAvailableBarcodes = new Map();
+	const BARCODE_CELL_INDEX = 7;
 
 	function initUploadModal() {
 		if (typeof mdb === 'undefined' || !uploadModalEl) {
@@ -411,7 +415,10 @@
 		}
 
 		productModal = mdb.Modal.getOrCreateInstance(productModalEl);
-		productModalEl.addEventListener('hidden.mdb.modal', clearActiveDetailRow);
+		productModalEl.addEventListener('hidden.mdb.modal', function () {
+			cancelBarcodeTyping();
+			clearActiveDetailRow();
+		});
 		initDetailTabs();
 	}
 
@@ -553,6 +560,51 @@
 		});
 		row.setAttribute('data-row-payload', JSON.stringify(payload));
 		return payload;
+	}
+
+	function getBarcodeCellIndex(columns) {
+		if (Array.isArray(columns)) {
+			for (let i = 0; i < columns.length; i++) {
+				if (String(columns[i] || '').trim().toLowerCase() === 'barcode') {
+					return i;
+				}
+			}
+		}
+
+		return BARCODE_CELL_INDEX;
+	}
+
+	function updateRowBarcodeCell(row, ean13) {
+		if (!row) {
+			return;
+		}
+
+		const barcodeValue = String(ean13 || '').replace(/\D/g, '');
+
+		if (!barcodeValue) {
+			return;
+		}
+
+		const payload = parseRowPayload(row);
+		const cellIndex = getBarcodeCellIndex(payload ? payload.columns : []);
+		const cells = payload ? (payload.cells || []).slice() : [];
+
+		while (cells.length <= cellIndex) {
+			cells.push('');
+		}
+
+		cells[cellIndex] = barcodeValue;
+
+		const dataCells = row.querySelectorAll('td');
+		const domIndex = cellIndex + 2;
+
+		if (dataCells[domIndex]) {
+			dataCells[domIndex].textContent = barcodeValue;
+		}
+
+		if (payload) {
+			updateRowPayload(row, { cells: cells });
+		}
 	}
 
 	function markDetailRowRejected(row, reason) {
@@ -713,8 +765,16 @@
 			productDetailAcceptBtn.disabled = true;
 		}
 
+		const assignable = getAssignableBarcodeForRow(activeDetailRow);
+		const formData = new FormData();
+
+		if (assignable && assignable.ean13) {
+			formData.append('barcode', assignable.ean13);
+		}
+
 		fetch(baseUrl + '/accept_item/' + itemId, {
 			method: 'POST',
+			body: formData,
 			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 		})
 			.then(function (response) {
@@ -729,8 +789,26 @@
 				}
 
 				const acceptedRow = activeDetailRow;
+				const savedBarcode = result.data.data && result.data.data.barcode
+					? result.data.data.barcode
+					: (assignable && assignable.ean13 ? assignable.ean13 : '');
+
 				markDetailRowAccepted(acceptedRow);
-				advanceToNextRowAfterReview(acceptedRow);
+
+				if (savedBarcode) {
+					updateRowBarcodeCell(acceptedRow, savedBarcode);
+				}
+
+				showBarcodesTab();
+
+				const barcodeValue = assignable && assignable.barcode ? assignable.barcode : '';
+
+				typeBarcodeIntoInput(barcodeValue, function () {
+					setTimeout(function () {
+						advanceToNextRowAfterReview(acceptedRow);
+					}, 2000);
+				});
+
 				showToast(result.data.message, 'success');
 			})
 			.catch(function () {
@@ -805,6 +883,160 @@
 			textEl.setAttribute('letter-spacing', '0.32em');
 			textEl.setAttribute('fill', '#000000');
 		});
+	}
+
+	function registerTabBarcodes(tab) {
+		if (!tab || !tab.product_registration_id) {
+			return;
+		}
+
+		tabAvailableBarcodes.set(String(tab.product_registration_id), tab.available_barcodes || []);
+	}
+
+	function getTabAvailableBarcodes(registrationId) {
+		const key = String(registrationId || '');
+
+		if (!key) {
+			return [];
+		}
+
+		if (tabAvailableBarcodes.has(key)) {
+			return tabAvailableBarcodes.get(key);
+		}
+
+		const pane = tabsContent
+			? tabsContent.querySelector('.tab-pane[data-product-registration-id="' + key + '"]')
+			: null;
+
+		if (!pane) {
+			return [];
+		}
+
+		const raw = pane.getAttribute('data-available-barcodes');
+
+		if (!raw) {
+			return [];
+		}
+
+		try {
+			const parsed = JSON.parse(raw);
+			tabAvailableBarcodes.set(key, Array.isArray(parsed) ? parsed : []);
+			return tabAvailableBarcodes.get(key);
+		} catch (error) {
+			return [];
+		}
+	}
+
+	function getActiveTabRegistrationId() {
+		const activePane = tabsContent ? tabsContent.querySelector('.tab-pane.active') : null;
+
+		return activePane ? activePane.getAttribute('data-product-registration-id') : null;
+	}
+
+	function getAssignableBarcodeForRow(row) {
+		if (!row) {
+			return null;
+		}
+
+		const rows = getActiveTabRows();
+		const rowIndex = rows.indexOf(row);
+		const barcodes = getTabAvailableBarcodes(getActiveTabRegistrationId());
+
+		if (rowIndex < 0 || rowIndex >= barcodes.length) {
+			return null;
+		}
+
+		return barcodes[rowIndex];
+	}
+
+	function updateAssignableBarcodeDisplay(row) {
+		if (!assignableBarcodeEl) {
+			return;
+		}
+
+		if (!row || !isRowPending(row)) {
+			assignableBarcodeEl.textContent = '';
+			return;
+		}
+
+		const assignable = getAssignableBarcodeForRow(row);
+
+		if (!assignable || !assignable.ean13) {
+			assignableBarcodeEl.innerHTML = '<span class="text-muted">No barcode available for this product.</span>';
+			return;
+		}
+
+		assignableBarcodeEl.innerHTML =
+			'EAN-13 to assign: <strong class="procedure-assignable-barcode-value">' +
+			escapeHtml(assignable.ean13) +
+			'</strong>';
+	}
+
+	function cancelBarcodeTyping() {
+		if (barcodeTypingTimer) {
+			clearTimeout(barcodeTypingTimer);
+			barcodeTypingTimer = null;
+		}
+
+		if (procedureBarcodeInput) {
+			procedureBarcodeInput.classList.remove('is-typing-barcode');
+		}
+	}
+
+	function typeBarcodeIntoInput(value, onComplete) {
+		cancelBarcodeTyping();
+
+		if (!procedureBarcodeInput) {
+			if (typeof onComplete === 'function') {
+				onComplete();
+			}
+			return;
+		}
+
+		const target = String(value || '').replace(/\D/g, '').slice(0, 12);
+
+		procedureBarcodeInput.value = '';
+		procedureBarcodeInput.classList.add('is-typing-barcode');
+		renderBarcodePreview('');
+
+		if (!target) {
+			procedureBarcodeInput.classList.remove('is-typing-barcode');
+			renderBarcodePreview('');
+
+			if (typeof onComplete === 'function') {
+				onComplete();
+			}
+			return;
+		}
+
+		let index = 0;
+
+		function typeNextCharacter() {
+			if (index >= target.length) {
+				procedureBarcodeInput.classList.remove('is-typing-barcode');
+				renderBarcodePreview(procedureBarcodeInput.value);
+
+				if (typeof onComplete === 'function') {
+					onComplete();
+				}
+				return;
+			}
+
+			procedureBarcodeInput.value += target.charAt(index);
+			renderBarcodePreview(procedureBarcodeInput.value);
+			index += 1;
+			barcodeTypingTimer = setTimeout(typeNextCharacter, 45 + Math.floor(Math.random() * 35));
+		}
+
+		typeNextCharacter();
+	}
+
+	function showBarcodesTab() {
+		const barcodesTabBtn = document.getElementById('procedureDetailTabBarcodesBtn');
+
+		if (barcodesTabBtn && typeof mdb !== 'undefined') {
+			mdb.Tab.getOrCreateInstance(barcodesTabBtn).show();
+		}
 	}
 
 	function renderBarcodePreview(value) {
@@ -1074,6 +1306,8 @@
 			return;
 		}
 
+		cancelBarcodeTyping();
+
 		if (row) {
 			setActiveDetailRow(row);
 		}
@@ -1083,9 +1317,11 @@
 		renderDetailInfo(payload);
 
 		if (procedureBarcodeInput) {
-			procedureBarcodeInput.value = payload.product_procedure_number || '';
-			renderBarcodePreview(procedureBarcodeInput.value);
+			procedureBarcodeInput.value = '';
+			renderBarcodePreview('');
 		}
+
+		updateAssignableBarcodeDisplay(row);
 
 		const imageTabBtn = document.getElementById('procedureDetailTabImageBtn');
 
@@ -1285,7 +1521,8 @@
 		return '<div class="tab-pane fade' + (isActive ? ' show active' : '') + '" ' +
 			'id="product-registration-tab-' + tab.product_registration_id + '" role="tabpanel" ' +
 			'aria-labelledby="product-registration-tab-' + tab.product_registration_id + '-tab" ' +
-			'data-product-registration-id="' + tab.product_registration_id + '"' +
+			'data-product-registration-id="' + tab.product_registration_id + '" ' +
+			'data-available-barcodes="' + escapeAttr(JSON.stringify(tab.available_barcodes || [])) + '"' +
 			(isImported ? ' data-imported="true"' : '') + '>' +
 			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
@@ -1468,6 +1705,7 @@
 		});
 
 		newTabs.slice().reverse().forEach(function (tab) {
+			registerTabBarcodes(tab);
 			tabsNav.insertAdjacentHTML('afterbegin', buildTabButton(tab, false, isImported));
 			tabsContent.insertAdjacentHTML('afterbegin', buildTabPane(tab, false, isImported));
 		});
@@ -1743,6 +1981,8 @@
 	if (importSearchInput) {
 		importSearchInput.addEventListener('input', scheduleImportSearch);
 	}
+
+	(config.initialTabs || []).forEach(registerTabBarcodes);
 
 	initTabControls(tabsWrapper);
 	renderSelectedFiles();

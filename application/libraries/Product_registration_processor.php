@@ -520,7 +520,7 @@ class Product_registration_processor {
 			);
 		}
 
-		return array(
+		$tab = array(
 			'product_registration_id' => (int) $registration['id'],
 			'file_name'               => $registration['file_name'],
 			'procedure_number'        => $registration['procedure_number'],
@@ -532,6 +532,141 @@ class Product_registration_processor {
 			'columns'                 => $columns,
 			'rows'                    => $rows,
 		);
+
+		$tab['available_barcodes'] = $this->calculate_available_barcodes(
+			$registration['organization_name'],
+			count($saved_items)
+		);
+
+		return $tab;
+	}
+
+	protected function calculate_available_barcodes($organization_name, $count)
+	{
+		$count = (int) $count;
+
+		if ($count <= 0)
+		{
+			return array();
+		}
+
+		$this->CI->load->model('organization_model');
+		$this->CI->load->model('product_model');
+
+		$organization = $this->CI->organization_model->get_by_name($organization_name);
+
+		if ( ! $organization || empty($organization['gs1_prefix']))
+		{
+			return array();
+		}
+
+		$prefix = $this->normalize_gs1_prefix($organization['gs1_prefix']);
+		$used = $this->get_used_product_numbers((int) $organization['id'], $prefix);
+		$available = array();
+
+		for ($product_number = 0; $product_number < 1000 && count($available) < $count; $product_number++)
+		{
+			if (isset($used[$product_number]))
+			{
+				continue;
+			}
+
+			$product_code = str_pad((string) $product_number, 3, '0', STR_PAD_LEFT);
+			$data_digits = $prefix.$product_code;
+
+			$available[] = array(
+				'product_number' => $product_code,
+				'barcode'        => $data_digits,
+				'ean13'          => $data_digits.$this->calculate_ean13_checksum($data_digits),
+			);
+		}
+
+		return $available;
+	}
+
+	protected function get_used_product_numbers($organization_id, $gs1_prefix)
+	{
+		$used = array();
+		$products = $this->CI->product_model->get_barcodes_by_organization($organization_id);
+
+		foreach ($products as $product)
+		{
+			$product_number = $this->extract_product_number_from_barcode($product['barcode'], $gs1_prefix);
+
+			if ($product_number !== NULL && $product_number >= 0 && $product_number <= 999)
+			{
+				$used[$product_number] = TRUE;
+			}
+		}
+
+		return $used;
+	}
+
+	protected function extract_product_number_from_barcode($barcode, $gs1_prefix)
+	{
+		$digits = preg_replace('/\D/', '', (string) $barcode);
+		$prefix = $this->normalize_gs1_prefix($gs1_prefix);
+
+		if ($prefix === '' || strlen($digits) < 12 || strpos($digits, $prefix) !== 0)
+		{
+			return NULL;
+		}
+
+		if (strlen($digits) === 13)
+		{
+			$checksum = $this->calculate_ean13_checksum(substr($digits, 0, 12));
+
+			if ($checksum === $digits[12])
+			{
+				return (int) substr($digits, 9, 3);
+			}
+		}
+
+		$remainder = substr($digits, 9);
+
+		if (strlen($remainder) === 3)
+		{
+			return (int) $remainder;
+		}
+
+		if (strlen($remainder) >= 4)
+		{
+			return (int) substr($remainder, 0, 4);
+		}
+
+		return NULL;
+	}
+
+	protected function normalize_gs1_prefix($gs1_prefix)
+	{
+		$digits = preg_replace('/\D/', '', (string) $gs1_prefix);
+
+		if ($digits === '')
+		{
+			return '';
+		}
+
+		if (strlen($digits) > 9)
+		{
+			return substr($digits, 0, 9);
+		}
+
+		return str_pad($digits, 9, '0', STR_PAD_LEFT);
+	}
+
+	protected function calculate_ean13_checksum($twelve_digits)
+	{
+		$twelve_digits = preg_replace('/\D/', '', (string) $twelve_digits);
+		$twelve_digits = str_pad(substr($twelve_digits, 0, 12), 12, '0', STR_PAD_LEFT);
+		$sum = 0;
+
+		for ($i = 0; $i < 12; $i++)
+		{
+			$digit = (int) $twelve_digits[$i];
+			$sum += ($i % 2 === 0) ? $digit : $digit * 3;
+		}
+
+		return (string) ((10 - ($sum % 10)) % 10);
 	}
 
 	protected function normalize_row_cells($row, $column_count)

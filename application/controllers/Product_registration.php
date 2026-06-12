@@ -268,11 +268,19 @@ class Product_registration extends AuthenticatedController {
 		}
 
 		$was_pending = $item['status'] === 'pending';
-
-		if ( ! $this->product_registration_item_model->update($id, array(
+		$barcode = $this->normalize_item_barcode($this->input->post('barcode'));
+		$update_data = array(
 			'status'  => 'approved',
 			'message' => NULL,
-		)))
+		);
+
+		if ($barcode !== NULL)
+		{
+			$update_data['barcode'] = $barcode;
+			$update_data['info'] = $this->apply_barcode_to_item_info($item['info'], $barcode);
+		}
+
+		if ( ! $this->product_registration_item_model->update($id, $update_data))
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to accept product.'), 500);
 		}
@@ -291,6 +299,7 @@ class Product_registration extends AuthenticatedController {
 				'id'                      => (int) $id,
 				'product_registration_id' => (int) $item['product_registration_id'],
 				'status'                  => 'approved',
+				'barcode'                 => $barcode,
 			),
 		));
 	}
@@ -352,6 +361,59 @@ class Product_registration extends AuthenticatedController {
 		}
 
 		return $tab;
+	}
+
+	protected function normalize_item_barcode($barcode)
+	{
+		$barcode = preg_replace('/\D/', '', trim((string) $barcode));
+
+		if ($barcode === '')
+		{
+			return NULL;
+		}
+
+		if (strlen($barcode) < 12 || strlen($barcode) > 13)
+		{
+			return NULL;
+		}
+
+		return substr($barcode, 0, 13);
+	}
+
+	protected function barcode_cell_index($columns)
+	{
+		foreach ((array) $columns as $index => $column)
+		{
+			if (strtolower(trim((string) $column)) === 'barcode')
+			{
+				return (int) $index;
+			}
+		}
+
+		return 7;
+	}
+
+	protected function apply_barcode_to_item_info($info_json, $barcode)
+	{
+		$info = json_decode((string) $info_json, TRUE);
+
+		if ( ! is_array($info))
+		{
+			$info = array();
+		}
+
+		$cell_index = $this->barcode_cell_index($info['columns'] ?? array());
+		$cells = $info['cells'] ?? array();
+
+		while (count($cells) <= $cell_index)
+		{
+			$cells[] = '';
+		}
+
+		$cells[$cell_index] = $barcode;
+		$info['cells'] = $cells;
+
+		return json_encode($info);
 	}
 
 	protected function json_response($payload, $status = 200)

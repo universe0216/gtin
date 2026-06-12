@@ -59,6 +59,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						role="tabpanel"
 						aria-labelledby="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>-tab"
 						data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+						data-available-barcodes="<?php echo htmlspecialchars(json_encode($tab['available_barcodes'] ?? array()), ENT_QUOTES, 'UTF-8'); ?>"
 					>
 						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
 							<span><strong>Procedure #:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
@@ -221,11 +222,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div class="modal-content">
 			<div class="modal-header procedure-detail-header">
 				<h6 class="modal-title mb-0 procedure-detail-header-title" id="procedureProductModalLabel">—</h6>
+				<span class="text-muted small me-auto px-4" id="procedureDetailFooterMeta"></span>
+
 				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body p-0 procedure-detail-body">
 				<div class="procedure-detail-layout">
 					<div class="procedure-detail-info-panel">
+
 						<div id="procedureDetailInfo" class="procedure-detail-info"></div>
 					</div>
 					<div class="procedure-detail-side-panel">
@@ -291,15 +295,18 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				</div>
 			</div>
 			<div class="modal-footer procedure-detail-footer">
-				<span class="text-muted small me-auto" id="procedureDetailFooterMeta"></span>
+				<span class="procedure-assignable-barcode text-muted small me-auto" id="assignable_barcode"></span>
+				<div class="d-flex flex-wrap gap-2">
+					<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init>Accept</button>
+					<button type="button" class="btn btn-outline-danger" id="procedureDetailRejectBtn" data-mdb-ripple-init>Reject</button>
+				</div>
 				<button type="button" class="btn btn-outline-secondary" id="procedureDetailPrevBtn" data-mdb-ripple-init disabled>
 					<i class="fas fa-chevron-left me-1"></i> Previous
 				</button>
 				<button type="button" class="btn btn-outline-secondary" id="procedureDetailNextBtn" data-mdb-ripple-init disabled>
 					Next <i class="fas fa-chevron-right ms-1"></i>
 				</button>
-				<button type="button" class="btn btn-outline-danger" id="procedureDetailRejectBtn" data-mdb-ripple-init>Reject</button>
-				<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init>Accept</button>
+				
 				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Close</button>
 			</div>
 		</div>

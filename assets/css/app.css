@@ -1148,6 +1148,34 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	padding: 0.9rem 1.5rem;
 }
 
+.procedure-assignable-barcode {
+	flex: 1 1 auto;
+	min-width: 12rem;
+}
+
+.procedure-assignable-barcode-value {
+	font-family: "Courier New", Courier, monospace;
+	letter-spacing: 0.12em;
+}
+
+#procedureBarcodeInput.is-typing-barcode {
+	animation: procedure-barcode-typing-pulse 0.8s ease-in-out infinite;
+	border-color: var(--mdb-primary, #1266f1);
+	box-shadow: 0 0 0 0.2rem rgba(18, 102, 241, 0.15);
+	caret-color: var(--mdb-primary, #1266f1);
+}
+
+@keyframes procedure-barcode-typing-pulse {
+	0%,
+	100% {
+		border-color: var(--mdb-primary, #1266f1);
+	}
+
+	50% {
+		border-color: rgba(18, 102, 241, 0.45);
+	}
+}
+
 .procedure-barcode-form .form-label {
 	color: var(--app-text-muted);
 	font-size: 0.8rem;

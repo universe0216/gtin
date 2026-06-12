@@ -23,4 +23,19 @@ class Organization_model extends Basic_model {
 		'expiry_date'         => 'organizations.expiry_date',
 		'address'             => 'organizations.address',
 	);
+
+	public function get_by_name($name)
+	{
+		$name = trim((string) $name);
+
+		if ($name === '')
+		{
+			return NULL;
+		}
+
+		return $this->db
+			->where('name', $name)
+			->get($this->table)
+			->row_array();
+	}
 }
