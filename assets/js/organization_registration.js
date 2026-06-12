@@ -86,138 +86,28 @@
 		'</div>';
 	}
 
-	function tabExists(registrationId) {
-		return !!tabsNav.querySelector('.nav-link[data-organization-registration-id="' + registrationId + '"]');
-	}
-
-	function deactivateTabs() {
-		tabsNav.querySelectorAll('.nav-link').forEach(function (button) {
-			button.classList.remove('active');
-			button.setAttribute('aria-selected', 'false');
-		});
-		tabsContent.querySelectorAll('.tab-pane').forEach(function (pane) {
-			pane.classList.remove('show', 'active');
-		});
-	}
-
-	function activateTab(registrationId) {
-		deactivateTabs();
-
-		const button = tabsNav.querySelector('.nav-link[data-organization-registration-id="' + registrationId + '"]');
-		const pane = tabsContent.querySelector('.tab-pane[data-organization-registration-id="' + registrationId + '"]');
-
-		if (button) {
-			button.classList.add('active');
-			button.setAttribute('aria-selected', 'true');
-		}
-
-		if (pane) {
-			pane.classList.add('show', 'active');
-		}
-	}
-
-	function initTabControls(scope) {
-		if (typeof mdb === 'undefined') {
-			return;
-		}
-
-		(scope || document).querySelectorAll('[data-mdb-tab-init]').forEach(function (element) {
-			mdb.Tab.getOrCreateInstance(element);
-		});
-	}
-
-	function deleteRegistration(registrationId) {
-		return fetchApi(baseUrl + '/delete/' + registrationId, {
-			method: 'POST',
-		}).then(function (result) {
-			removeTabFromDom(registrationId);
-			showToast(result.message, 'success');
-		});
-	}
-
-	function openDeleteModal(registrationId, fileName) {
-		if (!registrationId) {
-			return;
-		}
-
-		showConfirm({
-			title: fileName || '—',
+	const procedureTabs = ProcedureTabs.create({
+		tabsWrapper: tabsWrapper,
+		tabsNav: tabsNav,
+		tabsContent: tabsContent,
+		initialUpload: initialUpload,
+		openUploadBtn: openUploadBtn,
+		idAttribute: 'data-organization-registration-id',
+		getTabId: function (tab) {
+			return tab.organization_registration_id;
+		},
+		buildTabButton: buildTabButton,
+		buildTabPane: buildTabPane,
+		deleteUrl: function (registrationId) {
+			return baseUrl + '/delete/' + registrationId;
+		},
+		deleteConfirm: {
 			message: 'This registration is not completed yet. Stop registration for this file?',
 			confirmLabel: 'Stop Registration',
-		})
-			.then(function () {
-				return deleteRegistration(registrationId);
-			})
-			.catch(function (error) {
-				if (isConfirmCancelled(error)) {
-					return;
-				}
-
-				showToast(error.message || 'Failed to delete registration.', 'error');
-			});
-	}
-
-	function removeTabFromDom(registrationId) {
-		const tabBtn = tabsNav.querySelector('.nav-link[data-organization-registration-id="' + registrationId + '"]');
-		const navItem = tabBtn ? tabBtn.closest('.nav-item') : null;
-		const pane = tabsContent.querySelector('.tab-pane[data-organization-registration-id="' + registrationId + '"]');
-		const wasActive = tabBtn && tabBtn.classList.contains('active');
-
-		if (navItem) {
-			navItem.remove();
-		}
-
-		if (pane) {
-			pane.remove();
-		}
-
-		const remainingTabs = tabsNav.querySelectorAll('.nav-item');
-
-		if (!remainingTabs.length) {
-			tabsWrapper.classList.add('d-none');
-			if (initialUpload) {
-				initialUpload.classList.remove('d-none');
-			}
-			if (openUploadBtn) {
-				openUploadBtn.classList.add('d-none');
-			}
-		} else if (wasActive) {
-			const nextTab = tabsNav.querySelector('.nav-link');
-
-			if (nextTab) {
-				activateTab(nextTab.getAttribute('data-organization-registration-id'));
-			}
-		}
-	}
-
-	function prependTabs(tabs) {
-		if (!tabs.length) {
-			return;
-		}
-
-		if (initialUpload) {
-			initialUpload.classList.add('d-none');
-		}
-		if (openUploadBtn) {
-			openUploadBtn.classList.remove('d-none');
-		}
-		tabsWrapper.classList.remove('d-none');
-
-		const newTabs = tabs.filter(function (tab) {
-			return !tabExists(tab.organization_registration_id);
-		});
-
-		newTabs.slice().reverse().forEach(function (tab) {
-			tabsNav.insertAdjacentHTML('afterbegin', buildTabButton(tab, false));
-			tabsContent.insertAdjacentHTML('afterbegin', buildTabPane(tab, false));
-		});
-
-		initTabControls(tabsWrapper);
-
-		if (newTabs.length) {
-			activateTab(newTabs[0].registration_id);
-		}
-	}
+			errorMessage: 'Failed to delete registration.',
+		},
+		deleteBtnSelector: '.org-registration-tab-delete-btn',
+	});
 
 	const procedureUpload = ProcedureUpload.create({
 		forms: uploadForms,
@@ -231,21 +121,10 @@
 			});
 		},
 		onSuccess: function (result) {
-			prependTabs(result.tabs || []);
+			procedureTabs.prependTabs(result.tabs || []);
 		},
 	});
 
-	document.addEventListener('click', function (event) {
-		const deleteBtn = event.target.closest('.org-registration-tab-delete-btn');
-
-		if (deleteBtn) {
-			openDeleteModal(
-				deleteBtn.getAttribute('data-organization-registration-id'),
-				deleteBtn.getAttribute('data-file-name')
-			);
-		}
-	});
-
 	procedureUpload.init();
-	initTabControls(tabsWrapper);
+	procedureTabs.init();
 })();
