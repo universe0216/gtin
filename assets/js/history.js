@@ -204,32 +204,16 @@
 		modal.show();
 		setLoading(true);
 
-		if (activeRequest) {
-			activeRequest.abort();
-		}
+		activeRequest = createAbortableRequest(activeRequest);
 
-		activeRequest = new AbortController();
-
-		fetch(baseUrl + '/' + recordId, {
-			headers: {
-				'X-Requested-With': 'XMLHttpRequest',
-				'Accept': 'application/json',
-			},
+		fetchApi(baseUrl + '/' + recordId, {
+			headers: { Accept: 'application/json' },
 			signal: activeRequest.signal,
 		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
 			.then(function (result) {
 				activeRequest = null;
 
-				if (!result.ok || !result.data.success) {
-					throw new Error(result.data.message || 'Failed to load history items.');
-				}
-
-				const tab = result.data.tab;
+				const tab = result.tab;
 
 				if (historyType === 'organizations') {
 					renderOrganizationMeta(tab, elements);
@@ -242,7 +226,7 @@
 				setLoading(false);
 			})
 			.catch(function (error) {
-				if (error.name === 'AbortError') {
+				if (isAbortError(error)) {
 					return;
 				}
 

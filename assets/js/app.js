@@ -254,7 +254,7 @@
 			message: 'Are you sure?',
 			confirmLabel: 'Confirm',
 			cancelLabel: 'Cancel',
-			confirmClass: 'btn-danger',
+			confirmClass: 'btn btn-danger',
 			size: '',
 			allowHtml: false,
 		}, options || {});

@@ -91,20 +91,13 @@
 		modalTitle.textContent = 'Edit ' + config.entityLabel;
 		recordIdInput.value = id;
 
-		fetch(baseUrl + '/get/' + id, {
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
-		})
-			.then(function (response) { return response.json(); })
+		fetchApi(baseUrl + '/get/' + id)
 			.then(function (result) {
-				if (!result.success) {
-					showToast(result.message || 'Failed to load record.', 'error');
-					return;
-				}
 				fillForm(result.data);
 				basicModal.show();
 			})
-			.catch(function () {
-				showToast('Failed to load record.', 'error');
+			.catch(function (error) {
+				showToast(error.message || 'Failed to load record.', 'error');
 			});
 	}
 
@@ -173,28 +166,17 @@
 		const url = id ? baseUrl + '/update/' + id : baseUrl + '/create';
 		const formData = new FormData(formEl);
 
-		fetch(url, {
+		fetchApi(url, {
 			method: 'POST',
 			body: formData,
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
 			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showAlert(result.data.message || 'Request failed.');
-					return;
-				}
-
-				upsertRow(result.data.data);
+				upsertRow(result.data);
 				basicModal.hide();
-				showToast(result.data.message, 'success');
+				showToast(result.message, 'success');
 			})
-			.catch(function () {
-				showAlert('An unexpected error occurred.');
+			.catch(function (error) {
+				showAlert(error.message || 'An unexpected error occurred.');
 			})
 			.finally(function () {
 				setLoading(false);

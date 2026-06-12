@@ -16,101 +16,6 @@
 	const tabsContent = document.getElementById('orgRegistrationTabContent');
 	const initialUpload = document.getElementById('orgRegistrationInitialUpload');
 
-	let selectedFiles = [];
-	let filePickerOpenUntil = 0;
-	let uploadModal;
-
-	function initUploadModal() {
-		if (typeof mdb === 'undefined' || !uploadModalEl) {
-			return;
-		}
-
-		uploadModal = mdb.Modal.getOrCreateInstance(uploadModalEl);
-		uploadModalEl.addEventListener('hidden.mdb.modal', resetUploadForm);
-	}
-
-	function getUploadControls(form) {
-		return {
-			form: form,
-			zone: form.querySelector('.procedure-upload-zone'),
-			fileInput: form.querySelector('.procedure-upload-input'),
-			selectedFilesList: form.querySelector('.procedure-selected-files'),
-			uploadBtn: form.querySelector('.procedure-upload-submit'),
-			uploadHint: form.querySelector('.procedure-upload-hint'),
-		};
-	}
-
-	function resetUploadForm() {
-		selectedFiles = [];
-		uploadForms.forEach(function (form) {
-			const controls = getUploadControls(form);
-			form.reset();
-			if (controls.zone) {
-				controls.zone.classList.remove('is-dragover');
-			}
-		});
-		renderSelectedFiles();
-	}
-
-	function openUploadModal() {
-		if (uploadModal) {
-			uploadModal.show();
-		}
-	}
-
-	function renderSelectedFiles() {
-		uploadForms.forEach(function (form) {
-			const controls = getUploadControls(form);
-
-			if (!controls.selectedFilesList || !controls.uploadBtn) {
-				return;
-			}
-
-			if (!selectedFiles.length) {
-				controls.selectedFilesList.classList.add('d-none');
-				controls.selectedFilesList.innerHTML = '';
-				controls.uploadBtn.disabled = true;
-				if (controls.uploadHint) {
-					controls.uploadHint.textContent = 'Select one or more zip files to continue.';
-				}
-				return;
-			}
-
-			controls.selectedFilesList.classList.remove('d-none');
-			controls.selectedFilesList.innerHTML = selectedFiles.map(function (file, index) {
-				return '<div class="procedure-selected-file">' +
-					'<span class="procedure-selected-file-icon"><i class="fas fa-file-zipper"></i></span>' +
-					'<span class="procedure-selected-file-name">' + escapeHtml(file.name) + '</span>' +
-					'<button type="button" class="procedure-selected-file-remove" data-index="' + index + '" aria-label="Remove file">&times;</button>' +
-				'</div>';
-			}).join('');
-			controls.uploadBtn.disabled = false;
-			if (controls.uploadHint) {
-				controls.uploadHint.textContent = selectedFiles.length + ' file(s) selected.';
-			}
-		});
-	}
-
-	function setSelectedFiles(files) {
-		selectedFiles = files;
-		renderSelectedFiles();
-	}
-
-	function openFilePicker(fileInput) {
-		if (!fileInput) {
-			return;
-		}
-
-		const now = Date.now();
-
-		if (now < filePickerOpenUntil) {
-			return;
-		}
-
-		filePickerOpenUntil = now + 1000;
-		fileInput.click();
-	}
-
 	function buildTableHtml(tab) {
 		const headerHtml = '<th class="procedure-row-index">#</th>' +
 			(tab.columns || []).map(function (column) {
@@ -314,113 +219,21 @@
 		}
 	}
 
-	function submitUpload(event) {
-		event.preventDefault();
-
-		if (!selectedFiles.length) {
-			showToast('Please select at least one zip file.', 'error');
-			return;
-		}
-
-		const formData = new FormData();
-		selectedFiles.forEach(function (file) {
-			formData.append('zip_files[]', file);
-		});
-
-		uploadForms.forEach(function (form) {
-			const controls = getUploadControls(form);
-			controls.uploadBtn.disabled = true;
-			controls.uploadHint.textContent = 'Uploading and processing files...';
-		});
-
-		fetch(baseUrl + '/upload', {
-			method: 'POST',
-			body: formData,
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
-		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
-			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Upload failed.', 'error');
-					return;
-				}
-
-				prependTabs(result.data.tabs || []);
-				resetUploadForm();
-
-				if (uploadModal) {
-					uploadModal.hide();
-				}
-
-				showToast(result.data.message, 'success');
-			})
-			.catch(function () {
-				showToast('Upload failed.', 'error');
-			})
-			.finally(function () {
-				uploadForms.forEach(function (form) {
-					const controls = getUploadControls(form);
-					controls.uploadBtn.disabled = selectedFiles.length === 0;
-					controls.uploadHint.textContent = selectedFiles.length
-						? selectedFiles.length + ' file(s) selected.'
-						: 'Select one or more zip files to continue.';
-				});
-			});
-	}
-
-	function bindUploadForm(form) {
-		const controls = getUploadControls(form);
-
-		if (!controls.zone || !controls.fileInput) {
-			return;
-		}
-
-		controls.zone.addEventListener('click', function () {
-			openFilePicker(controls.fileInput);
-		});
-
-		controls.fileInput.addEventListener('change', function () {
-			setSelectedFiles(Array.from(controls.fileInput.files || []));
-		});
-
-		controls.zone.addEventListener('dragover', function (event) {
-			event.preventDefault();
-			controls.zone.classList.add('is-dragover');
-		});
-
-		controls.zone.addEventListener('dragleave', function () {
-			controls.zone.classList.remove('is-dragover');
-		});
-
-		controls.zone.addEventListener('drop', function (event) {
-			event.preventDefault();
-			controls.zone.classList.remove('is-dragover');
-			const files = Array.from(event.dataTransfer.files || []).filter(function (file) {
+	const procedureUpload = ProcedureUpload.create({
+		forms: uploadForms,
+		uploadModalEl: uploadModalEl,
+		openUploadBtn: openUploadBtn,
+		uploadUrl: baseUrl + '/upload',
+		fileItemStyle: 'div',
+		dropFilter: function (files) {
+			return files.filter(function (file) {
 				return file.name.toLowerCase().endsWith('.zip');
 			});
-			setSelectedFiles(files);
-		});
-
-		form.addEventListener('submit', submitUpload);
-
-		form.addEventListener('click', function (event) {
-			const removeBtn = event.target.closest('.procedure-selected-file-remove');
-
-			if (!removeBtn) {
-				return;
-			}
-
-			const index = parseInt(removeBtn.getAttribute('data-index'), 10);
-			selectedFiles = selectedFiles.filter(function (_, fileIndex) {
-				return fileIndex !== index;
-			});
-			renderSelectedFiles();
-		});
-	}
+		},
+		onSuccess: function (result) {
+			prependTabs(result.tabs || []);
+		},
+	});
 
 	document.addEventListener('click', function (event) {
 		const deleteBtn = event.target.closest('.org-registration-tab-delete-btn');
@@ -433,11 +246,6 @@
 		}
 	});
 
-	if (openUploadBtn) {
-		openUploadBtn.addEventListener('click', openUploadModal);
-	}
-
-	uploadForms.forEach(bindUploadForm);
-	initUploadModal();
+	procedureUpload.init();
 	initTabControls(tabsWrapper);
 })();

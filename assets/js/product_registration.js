@@ -48,9 +48,6 @@
 	const productDetailRejectBtn = document.getElementById('procedureDetailRejectBtn');
 	const productDetailAcceptBtn = document.getElementById('procedureDetailAcceptBtn');
 
-	let selectedFiles = [];
-	let filePickerOpenUntil = 0;
-	let uploadModal;
 	let importModal;
 	let productModal;
 	let rejectModal;
@@ -66,44 +63,6 @@
 	let barcodeTypingTimer = null;
 	const tabAvailableBarcodes = new Map();
 	const BARCODE_CELL_INDEX = 7;
-
-	function initUploadModal() {
-		if (typeof mdb === 'undefined' || !uploadModalEl) {
-			return;
-		}
-
-		uploadModal = mdb.Modal.getOrCreateInstance(uploadModalEl);
-		uploadModalEl.addEventListener('hidden.mdb.modal', resetUploadForm);
-	}
-
-	function getUploadControls(form) {
-		return {
-			form: form,
-			zone: form.querySelector('.procedure-upload-zone'),
-			fileInput: form.querySelector('.procedure-upload-input'),
-			selectedFilesList: form.querySelector('.procedure-selected-files'),
-			uploadBtn: form.querySelector('.procedure-upload-submit'),
-			uploadHint: form.querySelector('.procedure-upload-hint'),
-		};
-	}
-
-	function resetUploadForm() {
-		selectedFiles = [];
-		uploadForms.forEach(function (form) {
-			const controls = getUploadControls(form);
-			form.reset();
-			if (controls.zone) {
-				controls.zone.classList.remove('is-dragover');
-			}
-		});
-		renderSelectedFiles();
-	}
-
-	function openUploadModal() {
-		if (uploadModal) {
-			uploadModal.show();
-		}
-	}
 
 	function initImportModal() {
 		if (typeof mdb === 'undefined' || !importModalEl) {
@@ -293,30 +252,18 @@
 
 		setImportLoading(true);
 
-		fetch(baseUrl + '/import_tab/' + registrationId, {
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
-		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
+		fetchApi(baseUrl + '/import_tab/' + registrationId)
 			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Failed to import procedure.', 'error');
-					return;
-				}
-
-				prependTabs([result.data.tab], { imported: true });
+				prependTabs([result.tab], { imported: true });
 
 				if (importModal) {
 					importModal.hide();
 				}
 
-				showToast('Procedure imported successfully.', 'success');
+				showToast(result.message || 'Procedure imported successfully.', 'success');
 			})
-			.catch(function () {
-				showToast('Failed to import procedure.', 'error');
+			.catch(function (error) {
+				showToast(error.message || 'Failed to import procedure.', 'error');
 			})
 			.finally(function () {
 				setImportLoading(false);
@@ -611,25 +558,14 @@
 		const formData = new FormData();
 		formData.append('reason', reason);
 
-		fetch(baseUrl + '/reject_item/' + itemId, {
+		fetchApi(baseUrl + '/reject_item/' + itemId, {
 			method: 'POST',
 			body: formData,
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
 			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Failed to reject product.', 'error');
-					return;
-				}
-
 				const rejectedRow = activeDetailRow;
-				const reasonText = result.data.data && result.data.data.message
-					? result.data.data.message
+				const reasonText = result.data && result.data.message
+					? result.data.message
 					: reason;
 
 				if (rejectModal) {
@@ -638,10 +574,10 @@
 
 				markDetailRowRejected(rejectedRow, reasonText);
 				advanceToNextRowAfterReview(rejectedRow);
-				showToast(result.data.message, 'success');
+				showToast(result.message, 'success');
 			})
-			.catch(function () {
-				showToast('Failed to reject product.', 'error');
+			.catch(function (error) {
+				showToast(error.message || 'Failed to reject product.', 'error');
 			})
 			.finally(function () {
 				if (confirmRejectBtn) {
@@ -673,25 +609,14 @@
 			formData.append('barcode', assignable.ean13);
 		}
 
-		fetch(baseUrl + '/accept_item/' + itemId, {
+		fetchApi(baseUrl + '/accept_item/' + itemId, {
 			method: 'POST',
 			body: formData,
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
 		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
 			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Failed to accept product.', 'error');
-					return;
-				}
-
 				const acceptedRow = activeDetailRow;
-				const savedBarcode = result.data.data && result.data.data.barcode
-					? result.data.data.barcode
+				const savedBarcode = result.data && result.data.barcode
+					? result.data.barcode
 					: (assignable && assignable.ean13 ? assignable.ean13 : '');
 
 				markDetailRowAccepted(acceptedRow);
@@ -710,10 +635,10 @@
 					}, 2000);
 				});
 
-				showToast(result.data.message, 'success');
+				showToast(result.message, 'success');
 			})
-			.catch(function () {
-				showToast('Failed to accept product.', 'error');
+			.catch(function (error) {
+				showToast(error.message || 'Failed to accept product.', 'error');
 			})
 			.finally(function () {
 				updateReviewButtonState(activeDetailRow);
@@ -1247,64 +1172,6 @@
 		}
 	}
 
-	function renderSelectedFiles() {
-		const filesHtml = selectedFiles.map(function (file, index) {
-			return '<span class="procedure-selected-file">' +
-				'<i class="fas fa-file-zipper procedure-selected-file-icon"></i>' +
-				'<span class="procedure-selected-file-name">' + escapeHtml(file.name) + '</span>' +
-				'<button type="button" class="procedure-selected-file-remove" data-index="' + index + '" aria-label="Remove ' + escapeAttr(file.name) + '">' +
-					'<i class="fas fa-times"></i>' +
-				'</button>' +
-			'</span>';
-		}).join('');
-
-		uploadForms.forEach(function (form) {
-			const controls = getUploadControls(form);
-
-			if (!selectedFiles.length) {
-				controls.selectedFilesList.classList.add('d-none');
-				controls.selectedFilesList.innerHTML = '';
-				controls.uploadBtn.disabled = true;
-				controls.uploadHint.textContent = 'Select one or more zip files to continue.';
-				return;
-			}
-
-			controls.selectedFilesList.classList.remove('d-none');
-			controls.selectedFilesList.innerHTML = filesHtml;
-			controls.uploadBtn.disabled = false;
-			controls.uploadHint.textContent = selectedFiles.length + ' file(s) ready to upload.';
-		});
-	}
-
-	function setSelectedFiles(fileList) {
-		const files = Array.from(fileList || []).filter(function (file) {
-			return /\.zip$/i.test(file.name);
-		});
-
-		if (!files.length) {
-			showToast('Please select valid .zip files.', 'error');
-			return;
-		}
-
-		selectedFiles = files;
-		renderSelectedFiles();
-	}
-
-	function openFilePicker(fileInput) {
-		if (!fileInput) {
-			return;
-		}
-
-		const now = Date.now();
-
-		if (now < filePickerOpenUntil) {
-			return;
-		}
-
-		filePickerOpenUntil = now + 1000;
-		fileInput.click();
-	}
-
 	function buildTableHtml(tab) {
 		const headerHtml = '<th class="procedure-item-status-col"></th>' +
 			'<th class="procedure-row-index">#</th>' +
@@ -1567,59 +1434,39 @@
 		updateTabCount();
 	}
 
-	function submitUpload(event) {
-		event.preventDefault();
-
-		if (!selectedFiles.length) {
-			showToast('Please select at least one zip file.', 'error');
-			return;
-		}
-
-		const formData = new FormData();
-		selectedFiles.forEach(function (file) {
-			formData.append('zip_files[]', file);
-		});
-
-		uploadForms.forEach(function (form) {
-			const controls = getUploadControls(form);
-			controls.uploadBtn.disabled = true;
-			controls.uploadHint.textContent = 'Uploading and processing files...';
-		});
-
-		fetch(baseUrl + '/upload', {
-			method: 'POST',
-			body: formData,
-			headers: { 'X-Requested-With': 'XMLHttpRequest' },
-		})
-			.then(function (response) {
-				return response.json().then(function (data) {
-					return { ok: response.ok, data: data };
-				});
-			})
-			.then(function (result) {
-				if (!result.ok || !result.data.success) {
-					showToast(result.data.message || 'Upload failed.', 'error');
-					return;
-				}
-
-				prependTabs(result.data.tabs || []);
-				resetUploadForm();
-
-				if (uploadModal) {
-					uploadModal.hide();
-				}
-
-				showToast(result.data.message, 'success');
-			})
-			.catch(function () {
-				showToast('An unexpected error occurred during upload.', 'error');
-			})
-			.finally(function () {
-				renderSelectedFiles();
+	const procedureUpload = ProcedureUpload.create({
+		forms: uploadForms,
+		uploadModalEl: uploadModalEl,
+		openUploadBtn: openUploadBtn,
+		uploadUrl: baseUrl + '/upload',
+		fileItemStyle: 'span',
+		clearInputAfterSelect: true,
+		uploadErrorMessage: 'An unexpected error occurred during upload.',
+		hints: {
+			empty: 'Select one or more zip files to continue.',
+			selected: function (count) {
+				return count + ' file(s) ready to upload.';
+			},
+			uploading: 'Uploading and processing files...',
+		},
+		normalizeFiles: function (fileList) {
+			const files = Array.from(fileList || []).filter(function (file) {
+				return /\.zip$/i.test(file.name);
 			});
-	}
 
-	initUploadModal();
+			if (!files.length && fileList && fileList.length) {
+				showToast('Please select valid .zip files.', 'error');
+				return null;
+			}
+
+			return files;
+		},
+		onSuccess: function (result) {
+			prependTabs(result.tabs || []);
+		},
+	});
+
+	procedureUpload.init();
 	initImportModal();
 	initProductModal();
 	initRejectModal();
@@ -1698,57 +1545,6 @@
 		importRegistrationTab(importRow.getAttribute('data-product-registration-id'));
 	});
 
-	uploadForms.forEach(function (form) {
-		const controls = getUploadControls(form);
-
-		if (controls.zone) {
-			controls.zone.addEventListener('click', function () {
-				openFilePicker(controls.fileInput);
-			});
-
-			['dragenter', 'dragover'].forEach(function (eventName) {
-				controls.zone.addEventListener(eventName, function (event) {
-					event.preventDefault();
-					controls.zone.classList.add('is-dragover');
-				});
-			});
-
-			['dragleave', 'drop'].forEach(function (eventName) {
-				controls.zone.addEventListener(eventName, function (event) {
-					event.preventDefault();
-					controls.zone.classList.remove('is-dragover');
-				});
-			});
-
-			controls.zone.addEventListener('drop', function (event) {
-				setSelectedFiles(event.dataTransfer.files);
-			});
-		}
-
-		if (controls.fileInput) {
-			controls.fileInput.addEventListener('change', function () {
-				setSelectedFiles(controls.fileInput.files);
-				controls.fileInput.value = '';
-			});
-		}
-
-		if (controls.selectedFilesList) {
-			controls.selectedFilesList.addEventListener('click', function (event) {
-				const button = event.target.closest('button[data-index]');
-
-				if (!button) {
-					return;
-				}
-
-				const index = parseInt(button.getAttribute('data-index'), 10);
-				selectedFiles.splice(index, 1);
-				renderSelectedFiles();
-			});
-		}
-
-		form.addEventListener('submit', submitUpload);
-	});
-
 	if (tabsWrapper) {
 		tabsWrapper.addEventListener('click', function (event) {
 			const row = event.target.closest('tr.procedure-data-row');
@@ -1813,10 +1609,6 @@
 		});
 	}
 
-	if (openUploadBtn) {
-		openUploadBtn.addEventListener('click', openUploadModal);
-	}
-
 	if (openImportBtn) {
 		openImportBtn.addEventListener('click', openImportModal);
 	}
@@ -1828,5 +1620,4 @@
 	(config.initialTabs || []).forEach(registerTabBarcodes);
 
 	initTabControls(tabsWrapper);
-	renderSelectedFiles();
 })();
