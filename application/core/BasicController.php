@@ -12,6 +12,7 @@ class BasicController extends AuthenticatedController {
 	protected $permission_view = '';
 	protected $permission_edit = '';
 	protected $list_per_page = 10;
+	protected $list_per_page_options = array(5, 10, 20, 50);
 	protected $list_view = 'entity_list/index';
 	protected $list_columns = array();
 	protected $list_search_placeholder = 'Search...';
@@ -192,20 +193,55 @@ class BasicController extends AuthenticatedController {
 
 	protected function render_entity_list()
 	{
-		$this->render($this->list_view, array(
-			'title'                   => $this->entity_label,
-			'nav_active'              => $this->entity,
-			'entity'                  => $this->entity,
-			'can_edit'                => $this->auth->can($this->permission_edit),
-			'add_url'                 => $this->get_add_url(),
-			'add_label'               => $this->get_add_label(),
-			'list_columns'            => $this->list_columns,
-			'list_api_url'            => site_url($this->entity.'/list'),
-			'list_search_placeholder' => $this->list_search_placeholder,
-			'list_empty_message'      => $this->list_empty_message,
+		$data = array(
+			'title'                     => $this->entity_label,
+			'nav_active'                => $this->entity,
+			'entity'                    => $this->entity,
+			'can_edit'                  => $this->auth->can($this->permission_edit),
+			'add_url'                   => $this->get_add_url(),
+			'add_label'                 => $this->get_add_label(),
+			'list_columns'              => $this->list_columns,
+			'list_api_url'              => site_url($this->entity.'/list'),
+			'list_search_placeholder'   => $this->list_search_placeholder,
+			'list_empty_message'        => $this->list_empty_message,
 			'list_empty_search_message' => $this->list_empty_search_message,
-			'list_per_page'           => $this->list_per_page,
-		));
+			'list_per_page'             => $this->list_per_page,
+			'list_per_page_options'     => $this->list_per_page_options,
+			'detail_modal_partial'      => $this->get_detail_modal_partial(),
+			'detail_config'             => $this->get_detail_config(),
+		);
+
+		$this->render($this->list_view, $data);
+	}
+
+	protected function get_detail_modal_partial()
+	{
+		return NULL;
+	}
+
+	protected function get_detail_config()
+	{
+		return NULL;
+	}
+
+	protected function build_paginated_meta($total, $page, $per_page, $record_count, $search = '')
+	{
+		$total_pages = max(1, (int) ceil($total / $per_page));
+		$page = min($page, $total_pages);
+		$offset = ($page - 1) * $per_page;
+		$range_start = $total > 0 ? $offset + 1 : 0;
+		$range_end = min($offset + $record_count, $total);
+
+		return array(
+			'total'       => $total,
+			'page'        => $page,
+			'per_page'    => $per_page,
+			'total_pages' => $total_pages,
+			'row_offset'  => $offset,
+			'range_start' => $range_start,
+			'range_end'   => $range_end,
+			'search'      => $search,
+		);
 	}
 
 	protected function json_list_response()
@@ -220,26 +256,23 @@ class BasicController extends AuthenticatedController {
 
 		$params = $this->list_query_params();
 		$total = $this->model->count_filtered($params['search']);
-		$total_pages = max(1, (int) ceil($total / $params['per_page']));
-		$page = min($params['page'], $total_pages);
-		$offset = ($page - 1) * $params['per_page'];
-		$records = $this->model->get_paginated($params['per_page'], $offset, $params['search']);
-		$range_start = $total > 0 ? $offset + 1 : 0;
-		$range_end = min($offset + count($records), $total);
+		$offset = ($params['page'] - 1) * $params['per_page'];
+		$records = $this->model->get_paginated($params['per_page'], $offset, $params['search'], $params['sort']);
+		$meta = $this->build_paginated_meta(
+			$total,
+			$params['page'],
+			$params['per_page'],
+			count($records),
+			$params['search']
+		);
 
-		return $this->json_response(array(
-			'success'     => TRUE,
-			'data'        => $records,
-			'columns'     => $this->list_columns,
-			'total'       => $total,
-			'page'        => $page,
-			'per_page'    => $params['per_page'],
-			'total_pages' => $total_pages,
-			'row_offset'  => $offset,
-			'range_start' => $range_start,
-			'range_end'   => $range_end,
-			'search'      => $params['search'],
-		));
+		return $this->json_response(array_merge(array(
+			'success'  => TRUE,
+			'data'     => $records,
+			'columns'  => $this->list_columns,
+			'sort'     => $params['sort']['key'] ?? '',
+			'sort_dir' => $params['sort']['direction'] ?? '',
+		), $meta));
 	}
 
 	protected function list_query_params()
@@ -247,7 +280,7 @@ class BasicController extends AuthenticatedController {
 		$per_page = (int) $this->input->get('per_page');
 		$page = max(1, (int) $this->input->get('page'));
 
-		if ($per_page < 1)
+		if ( ! in_array($per_page, $this->list_per_page_options, TRUE))
 		{
 			$per_page = $this->list_per_page;
 		}
@@ -256,6 +289,36 @@ class BasicController extends AuthenticatedController {
 			'page'     => $page,
 			'per_page' => $per_page,
 			'search'   => trim((string) $this->input->get('q')),
+			'sort'     => $this->resolve_list_sort(),
+		);
+	}
+
+	protected function resolve_list_sort()
+	{
+		if ( ! $this->model)
+		{
+			return array();
+		}
+
+		return $this->model->resolve_sort(
+			$this->input->get('sort'),
+			$this->input->get('dir')
+		);
+	}
+
+	protected function resolve_product_sort_for_columns($columns)
+	{
+		$keys = array();
+
+		foreach ((array) $columns as $column)
+		{
+			$keys[] = $column['key'];
+		}
+
+		return $this->product_model->resolve_sort(
+			$this->input->get('sort'),
+			$this->input->get('dir'),
+			$this->product_model->get_sortable_columns_for_keys($keys)
 		);
 	}
 

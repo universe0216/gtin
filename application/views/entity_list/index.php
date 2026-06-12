@@ -3,7 +3,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 $column_count = count($list_columns) + 1;
 ?>
-<div class="entity-list-page" id="entityListPage">
+<div
+	class="entity-list-page"
+	id="entityListPage"
+	style="--entity-list-page-rows: <?php echo (int) $list_per_page; ?>;"
+>
 	<div class="entity-list-page-header d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
 		<div>
 			<h1 class="h4 mb-0"><?php echo html_escape($title); ?></h1>
@@ -44,12 +48,7 @@ $column_count = count($list_columns) + 1;
 			</div>
 			<table class="table table-hover align-middle mb-0 procedure-data-table">
 				<thead>
-					<tr>
-						<th class="procedure-row-index">#</th>
-						<?php foreach ($list_columns as $column): ?>
-							<th><?php echo html_escape($column['label']); ?></th>
-						<?php endforeach; ?>
-					</tr>
+					<tr id="entityListTableHeadRow"></tr>
 				</thead>
 				<tbody id="entityListTableBody">
 					<tr>
@@ -59,21 +58,39 @@ $column_count = count($list_columns) + 1;
 			</table>
 		</div>
 
-		<div id="entityListPagination" class="entity-list-pagination app-pagination d-none d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
-			<p class="text-muted small mb-0" id="entityListPageMeta"></p>
-			<nav class="app-pagination-nav" aria-label="Entity list pages">
+		<div id="entityListPagination" class="entity-list-pagination app-pagination d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
+			<div class="d-flex flex-wrap align-items-center gap-3">
+				<p class="text-muted small mb-0" id="entityListPageMeta"></p>
+				<div class="entity-list-page-size d-flex align-items-center gap-2">
+					<label class="text-muted small mb-0" for="entityListPerPageSelect">Rows per page</label>
+					<select class="form-select form-select-sm" id="entityListPerPageSelect" aria-label="Rows per page">
+						<?php foreach ($list_per_page_options as $option): ?>
+							<option value="<?php echo (int) $option; ?>"<?php echo (int) $option === (int) $list_per_page ? ' selected' : ''; ?>>
+								<?php echo (int) $option; ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+			</div>
+			<nav class="app-pagination-nav d-none" id="entityListPaginationNav" aria-label="Entity list pages">
 				<ul class="pagination pagination-sm pagination-circle mb-0" id="entityListPaginationList"></ul>
 			</nav>
 		</div>
 	</div>
 </div>
 
+<?php if ( ! empty($detail_modal_partial)): ?>
+	<?php $this->load->view($detail_modal_partial, array('detail_config' => $detail_config ?? array())); ?>
+<?php endif; ?>
+
 <script>
 	window.ENTITY_LIST_CONFIG = <?php echo json_encode(array(
 		'apiUrl'            => $list_api_url,
 		'columns'           => $list_columns,
 		'perPage'           => (int) $list_per_page,
+		'perPageOptions'    => array_values($list_per_page_options),
 		'emptyMessage'      => $list_empty_message,
 		'emptySearchMessage'=> $list_empty_search_message,
+		'detail'            => $detail_config ?? NULL,
 	)); ?>;
 </script>

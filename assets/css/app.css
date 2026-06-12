@@ -528,7 +528,7 @@ html[data-mdb-theme="dark"] body {
 .entity-list-page {
 	display: flex;
 	flex-direction: column;
-	height: calc(100dvh - 6.5rem);
+	height: calc(100dvh - 6rem);
 	min-height: 20rem;
 }
 
@@ -570,6 +570,115 @@ html[data-mdb-theme="dark"] body {
 
 .entity-list-pagination {
 	flex-shrink: 0;
+}
+
+.entity-list-page-size .form-select {
+	width: 4.5rem;
+	min-width: 4.5rem;
+}
+
+.entity-list-row-clickable {
+	cursor: pointer;
+}
+
+.entity-list-row-clickable:hover > td {
+	background-color: var(--app-table-row-hover);
+}
+
+.entity-list-sort-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.35rem;
+	width: 100%;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-weight: 600;
+	text-align: left;
+}
+
+.entity-list-sort-btn:hover {
+	color: #e2e8f0;
+}
+
+.entity-list-sort-icon {
+	flex-shrink: 0;
+	opacity: 0.45;
+	font-size: 0.75rem;
+}
+
+.entity-list-sort-btn.is-sorted .entity-list-sort-icon {
+	opacity: 1;
+	color: var(--mdb-primary);
+}
+
+.entity-detail-modal-body {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.entity-detail-tab-content {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.entity-detail-tab-content > .tab-pane.active.show {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	height: 100%;
+}
+
+#organizationInfoTab {
+	overflow: auto;
+}
+
+#organizationProductsTab {
+	overflow: hidden;
+}
+
+#organizationProductsTab > .entity-detail-products-toolbar,
+#organizationProductsTab > #organizationProductsPagination {
+	flex-shrink: 0;
+}
+
+.entity-detail-info-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	gap: 1rem 1.5rem;
+}
+
+.entity-detail-info-label {
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--app-text-muted);
+	margin-bottom: 0.25rem;
+}
+
+.entity-detail-info-value {
+	font-size: 0.9375rem;
+	color: #e2e8f0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.entity-detail-products-toolbar {
+	flex-shrink: 0;
+}
+
+.entity-detail-products-table {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
 }
 
 .entity-list-loading {

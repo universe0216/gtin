@@ -13,4 +13,14 @@ class Organization_model extends Basic_model {
 		'procedure_number',
 		'address',
 	);
+	protected $sortable_columns = array(
+		'name'                => 'organizations.name',
+		'registration_number' => 'organizations.registration_number',
+		'gs1_prefix'          => 'organizations.gs1_prefix',
+		'procedure_number'    => 'organizations.procedure_number',
+		'registration_date'   => 'organizations.registration_date',
+		'reregistration_date' => 'organizations.reregistration_date',
+		'expiry_date'         => 'organizations.expiry_date',
+		'address'             => 'organizations.address',
+	);
 }

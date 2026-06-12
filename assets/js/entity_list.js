@@ -9,6 +9,7 @@
 	const apiUrl = config.apiUrl.replace(/\/$/, '');
 	const columns = config.columns || [];
 	const perPage = config.perPage || 10;
+	const perPageOptions = config.perPageOptions || [5, 10, 20, 50];
 
 	const searchForm = document.getElementById('entityListSearchForm');
 	const searchInput = document.getElementById('entityListSearchInput');
@@ -17,13 +18,20 @@
 	const toolbarMeta = document.getElementById('entityListToolbarMeta');
 	const loadingEl = document.getElementById('entityListLoading');
 	const paginationEl = document.getElementById('entityListPagination');
+	const paginationNav = document.getElementById('entityListPaginationNav');
 	const paginationList = document.getElementById('entityListPaginationList');
 	const pageMeta = document.getElementById('entityListPageMeta');
+	const perPageSelect = document.getElementById('entityListPerPageSelect');
+	const entityListPage = document.getElementById('entityListPage');
+	const tableHeadRow = document.getElementById('entityListTableHeadRow');
+	const sortableTable = window.SortableTable;
 
 	const state = {
 		page: 1,
 		search: '',
 		perPage: perPage,
+		sort: '',
+		dir: '',
 		request: null,
 		searchTimer: null,
 	};
@@ -43,6 +51,21 @@
 		}
 	}
 
+	function normalizePerPage(value) {
+		const parsed = parseInt(value || String(perPage), 10);
+		return perPageOptions.indexOf(parsed) !== -1 ? parsed : perPage;
+	}
+
+	function syncPerPageSelect() {
+		if (perPageSelect) {
+			perPageSelect.value = String(state.perPage);
+		}
+
+		if (entityListPage) {
+			entityListPage.style.setProperty('--entity-list-page-rows', String(state.perPage));
+		}
+	}
+
 	function updateUrl() {
 		const params = new URLSearchParams();
 
@@ -50,8 +73,16 @@
 			params.set('page', String(state.page));
 		}
 
+		if (state.perPage !== perPage) {
+			params.set('per_page', String(state.perPage));
+		}
+
 		if (state.search) {
 			params.set('q', state.search);
+		}
+
+		if (sortableTable) {
+			sortableTable.appendSortParams(params, state);
 		}
 
 		const query = params.toString();
@@ -63,6 +94,13 @@
 		const params = new URLSearchParams(window.location.search);
 		state.page = Math.max(1, parseInt(params.get('page') || '1', 10));
 		state.search = (params.get('q') || '').trim();
+		state.perPage = normalizePerPage(params.get('per_page'));
+
+		if (sortableTable) {
+			const sortState = sortableTable.readSortParams(params);
+			state.sort = sortState.sort;
+			state.dir = sortState.dir === 'asc' || sortState.dir === 'desc' ? sortState.dir : '';
+		}
 
 		if (searchInput) {
 			searchInput.value = state.search;
@@ -71,6 +109,9 @@
 		if (clearBtn) {
 			clearBtn.classList.toggle('d-none', state.search === '');
 		}
+
+		syncPerPageSelect();
+		renderTableHead();
 	}
 
 	function buildListUrl() {
@@ -82,7 +123,19 @@
 			params.set('q', state.search);
 		}
 
+		if (sortableTable) {
+			sortableTable.appendSortParams(params, state);
+		}
+
 		return apiUrl + '?' + params.toString();
+	}
+
+	function renderTableHead() {
+		if (!tableHeadRow || !sortableTable) {
+			return;
+		}
+
+		tableHeadRow.innerHTML = sortableTable.renderHeader(columns, state);
 	}
 
 	function renderPagination(meta) {
@@ -90,20 +143,16 @@
 		const page = meta.page || 1;
 		const totalPages = meta.total_pages || 1;
 
-		if (!paginationEl || !paginationList) {
+		if (!paginationList) {
 			return;
 		}
 
-		if (total <= state.perPage) {
-			paginationEl.classList.add('d-none');
-			paginationList.innerHTML = '';
-			return;
+		if (paginationNav) {
+			paginationNav.classList.toggle('d-none', total <= state.perPage);
 		}
-
-		paginationEl.classList.remove('d-none');
 
 		if (pageMeta) {
-			pageMeta.textContent = 'Page ' + page + ' of ' + totalPages;
+			pageMeta.textContent = total > 0 ? 'Page ' + page + ' of ' + totalPages : '';
 		}
 
 		let html = '';
@@ -170,8 +219,13 @@
 
 		let html = '';
 
+		const detailEnabled = config.detail && config.detail.enabled;
+
 		records.forEach(function (record, index) {
-			html += '<tr>';
+			const rowAttrs = detailEnabled && record.id
+				? ' class="entity-list-row-clickable" role="button" tabindex="0" data-record-id="' + parseInt(record.id, 10) + '"'
+				: '';
+			html += '<tr' + rowAttrs + '>';
 			html += '<td class="procedure-row-index text-muted">' + (rowOffset + index + 1) + '</td>';
 
 			columns.forEach(function (column) {
@@ -220,10 +274,16 @@
 					throw new Error(result.message || 'Failed to load records.');
 				}
 
+				state.perPage = normalizePerPage(result.per_page);
+				state.sort = result.sort || '';
+				state.dir = result.sort_dir === 'asc' || result.sort_dir === 'desc' ? result.sort_dir : '';
+				syncPerPageSelect();
+				renderTableHead();
+
 				const meta = {
 					total: result.total,
 					page: result.page,
-					per_page: result.per_page,
+					per_page: state.perPage,
 					total_pages: result.total_pages,
 					range_start: result.range_start,
 					range_end: result.range_end,
@@ -311,6 +371,26 @@
 			}
 
 			state.page = parseInt(button.getAttribute('data-page') || '1', 10);
+			loadList();
+		});
+	}
+
+	if (perPageSelect) {
+		perPageSelect.addEventListener('change', function () {
+			state.perPage = normalizePerPage(perPageSelect.value);
+			state.page = 1;
+			syncPerPageSelect();
+			loadList();
+		});
+	}
+
+	if (sortableTable) {
+		sortableTable.bindHeader(tableHeadRow, function (columnKey) {
+			const nextSort = sortableTable.cycleSort(state, columnKey);
+			state.sort = nextSort.sort;
+			state.dir = nextSort.dir;
+			state.page = 1;
+			renderTableHead();
 			loadList();
 		});
 	}

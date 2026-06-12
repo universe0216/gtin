@@ -6,6 +6,7 @@ class Basic_model extends CI_Model {
 	protected $table = '';
 	protected $primary_key = 'id';
 	protected $searchable_columns = array();
+	protected $sortable_columns = array();
 
 	public function get_all()
 	{
@@ -31,16 +32,44 @@ class Basic_model extends CI_Model {
 		return (int) $this->db->count_all_results();
 	}
 
-	public function get_paginated($limit, $offset = 0, $search = '')
+	public function get_paginated($limit, $offset = 0, $search = '', $sort = array())
 	{
 		$this->prepare_list_query();
 		$this->apply_search_filters($search);
+		$this->apply_list_order($sort);
 
 		return $this->db
-			->order_by($this->list_order_column(), 'DESC')
 			->limit((int) $limit, (int) $offset)
 			->get()
 			->result_array();
+	}
+
+	public function get_sortable_columns()
+	{
+		return $this->sortable_columns;
+	}
+
+	public function resolve_sort($sort_key, $direction, $sortable_columns = NULL)
+	{
+		$sort_key = trim((string) $sort_key);
+		$direction = strtolower(trim((string) $direction));
+		$map = $sortable_columns ?? $this->sortable_columns;
+
+		if ($sort_key === '' || ! isset($map[$sort_key]))
+		{
+			return array();
+		}
+
+		if ($direction !== 'asc' && $direction !== 'desc')
+		{
+			return array();
+		}
+
+		return array(
+			'key'       => $sort_key,
+			'direction' => $direction,
+			'sql'       => $map[$sort_key],
+		);
 	}
 
 	public function insert($data)
@@ -80,6 +109,17 @@ class Basic_model extends CI_Model {
 	protected function list_order_column()
 	{
 		return $this->table.'.'.$this->primary_key;
+	}
+
+	protected function apply_list_order($sort)
+	{
+		if (empty($sort['sql']) || empty($sort['direction']))
+		{
+			$this->db->order_by($this->list_order_column(), 'DESC');
+			return;
+		}
+
+		$this->db->order_by($sort['sql'], $sort['direction'] === 'asc' ? 'ASC' : 'DESC');
 	}
 
 	protected function apply_search_filters($search)
