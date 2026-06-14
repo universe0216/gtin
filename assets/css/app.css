@@ -92,6 +92,34 @@ html[data-mdb-theme="dark"] body {
 	margin-left: 0.25rem;
 }
 
+#crudTable tbody tr {
+	cursor: default;
+}
+
+#crudTable.table-dark {
+	--mdb-table-bg: transparent;
+	--mdb-table-color: #cbd5e1;
+	--mdb-table-border-color: var(--app-border-subtle);
+}
+
+#crudTable thead th {
+	background-color: var(--app-surface-raised);
+	color: #94a3b8;
+	font-weight: 600;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	border-bottom: 1px solid var(--app-border);
+}
+
+#crudTable tbody td {
+	border-color: var(--app-border-subtle);
+}
+
+#crudTable tbody tr:hover {
+	background-color: rgba(255, 255, 255, 0.025);
+}
+
 .modal .form-outline {
 	margin-bottom: 1rem;
 }
@@ -1677,6 +1705,26 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 
 .jqx-grid-cell.jqx-grid-cell-alt {
 	background-color: rgba(148, 163, 184, 0.04);
+}
+
+/* Pinned (frozen) columns float over the horizontally scrolled cells, so they
+   must stay opaque. Higher specificity than the transparent .jqx-grid-cell. */
+.jqx-grid-cell.jqx-grid-cell-pinned {
+	background-color: var(--app-surface);
+}
+
+.jqx-grid-cell.jqx-grid-cell-pinned.jqx-grid-cell-alt {
+	background-color: var(--app-surface-raised);
+}
+
+/* Opaque equivalents of the row-state tints so colored rows don't bleed the
+   scrolled content through their pinned cells. */
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-rejected {
+	background-color: #2a1b1f !important;
+}
+
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-approved {
+	background-color: #16291f !important;
 }
 
 .jqx-grid-cell.jqx-grid-cell-selected,

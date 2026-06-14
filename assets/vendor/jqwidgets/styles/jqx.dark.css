@@ -2683,12 +2683,4 @@ textarea.jqx-input-dark:-ms-input-placeholder {
     }
   
   
-/*applied to a pinned grid cell.*/
-.jqx-grid-cell-pinned-dark {
-    background-color: #e5e5e5 !important;
-}
 
-/*applied to a pinned grid cell. Represents the alternating cell background.*/
-.jqx-grid-cell-pinned-alt-dark {
-    background-color: #e5e5e5 !important;
-}

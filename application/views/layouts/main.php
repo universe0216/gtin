@@ -12,6 +12,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<link href="<?php echo base_url('assets/vendor/mdb/css/mdb.min.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/vendor/jqwidgets/styles/jqx.base.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/vendor/jqwidgets/styles/jqx.dark.css'); ?>" rel="stylesheet">
+	<link href="<?php echo base_url('assets/vendor/jqwidgets/styles/jqx.metrodark.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/css/app.css'); ?>" rel="stylesheet">
 </head>
 <body class="text-body">
