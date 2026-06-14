@@ -7,6 +7,7 @@
 
 	const config = window.ORGANIZATION_REGISTRATION_CONFIG;
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
+	const ID_ATTR = 'data-organization-registration-id';
 
 	const uploadForms = document.querySelectorAll('.org-registration-upload-form');
 	const uploadModalEl = document.getElementById('orgRegistrationUploadModal');
@@ -16,29 +17,102 @@
 	const tabsContent = document.getElementById('orgRegistrationTabContent');
 	const initialUpload = document.getElementById('orgRegistrationInitialUpload');
 
-	function buildTableHtml(tab) {
-		const headerHtml = '<th class="procedure-row-index">#</th>' +
-			(tab.columns || []).map(function (column) {
-				return '<th>' + escapeHtml(column) + '</th>';
-			}).join('');
+	// Tab data + grid controllers keyed by registration id.
+	const tabData = new Map();
+	const tabGrids = new Map();
 
-		const bodyHtml = (tab.rows || []).map(function (row, index) {
-			const cellsHtml = (row.cells || []).map(function (cell) {
-				return '<td>' + escapeHtml(cell) + '</td>';
-			}).join('');
+	function registerTabData(tab) {
+		if (tab && tab.organization_registration_id !== undefined) {
+			tabData.set(String(tab.organization_registration_id), tab);
+		}
+	}
 
-			return '<tr data-id="' + row.id + '">' +
-				'<td class="procedure-row-index text-muted">' + (index + 1) + '</td>' +
-				cellsHtml +
-			'</tr>';
-		}).join('');
+	function paneFor(registrationId) {
+		return tabsContent
+			? tabsContent.querySelector('.tab-pane[' + ID_ATTR + '="' + registrationId + '"]')
+			: null;
+	}
 
-		return '<div class="procedure-table-scroll">' +
-			'<table class="table table-hover align-middle mb-0 procedure-data-table">' +
-				'<thead><tr>' + headerHtml + '</tr></thead>' +
-				'<tbody>' + bodyHtml + '</tbody>' +
-			'</table>' +
-		'</div>';
+	function buildGrid(tab, container) {
+		const columns = [
+			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+		];
+		const datafields = [];
+
+		(tab.columns || []).forEach(function (column, index) {
+			const field = 'c' + index;
+			datafields.push({ name: field, type: 'string' });
+			columns.push({ text: column, datafield: field });
+		});
+
+		const data = (tab.rows || []).map(function (row) {
+			const obj = {};
+			(row.cells || []).forEach(function (cell, index) {
+				obj['c' + index] = cell;
+			});
+			return obj;
+		});
+
+		return JqxGrid.local(container, {
+			data: data,
+			datafields: datafields,
+			columns: columns,
+			pageable: true,
+			pagesize: 25,
+			pagesizeoptions: ['25', '50', '100'],
+			height: Math.max(360, window.innerHeight - 320),
+			emptyMessage: 'No rows found.',
+		});
+	}
+
+	function ensureGrid(registrationId) {
+		const key = String(registrationId);
+		const pane = paneFor(key);
+
+		if (!pane) {
+			return;
+		}
+
+		const container = pane.querySelector('.org-registration-grid');
+
+		if (!container) {
+			return;
+		}
+
+		if (container.getAttribute('data-grid-ready') === '1') {
+			const existing = tabGrids.get(key);
+			if (existing) {
+				existing.render();
+			}
+			return;
+		}
+
+		// Wait until the pane is actually visible so the grid can size itself.
+		if (!container.offsetParent) {
+			return;
+		}
+
+		const tab = tabData.get(key);
+
+		if (!tab) {
+			return;
+		}
+
+		const grid = buildGrid(tab, container);
+
+		if (grid) {
+			tabGrids.set(key, grid);
+			container.setAttribute('data-grid-ready', '1');
+		}
+	}
+
+	function activeRegistrationId() {
+		const activePane = tabsContent ? tabsContent.querySelector('.tab-pane.active') : null;
+		return activePane ? activePane.getAttribute(ID_ATTR) : null;
+	}
+
+	function buildTableHtml() {
+		return '<div class="org-registration-grid"></div>';
 	}
 
 	function buildTabButton(tab, isActive) {
@@ -92,7 +166,7 @@
 		tabsContent: tabsContent,
 		initialUpload: initialUpload,
 		openUploadBtn: openUploadBtn,
-		idAttribute: 'data-organization-registration-id',
+		idAttribute: ID_ATTR,
 		getTabId: function (tab) {
 			return tab.organization_registration_id;
 		},
@@ -107,6 +181,10 @@
 			errorMessage: 'Failed to delete registration.',
 		},
 		deleteBtnSelector: '.org-registration-tab-delete-btn',
+		onBeforePrepend: registerTabData,
+		onAfterPrepend: function (tab) {
+			ensureGrid(tab.organization_registration_id);
+		},
 	});
 
 	const procedureUpload = ProcedureUpload.create({
@@ -127,4 +205,22 @@
 
 	procedureUpload.init();
 	procedureTabs.init();
+
+	// Lazily (re)build a grid whenever its tab becomes visible.
+	document.addEventListener('shown.mdb.tab', function (event) {
+		const button = event.target.closest('[' + ID_ATTR + ']');
+
+		if (button && tabsNav && tabsNav.contains(button)) {
+			ensureGrid(button.getAttribute(ID_ATTR));
+		}
+	});
+
+	// Register the server-rendered tabs and render the active one.
+	(config.initialTabs || []).forEach(registerTabData);
+
+	const activeId = activeRegistrationId();
+
+	if (activeId) {
+		ensureGrid(activeId);
+	}
 })();

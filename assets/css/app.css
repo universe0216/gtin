@@ -877,6 +877,57 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	padding-right: 0.45rem;
 }
 
+/* Freeze the status, index and first three data columns during horizontal scroll. */
+.procedure-data-table .procedure-item-status-col,
+.procedure-data-table .procedure-item-status-cell,
+.procedure-data-table .procedure-row-index,
+.procedure-data-table .procedure-sticky-col {
+	position: sticky;
+	z-index: 1;
+	background-color: var(--app-table-row);
+}
+
+.procedure-data-table .procedure-item-status-col,
+.procedure-data-table .procedure-item-status-cell {
+	left: 0;
+}
+
+.procedure-data-table .procedure-row-index {
+	left: 6.5rem;
+}
+
+.procedure-data-table .procedure-sticky-col-0 {
+	left: 9rem;
+	width: 8rem;
+	min-width: 8rem;
+	max-width: 8rem;
+}
+
+.procedure-data-table .procedure-sticky-col-1 {
+	left: 17rem;
+	width: 10rem;
+	min-width: 10rem;
+	max-width: 10rem;
+}
+
+.procedure-data-table .procedure-sticky-col-2 {
+	left: 27rem;
+	width: 14rem;
+	min-width: 14rem;
+	max-width: 14rem;
+}
+
+.procedure-data-table .procedure-sticky-col {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.procedure-data-table thead th.procedure-item-status-col,
+.procedure-data-table thead th.procedure-row-index,
+.procedure-data-table thead th.procedure-sticky-col {
+	z-index: 3;
+}
+
 .procedure-data-table tbody tr.procedure-data-row {
 	cursor: pointer;
 }
@@ -1616,4 +1667,107 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	max-height: calc(100vh - 16rem);
 	overflow: auto;
 	-webkit-overflow-scrolling: touch;
+}
+
+/* ------------------------------------------------------------------ jqxGrid */
+/* Blend the jQWidgets dark theme into the app's palette. */
+
+.jqx-widget.jqx-grid,
+.jqx-grid {
+	font-family: inherit;
+	border-color: var(--app-border);
+	background-color: var(--app-surface);
+}
+
+.jqx-widget-content {
+	background-color: var(--app-surface);
+	border-color: var(--app-border);
+}
+
+.jqx-grid-column-header,
+.jqx-grid-columngroup-header,
+.jqx-grid-cell-pinned {
+	background-color: var(--app-surface-raised);
+	border-color: var(--app-border-subtle);
+}
+
+.jqx-grid-column-header .jqx-grid-column-header-cell,
+.jqx-grid-column-header span {
+	color: var(--app-text-muted);
+	font-weight: 600;
+}
+
+.jqx-grid-cell {
+	border-color: var(--app-border-subtle);
+	background-color: transparent;
+	color: #e7ecf3;
+}
+
+.jqx-grid-cell.jqx-grid-cell-alt {
+	background-color: rgba(148, 163, 184, 0.04);
+}
+
+.jqx-grid-cell.jqx-grid-cell-selected,
+.jqx-grid-cell.jqx-fill-state-pressed {
+	background-color: var(--app-accent-soft) !important;
+	color: #dbeafe !important;
+	border-color: rgba(77, 127, 212, 0.28);
+}
+
+.jqx-grid-cell.jqx-grid-cell-hover,
+.jqx-fill-state-hover {
+	background-color: var(--app-table-row-hover) !important;
+}
+
+.jqx-grid-pager,
+.jqx-grid-statusbar {
+	background-color: var(--app-surface-raised);
+	border-color: var(--app-border-subtle);
+	color: var(--app-text-muted);
+}
+
+.jqx-grid-pager .jqx-fill-state-normal {
+	background: transparent;
+	border-color: transparent;
+	color: var(--app-text-muted);
+}
+
+.jqx-widget .jqx-grid-column-menubutton,
+.jqx-grid-column-sortascbutton,
+.jqx-grid-column-sortdescbutton {
+	background-color: transparent;
+}
+
+/* Buttons rendered inside grid action cells. */
+.jqx-action-cell {
+	display: flex;
+	gap: 0.35rem;
+	justify-content: flex-end;
+	align-items: center;
+	height: 100%;
+	padding: 0 0.5rem;
+}
+
+.jqx-action-btn {
+	line-height: 1;
+}
+
+/* Row state coloring for the product registration grid (applied per-cell via
+   the jqxGrid cellclassname hook). */
+.jqx-grid-cell.procedure-grid-row-rejected {
+	background-color: rgba(239, 68, 68, 0.1) !important;
+	color: #ff5f5f !important;
+}
+
+.jqx-grid-cell.procedure-grid-row-approved {
+	background-color: rgba(34, 197, 94, 0.1) !important;
+	color: #43dd7b !important;
+}
+
+.procedure-item-status-icon-rejected {
+	color: #ef4444;
+}
+
+.procedure-item-status-icon-approved {
+	color: #22c55e;
 }

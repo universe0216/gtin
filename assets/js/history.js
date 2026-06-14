@@ -11,6 +11,7 @@
 
 	let modal;
 	let activeRequest = null;
+	let modalGrid = null;
 
 	const procedureModalEl = document.getElementById('historyProcedureModal');
 	const procedureModalTitle = document.getElementById('historyProcedureModalTitle');
@@ -48,6 +49,163 @@
 		};
 	}
 
+	// ---------------------------------------------------------------- List grid
+
+	function fileRenderer(row, columnfield, value) {
+		return JqxGrid.htmlCellRenderer(
+			'<i class="fas fa-file-zipper me-1 text-primary"></i>' + JqxGrid.escapeAttr(value)
+		);
+	}
+
+	function buildListColumns() {
+		if (historyType === 'organizations') {
+			return {
+				datafields: [
+					{ name: 'id', type: 'number' },
+					{ name: 'file_name', type: 'string' },
+					{ name: 'procedure_number', type: 'string' },
+					{ name: 'organization_name', type: 'string' },
+					{ name: 'processor_name', type: 'string' },
+					{ name: 'total_items', type: 'number' },
+					{ name: 'status', type: 'string' },
+					{ name: 'created_at', type: 'string' },
+				],
+				columns: [
+					{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+					{ text: 'File', datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
+					{ text: 'Procedure #', datafield: 'procedure_number', width: 130 },
+					{ text: 'Organization', datafield: 'organization_name' },
+					{ text: 'Processor', datafield: 'processor_name', width: 160 },
+					{ text: 'Items', datafield: 'total_items', width: 90, cellsalign: 'right' },
+					{ text: 'Status', datafield: 'status', width: 120 },
+					{ text: 'Uploaded', datafield: 'created_at', width: 170 },
+				],
+			};
+		}
+
+		return {
+			datafields: [
+				{ name: 'id', type: 'number' },
+				{ name: 'file_name', type: 'string' },
+				{ name: 'procedure_number', type: 'string' },
+				{ name: 'organization_name', type: 'string' },
+				{ name: 'processor_name', type: 'string' },
+				{ name: 'total_products', type: 'number' },
+				{ name: 'approved', type: 'number' },
+				{ name: 'rejected', type: 'number' },
+				{ name: 'created_at', type: 'string' },
+			],
+			columns: [
+				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+				{ text: 'File', datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
+				{ text: 'Procedure #', datafield: 'procedure_number', width: 130 },
+				{ text: 'Organization', datafield: 'organization_name' },
+				{ text: 'Processor', datafield: 'processor_name', width: 160 },
+				{ text: 'Products', datafield: 'total_products', width: 100, cellsalign: 'right' },
+				{ text: 'Approved', datafield: 'approved', width: 100, cellsalign: 'right' },
+				{ text: 'Rejected', datafield: 'rejected', width: 100, cellsalign: 'right' },
+				{ text: 'Completed', datafield: 'created_at', width: 170 },
+			],
+		};
+	}
+
+	function initListGrid() {
+		const selector = config.gridSelector;
+
+		if (!selector || !document.querySelector(selector)) {
+			return;
+		}
+
+		const setup = buildListColumns();
+
+		const grid = JqxGrid.local(selector, {
+			id: 'id',
+			data: config.rows || [],
+			datafields: setup.datafields,
+			columns: setup.columns,
+			pageable: true,
+			pagesize: 15,
+			pagesizeoptions: ['15', '30', '50', '100'],
+			selectionmode: 'singlerow',
+			emptyMessage: historyType === 'organizations'
+				? 'No organization registrations found.'
+				: 'No completed registrations found.',
+		});
+
+		if (grid) {
+			grid.$el.on('rowclick', function (event) {
+				const args = event.args;
+				const rowdata = args.row && args.row.bounddata
+					? args.row.bounddata
+					: grid.$el.jqxGrid('getrowdata', args.rowindex);
+
+				if (rowdata && rowdata.id) {
+					openHistoryModal(rowdata.id);
+				}
+			});
+		}
+	}
+
+	// --------------------------------------------------------------- Modal grid
+
+	function destroyModalGrid() {
+		if (modalGrid) {
+			try {
+				modalGrid.destroy();
+			} catch (error) {
+				/* element may already be detached */
+			}
+			modalGrid = null;
+		}
+	}
+
+	function renderModalGrid(wrapEl, columns, rows, extraColumns) {
+		destroyModalGrid();
+
+		wrapEl.innerHTML = '<div class="history-modal-grid"></div>';
+		const inner = wrapEl.firstElementChild;
+
+		const datafields = [];
+		const gridColumns = [
+			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+		];
+
+		(columns || []).forEach(function (column, index) {
+			const field = 'c' + index;
+			datafields.push({ name: field, type: 'string' });
+			gridColumns.push({ text: column, datafield: field });
+		});
+
+		(extraColumns || []).forEach(function (extra) {
+			datafields.push({ name: extra.key, type: 'string' });
+			gridColumns.push({ text: extra.text, datafield: extra.key, width: extra.width });
+		});
+
+		const data = (rows || []).map(function (row) {
+			const obj = {};
+
+			(row.cells || []).forEach(function (cell, index) {
+				obj['c' + index] = cell;
+			});
+
+			(extraColumns || []).forEach(function (extra) {
+				obj[extra.key] = row[extra.key] ?? '';
+			});
+
+			return obj;
+		});
+
+		modalGrid = JqxGrid.local(inner, {
+			data: data,
+			datafields: datafields,
+			columns: gridColumns,
+			height: Math.max(320, window.innerHeight - 260),
+			emptyMessage: historyType === 'organizations'
+				? 'No registration items found.'
+				: 'No procedure items found.',
+		});
+	}
+
 	function initModal() {
 		const elements = getModalElements();
 
@@ -66,6 +224,8 @@
 			activeRequest.abort();
 			activeRequest = null;
 		}
+
+		destroyModalGrid();
 
 		if (elements.titleEl) {
 			elements.titleEl.textContent = '—';
@@ -120,77 +280,15 @@
 	}
 
 	function renderProcedureTable(tab, elements) {
-		const columns = tab.columns || [];
-		const rows = tab.rows || [];
-		const colSpan = columns.length + 4;
-		let html =
-			'<table class="table table-hover align-middle mb-0 procedure-data-table">' +
-				'<thead><tr>' +
-					'<th class="procedure-row-index">#</th>';
-
-		columns.forEach(function (column) {
-			html += '<th>' + escapeHtml(column) + '</th>';
-		});
-
-		html +=
-					'<th>Status</th>' +
-					'<th>Message</th>' +
-					'<th>Barcode</th>' +
-				'</tr></thead><tbody>';
-
-		if (!rows.length) {
-			html += '<tr><td colspan="' + colSpan + '" class="text-center text-muted py-4">No procedure items found.</td></tr>';
-		} else {
-			rows.forEach(function (row, index) {
-				html += '<tr><td class="procedure-row-index text-muted">' + (index + 1) + '</td>';
-
-				(row.cells || []).forEach(function (cell) {
-					html += '<td>' + escapeHtml(cell) + '</td>';
-				});
-
-				html +=
-					'<td>' + escapeHtml(row.status) + '</td>' +
-					'<td>' + escapeHtml(row.message) + '</td>' +
-					'<td>' + escapeHtml(row.barcode) + '</td>' +
-				'</tr>';
-			});
-		}
-
-		html += '</tbody></table>';
-		elements.tableWrapEl.innerHTML = html;
+		renderModalGrid(elements.tableWrapEl, tab.columns || [], tab.rows || [], [
+			{ text: 'Status', key: 'status', width: 120 },
+			{ text: 'Message', key: 'message', width: 220 },
+			{ text: 'Barcode', key: 'barcode', width: 160 },
+		]);
 	}
 
 	function renderOrganizationTable(tab, elements) {
-		const columns = tab.columns || [];
-		const rows = tab.rows || [];
-		const colSpan = columns.length + 1;
-		let html =
-			'<table class="table table-hover align-middle mb-0 procedure-data-table">' +
-				'<thead><tr>' +
-					'<th class="procedure-row-index">#</th>';
-
-		columns.forEach(function (column) {
-			html += '<th>' + escapeHtml(column) + '</th>';
-		});
-
-		html += '</tr></thead><tbody>';
-
-		if (!rows.length) {
-			html += '<tr><td colspan="' + colSpan + '" class="text-center text-muted py-4">No registration items found.</td></tr>';
-		} else {
-			rows.forEach(function (row, index) {
-				html += '<tr><td class="procedure-row-index text-muted">' + (index + 1) + '</td>';
-
-				(row.cells || []).forEach(function (cell) {
-					html += '<td>' + escapeHtml(cell) + '</td>';
-				});
-
-				html += '</tr>';
-			});
-		}
-
-		html += '</tbody></table>';
-		elements.tableWrapEl.innerHTML = html;
+		renderModalGrid(elements.tableWrapEl, tab.columns || [], tab.rows || [], []);
 	}
 
 	function openHistoryModal(recordId) {
@@ -236,27 +334,6 @@
 			});
 	}
 
-	function bindRows(selector, attributeName) {
-		document.querySelectorAll(selector).forEach(function (row) {
-			function openRow() {
-				openHistoryModal(row.getAttribute(attributeName));
-			}
-
-			row.addEventListener('click', openRow);
-			row.addEventListener('keydown', function (event) {
-				if (event.key === 'Enter' || event.key === ' ') {
-					event.preventDefault();
-					openRow();
-				}
-			});
-		});
-	}
-
 	initModal();
-
-	if (historyType === 'organizations') {
-		bindRows('.history-organization-row', 'data-organization-registration-id');
-	} else {
-		bindRows('.history-procedure-row', 'data-product-registration-id');
-	}
+	initListGrid();
 })();

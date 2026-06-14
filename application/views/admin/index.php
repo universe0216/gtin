@@ -9,59 +9,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 </div>
 
 <div class="app-panel">
-	<div class="table-responsive">
-		<table class="table table-hover table-dark mb-0" id="adminTable">
-			<thead>
-				<tr>
-					<th scope="col">#</th>
-					<th scope="col">Username</th>
-					<th scope="col">Full Name</th>
-					<th scope="col">Role</th>
-					<th scope="col">Status</th>
-					<th scope="col" class="text-end" style="width: 140px;">Actions</th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php if (empty($accounts)): ?>
-					<tr id="emptyRow">
-						<td colspan="6" class="text-center text-muted py-4">No users found.</td>
-					</tr>
-				<?php else: ?>
-					<?php foreach ($accounts as $account): ?>
-						<tr data-id="<?php echo (int) $account['id']; ?>">
-							<td><?php echo (int) $account['id']; ?></td>
-							<td><?php echo html_escape($account['username']); ?></td>
-							<td><?php echo html_escape($account['full_name']); ?></td>
-							<td>
-								<?php if ($account['is_admin']): ?>
-									<span class="badge bg-primary">Admin</span>
-								<?php else: ?>
-									<span class="badge bg-secondary">User</span>
-								<?php endif; ?>
-							</td>
-							<td>
-								<?php if ($account['is_active']): ?>
-									<span class="text-success">Active</span>
-								<?php else: ?>
-									<span class="text-muted">Inactive</span>
-								<?php endif; ?>
-							</td>
-							<td class="text-end">
-								<button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-mdb-ripple-init>
-									<i class="fas fa-pen"></i>
-								</button>
-								<?php if ((int) $account['id'] !== (int) $current_user_id): ?>
-									<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-mdb-ripple-init>
-										<i class="fas fa-trash"></i>
-									</button>
-								<?php endif; ?>
-							</td>
-						</tr>
-					<?php endforeach; ?>
-				<?php endif; ?>
-			</tbody>
-		</table>
-	</div>
+	<div id="adminGrid"></div>
 </div>
 
 <div class="modal fade" id="accountModal" tabindex="-1" aria-labelledby="accountModalLabel" aria-hidden="true">
@@ -151,5 +99,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	window.ADMIN_CONFIG = <?php echo json_encode(array(
 		'baseUrl'         => site_url('admin'),
 		'currentUserId'   => (int) $current_user_id,
+		'accounts'        => array_map(function ($account) {
+			return array(
+				'id'        => (int) $account['id'],
+				'username'  => $account['username'],
+				'full_name' => $account['full_name'],
+				'is_admin'  => (int) $account['is_admin'],
+				'is_active' => (int) $account['is_active'],
+			);
+		}, $accounts),
 	)); ?>;
 </script>

@@ -77,28 +77,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							</button>
 						</div>
 
-						<div class="procedure-table-scroll">
-							<table class="table table-hover align-middle mb-0 procedure-data-table">
-								<thead>
-									<tr>
-										<th class="procedure-row-index">#</th>
-										<?php foreach ($tab['columns'] as $column): ?>
-											<th><?php echo html_escape($column); ?></th>
-										<?php endforeach; ?>
-									</tr>
-								</thead>
-								<tbody>
-									<?php foreach ($tab['rows'] as $row_index => $row): ?>
-										<tr data-id="<?php echo (int) $row['id']; ?>">
-											<td class="procedure-row-index text-muted"><?php echo (int) $row_index + 1; ?></td>
-											<?php foreach ($row['cells'] as $cell): ?>
-												<td><?php echo html_escape($cell); ?></td>
-											<?php endforeach; ?>
-										</tr>
-									<?php endforeach; ?>
-								</tbody>
-							</table>
-						</div>
+						<div class="org-registration-grid"></div>
 					</div>
 				<?php endforeach; ?>
 			</div>

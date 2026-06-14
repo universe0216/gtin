@@ -6,12 +6,102 @@
 	}
 
 	const config = window.CRUD_CONFIG;
+	const canEdit = !!config.canEdit;
+	const baseUrl = config.baseUrl.replace(/\/$/, '');
 
-	if (!config.canEdit) {
-		return;
+	let grid = null;
+	let records = (config.records || []).slice();
+
+	function actionsRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
+		return JqxGrid.actionButtons([
+			{ cls: 'btn-outline-primary btn-edit', icon: 'fa-pen', title: 'Edit' },
+			{ cls: 'btn-outline-danger btn-delete', icon: 'fa-trash', title: 'Delete' },
+		], rowdata);
 	}
 
-	const baseUrl = config.baseUrl.replace(/\/$/, '');
+	function buildColumns() {
+		const columns = [
+			{ text: '#', datafield: 'id', width: 70, cellsalign: 'left' },
+		];
+
+		config.fields.forEach(function (field) {
+			columns.push({ text: field.label, datafield: field.name });
+		});
+
+		if (canEdit) {
+			columns.push({
+				text: 'Actions', datafield: '__actions', width: 130, sortable: false,
+				filterable: false, editable: false, align: 'right', cellsalign: 'right',
+				cellsrenderer: actionsRenderer,
+			});
+		}
+
+		return columns;
+	}
+
+	function buildDatafields() {
+		const datafields = [{ name: 'id', type: 'number' }];
+
+		config.fields.forEach(function (field) {
+			datafields.push({ name: field.name, type: 'string' });
+		});
+
+		return datafields;
+	}
+
+	function initGrid() {
+		grid = JqxGrid.local('#crudGrid', {
+			id: 'id',
+			data: records,
+			datafields: buildDatafields(),
+			columns: buildColumns(),
+			emptyMessage: canEdit
+				? 'No records found. Click "Add New" to create one.'
+				: 'No records found.',
+		});
+
+		if (grid && canEdit) {
+			JqxGrid.bindCellButtons(grid.$el, '.btn-edit', function (id) {
+				openEditModal(id);
+			});
+			JqxGrid.bindCellButtons(grid.$el, '.btn-delete', function (id) {
+				confirmDeleteRecord(id);
+			});
+		}
+	}
+
+	function upsertRow(record) {
+		const index = records.findIndex(function (item) {
+			return Number(item.id) === Number(record.id);
+		});
+
+		if (index >= 0) {
+			records[index] = record;
+		} else {
+			records.unshift(record);
+		}
+
+		if (grid) {
+			grid.setData(records);
+		}
+	}
+
+	function removeRow(id) {
+		records = records.filter(function (item) {
+			return Number(item.id) !== Number(id);
+		});
+
+		if (grid) {
+			grid.setData(records);
+		}
+	}
+
+	// The grid renders for every list (read-only included); editing is gated below.
+	initGrid();
+
+	if (!canEdit) {
+		return;
+	}
 
 	const modalEl = document.getElementById('basicModal');
 	const formEl = document.getElementById('basicModalForm');
@@ -19,7 +109,6 @@
 	const saveBtn = document.getElementById('basicModalSaveBtn');
 	const modalTitle = document.getElementById('basicModalLabel');
 	const recordIdInput = document.getElementById('record_id');
-	const tableBody = document.querySelector('#crudTable tbody');
 	const addBtn = document.getElementById('btnAddRecord');
 
 	let basicModal;
@@ -101,60 +190,14 @@
 			});
 	}
 
-	function buildRow(record) {
-		const cells = config.fields.map(function (field) {
-			return '<td>' + escapeHtml(record[field.name]) + '</td>';
-		}).join('');
+	function buildListRecord(record) {
+		const row = { id: parseInt(record.id, 10) };
 
-		return (
-			'<tr data-id="' + record.id + '">' +
-				'<td>' + record.id + '</td>' +
-				cells +
-				'<td class="text-end">' +
-					'<button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-mdb-ripple-init>' +
-						'<i class="fas fa-pen"></i>' +
-					'</button>' +
-					'<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-mdb-ripple-init>' +
-						'<i class="fas fa-trash"></i>' +
-					'</button>' +
-				'</td>' +
-			'</tr>'
-		);
-	}
+		config.fields.forEach(function (field) {
+			row[field.name] = record[field.name] ?? '';
+		});
 
-	function removeEmptyRow() {
-		const emptyRow = document.getElementById('emptyRow');
-		if (emptyRow) {
-			emptyRow.remove();
-		}
-	}
-
-	function upsertRow(record) {
-		removeEmptyRow();
-		const existing = tableBody.querySelector('tr[data-id="' + record.id + '"]');
-
-		if (existing) {
-			existing.outerHTML = buildRow(record);
-		} else {
-			tableBody.insertAdjacentHTML('afterbegin', buildRow(record));
-		}
-	}
-
-	function removeRow(id) {
-		const row = tableBody.querySelector('tr[data-id="' + id + '"]');
-		if (row) {
-			row.remove();
-		}
-
-		if (!tableBody.querySelector('tr')) {
-			const colspan = config.fields.length + 2;
-			tableBody.innerHTML =
-				'<tr id="emptyRow">' +
-					'<td colspan="' + colspan + '" class="text-center text-muted py-4">' +
-						'No records found. Click "Add New" to create one.' +
-					'</td>' +
-				'</tr>';
-		}
+		return row;
 	}
 
 	function submitForm(event) {
@@ -171,7 +214,7 @@
 			body: formData,
 		})
 			.then(function (result) {
-				upsertRow(result.data);
+				upsertRow(buildListRecord(result.data));
 				basicModal.hide();
 				showToast(result.message, 'success');
 			})
@@ -213,26 +256,6 @@
 	if (formEl) {
 		formEl.addEventListener('submit', submitForm);
 	}
-
-	tableBody.addEventListener('click', function (event) {
-		const editBtn = event.target.closest('.btn-edit');
-		const deleteBtn = event.target.closest('.btn-delete');
-		const row = event.target.closest('tr[data-id]');
-
-		if (!row) {
-			return;
-		}
-
-		const id = row.getAttribute('data-id');
-
-		if (editBtn) {
-			openEditModal(id);
-		}
-
-		if (deleteBtn) {
-			confirmDeleteRecord(id);
-		}
-	});
 
 	document.addEventListener('DOMContentLoaded', initModals);
 	initModals();

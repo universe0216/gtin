@@ -31,6 +31,7 @@
 			deleteBtnSelector: null,
 			closeBtnSelector: null,
 			onBeforePrepend: null,
+			onAfterPrepend: null,
 		}, options);
 
 		function tabExists(registrationId) {
@@ -194,6 +195,12 @@
 
 			if (newTabs.length) {
 				activateTab(settings.getTabId(newTabs[0]));
+			}
+
+			if (typeof settings.onAfterPrepend === 'function') {
+				newTabs.forEach(function (tab) {
+					settings.onAfterPrepend(tab, context);
+				});
 			}
 
 			updateTabCount();

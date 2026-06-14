@@ -14,7 +14,6 @@
 	const saveBtn = document.getElementById('accountSaveBtn');
 	const modalTitle = document.getElementById('accountModalLabel');
 	const recordIdInput = document.getElementById('record_id');
-	const tableBody = document.querySelector('#adminTable tbody');
 	const addBtn = document.getElementById('btnAddAccount');
 	const isAdminCheck = document.getElementById('is_admin');
 	const permissionsPanel = document.getElementById('permissionsPanel');
@@ -22,6 +21,102 @@
 	const passwordHint = document.getElementById('passwordHint');
 
 	let accountModal;
+	let grid = null;
+	let accounts = (config.accounts || []).map(normalizeAccount);
+
+	function normalizeAccount(account) {
+		return {
+			id: parseInt(account.id, 10),
+			username: account.username || '',
+			full_name: account.full_name || '',
+			is_admin: parseInt(account.is_admin, 10) ? 1 : 0,
+			is_active: parseInt(account.is_active, 10) ? 1 : 0,
+		};
+	}
+
+	function roleRenderer(row, columnfield, value) {
+		const badge = Number(value) === 1
+			? '<span class="badge bg-primary">Admin</span>'
+			: '<span class="badge bg-secondary">User</span>';
+		return JqxGrid.htmlCellRenderer(badge);
+	}
+
+	function statusRenderer(row, columnfield, value) {
+		const label = Number(value) === 1
+			? '<span class="text-success">Active</span>'
+			: '<span class="text-muted">Inactive</span>';
+		return JqxGrid.htmlCellRenderer(label);
+	}
+
+	function actionsRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
+		return JqxGrid.actionButtons([
+			{ cls: 'btn-outline-primary btn-edit', icon: 'fa-pen', title: 'Edit' },
+			{
+				cls: 'btn-outline-danger btn-delete',
+				icon: 'fa-trash',
+				title: 'Delete',
+				hidden: function (record) {
+					return parseInt(record.id, 10) === config.currentUserId;
+				},
+			},
+		], rowdata);
+	}
+
+	function initGrid() {
+		grid = JqxGrid.local('#adminGrid', {
+			id: 'id',
+			data: accounts,
+			emptyMessage: 'No users found.',
+			columns: [
+				{ text: '#', datafield: 'id', width: 70, cellsalign: 'left' },
+				{ text: 'Username', datafield: 'username', width: 200 },
+				{ text: 'Full Name', datafield: 'full_name' },
+				{ text: 'Role', datafield: 'is_admin', width: 120, cellsrenderer: roleRenderer },
+				{ text: 'Status', datafield: 'is_active', width: 120, cellsrenderer: statusRenderer },
+				{
+					text: 'Actions', datafield: '__actions', width: 130, sortable: false,
+					filterable: false, editable: false, align: 'right', cellsalign: 'right',
+					cellsrenderer: actionsRenderer,
+				},
+			],
+		});
+
+		if (grid) {
+			JqxGrid.bindCellButtons(grid.$el, '.btn-edit', function (id) {
+				openEditModal(id);
+			});
+			JqxGrid.bindCellButtons(grid.$el, '.btn-delete', function (id) {
+				confirmDeleteAccount(id);
+			});
+		}
+	}
+
+	function upsertRow(account) {
+		const record = normalizeAccount(account);
+		const index = accounts.findIndex(function (item) {
+			return Number(item.id) === Number(record.id);
+		});
+
+		if (index >= 0) {
+			accounts[index] = record;
+		} else {
+			accounts.unshift(record);
+		}
+
+		if (grid) {
+			grid.setData(accounts);
+		}
+	}
+
+	function removeRow(id) {
+		accounts = accounts.filter(function (item) {
+			return Number(item.id) !== Number(id);
+		});
+
+		if (grid) {
+			grid.setData(accounts);
+		}
+	}
 
 	function initModals() {
 		if (typeof mdb !== 'undefined') {
@@ -110,52 +205,6 @@
 			});
 	}
 
-	function buildRow(account) {
-		const roleBadge = account.is_admin
-			? '<span class="badge bg-primary">Admin</span>'
-			: '<span class="badge bg-secondary">User</span>';
-		const status = account.is_active
-			? '<span class="text-success">Active</span>'
-			: '<span class="text-muted">Inactive</span>';
-		const deleteBtn = parseInt(account.id, 10) === config.currentUserId
-			? ''
-			: '<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-mdb-ripple-init><i class="fas fa-trash"></i></button>';
-
-		return '<tr data-id="' + account.id + '">' +
-			'<td>' + account.id + '</td>' +
-			'<td>' + escapeHtml(account.username) + '</td>' +
-			'<td>' + escapeHtml(account.full_name) + '</td>' +
-			'<td>' + roleBadge + '</td>' +
-			'<td>' + status + '</td>' +
-			'<td class="text-end">' +
-				'<button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-mdb-ripple-init><i class="fas fa-pen"></i></button>' +
-				deleteBtn +
-			'</td></tr>';
-	}
-
-	function upsertRow(account) {
-		const existing = tableBody.querySelector('tr[data-id="' + account.id + '"]');
-		const emptyRow = document.getElementById('emptyRow');
-		if (emptyRow) {
-			emptyRow.remove();
-		}
-		if (existing) {
-			existing.outerHTML = buildRow(account);
-		} else {
-			tableBody.insertAdjacentHTML('afterbegin', buildRow(account));
-		}
-	}
-
-	function removeRow(id) {
-		const row = tableBody.querySelector('tr[data-id="' + id + '"]');
-		if (row) {
-			row.remove();
-		}
-		if (!tableBody.querySelector('tr')) {
-			tableBody.innerHTML = '<tr id="emptyRow"><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>';
-		}
-	}
-
 	function submitForm(event) {
 		event.preventDefault();
 		hideAlert();
@@ -215,20 +264,7 @@
 	formEl.addEventListener('submit', submitForm);
 	isAdminCheck.addEventListener('change', togglePermissionsPanel);
 
-	tableBody.addEventListener('click', function (event) {
-		const row = event.target.closest('tr[data-id]');
-		if (!row) {
-			return;
-		}
-		const id = row.getAttribute('data-id');
-		if (event.target.closest('.btn-edit')) {
-			openEditModal(id);
-		}
-		if (event.target.closest('.btn-delete')) {
-			confirmDeleteAccount(id);
-		}
-	});
-
+	initGrid();
 	document.addEventListener('DOMContentLoaded', initModals);
 	initModals();
 })();

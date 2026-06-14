@@ -27,25 +27,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					>
 				</div>
 			</div>
-		<div class="table-responsive books-gtin-table-scroll">
-			<table class="table table-hover align-middle mb-0 procedure-data-table" id="gtinCountryCodeTable">
-				<thead>
-					<tr>
-						<th class="procedure-row-index">#</th>
-						<th style="width: 8rem;">Prefix</th>
-						<th>Country / Region</th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ($country_codes as $index => $entry): ?>
-						<tr data-search="<?php echo html_escape(strtolower($entry['prefix'].' '.$entry['country'])); ?>">
-							<td class="procedure-row-index text-muted"><?php echo (int) $index + 1; ?></td>
-							<td><code><?php echo html_escape($entry['prefix']); ?></code></td>
-							<td><?php echo html_escape($entry['country']); ?></td>
-						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
+		<div class="books-gtin-table-scroll">
+			<div id="gtinCountryCodeGrid"></div>
 		</div>
 		<div class="books-gtin-footer d-flex justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
 			<p class="text-muted small mb-0">
@@ -57,34 +40,70 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 </div>
 
 <script>
+	window.GTIN_COUNTRY_CODES = <?php echo json_encode(array_map(function ($entry) {
+		return array(
+			'prefix'  => $entry['prefix'],
+			'country' => $entry['country'],
+		);
+	}, $country_codes)); ?>;
+</script>
+<script>
 	(function () {
 		const searchInput = document.getElementById('gtinCountryCodeSearch');
-		const table = document.getElementById('gtinCountryCodeTable');
 		const visibleCount = document.getElementById('gtinCountryCodeVisibleCount');
+		const allEntries = window.GTIN_COUNTRY_CODES || [];
 
-		if (!searchInput || !table) {
+		if (typeof JqxGrid === 'undefined' || !document.getElementById('gtinCountryCodeGrid')) {
 			return;
 		}
 
-		const rows = Array.from(table.querySelectorAll('tbody tr'));
-		const total = rows.length;
-
-		function filterRows() {
-			const query = searchInput.value.trim().toLowerCase();
-			let shown = 0;
-
-			rows.forEach(function (row) {
-				const matches = !query || (row.getAttribute('data-search') || '').indexOf(query) !== -1;
-				row.classList.toggle('d-none', !matches);
-
-				if (matches) {
-					shown += 1;
-				}
-			});
-
-			visibleCount.textContent = String(shown);
+		function prefixRenderer(row, columnfield, value) {
+			return JqxGrid.htmlCellRenderer('<code>' + JqxGrid.escapeAttr(value) + '</code>');
 		}
 
-		searchInput.addEventListener('input', filterRows);
+		const grid = JqxGrid.local('#gtinCountryCodeGrid', {
+			data: allEntries.slice(),
+			height: 600,
+			pageable: true,
+			pagesize: 50,
+			pagesizeoptions: ['25', '50', '100', '200'],
+			emptyMessage: 'No matching country codes.',
+			datafields: [
+				{ name: 'prefix', type: 'string' },
+				{ name: 'country', type: 'string' },
+			],
+			columns: [
+				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 70, cellsrenderer: JqxGrid.rowNumberRenderer },
+				{ text: 'Prefix', datafield: 'prefix', width: 140, cellsrenderer: prefixRenderer },
+				{ text: 'Country / Region', datafield: 'country' },
+			],
+		});
+
+		function updateCount(count) {
+			if (visibleCount) {
+				visibleCount.textContent = String(count);
+			}
+		}
+
+		function filterEntries() {
+			const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+			if (!query) {
+				grid.setData(allEntries.slice());
+				updateCount(allEntries.length);
+				return;
+			}
+
+			const filtered = allEntries.filter(function (entry) {
+				return (entry.prefix + ' ' + entry.country).toLowerCase().indexOf(query) !== -1;
+			});
+
+			grid.setData(filtered);
+			updateCount(filtered.length);
+		}
+
+		if (searchInput) {
+			searchInput.addEventListener('input', filterEntries);
+		}
 	})();
 </script>

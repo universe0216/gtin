@@ -29,21 +29,13 @@
 	const productsSearchInput = document.getElementById('organizationProductsSearchInput');
 	const productsClearBtn = document.getElementById('organizationProductsClearBtn');
 	const productsMeta = document.getElementById('organizationProductsMeta');
-	const productsLoading = document.getElementById('organizationProductsLoading');
-	const productsTableHead = document.getElementById('organizationProductsTableHead');
-	const productsTableBody = document.getElementById('organizationProductsTableBody');
-	const productsPaginationNav = document.getElementById('organizationProductsPaginationNav');
-	const productsPaginationList = document.getElementById('organizationProductsPaginationList');
-	const productsPageMeta = document.getElementById('organizationProductsPageMeta');
-	const tableBody = document.getElementById('entityListTableBody');
-	const sortableTable = window.SortableTable;
 
 	let modal;
 	let detailRequest = null;
 	let updateRequest = null;
-	let productsRequest = null;
 	let productDeleteRequest = null;
 	let productsLoaded = false;
+	let productsGrid = null;
 
 	const detailState = {
 		organizationId: null,
@@ -51,11 +43,7 @@
 	};
 
 	const productsState = {
-		page: 1,
 		search: '',
-		perPage: perPage,
-		sort: '',
-		dir: '',
 	};
 
 	function initModal() {
@@ -67,22 +55,12 @@
 		modalEl.addEventListener('hidden.mdb.modal', resetModal);
 	}
 
-	function getProductsColSpan() {
-		return productColumns.length + 1 + (canDeleteProduct ? 1 : 0);
-	}
-
 	function setInfoLoading(isLoading) {
 		if (infoLoading) {
 			infoLoading.classList.toggle('d-none', !isLoading);
 		}
 		if (infoWrap) {
 			infoWrap.classList.toggle('d-none', isLoading);
-		}
-	}
-
-	function setProductsLoading(isLoading) {
-		if (productsLoading) {
-			productsLoading.classList.toggle('d-none', !isLoading);
 		}
 	}
 
@@ -271,6 +249,11 @@
 				renderInfoFields(record);
 				showInfoAlert(result.message || 'Organization updated successfully.', 'success');
 				document.dispatchEvent(new CustomEvent('entityListRefresh'));
+
+				// Refresh products in case the rename affected them.
+				if (productsGrid) {
+					productsGrid.reload();
+				}
 			})
 			.catch(function (error) {
 				if (isAbortError(error)) {
@@ -285,92 +268,100 @@
 			});
 	}
 
-	function renderProductTableHead() {
-		if (!productsTableHead || !sortableTable) {
+	// ------------------------------------------------------------- Products grid
+
+	function updateProductsMeta(data) {
+		if (!productsMeta) {
 			return;
 		}
 
-		let html = sortableTable.renderHeader(productColumns, productsState);
+		if (data && (data.total || 0) > 0) {
+			productsMeta.textContent = data.range_start + '–' + data.range_end + ' of ' + data.total;
+			productsMeta.classList.remove('d-none');
+		} else {
+			productsMeta.textContent = '';
+			productsMeta.classList.add('d-none');
+		}
+
+		if (footerMeta) {
+			footerMeta.textContent = ((data && data.total) || 0) + ' product(s)';
+		}
+	}
+
+	function productDeleteRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
+		return '<div class="jqx-action-cell">' +
+			'<button type="button" class="btn btn-sm btn-outline-danger organization-product-delete-btn" ' +
+				'data-product-id="' + JqxGrid.escapeAttr(rowdata.id) + '" ' +
+				'data-product-name="' + JqxGrid.escapeAttr(rowdata.name || '') + '" ' +
+				'title="Delete product"><i class="fas fa-trash"></i></button>' +
+		'</div>';
+	}
+
+	function buildProductColumns() {
+		const columns = [
+			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+		];
+
+		productColumns.forEach(function (column) {
+			columns.push({ text: column.label, datafield: column.key });
+		});
 
 		if (canDeleteProduct) {
-			html += '<th class="procedure-table-action-col" aria-label="Actions"></th>';
-		}
-
-		productsTableHead.innerHTML = html;
-	}
-
-	function renderProductsPagination(meta) {
-		if (!productsPaginationList) {
-			return;
-		}
-
-		Pagination.update({
-			listEl: productsPaginationList,
-			navEl: productsPaginationNav,
-			metaEl: productsPageMeta,
-			meta: meta,
-			perPage: productsState.perPage,
-			buttonClass: 'organization-products-page-btn',
-			showEllipsis: false,
-		});
-	}
-
-	function renderProductsRows(records, rowOffset) {
-		if (!productsTableBody) {
-			return;
-		}
-
-		const colSpan = getProductsColSpan();
-
-		if (!records.length) {
-			const message = productsState.search ? 'No products match your search.' : 'No products found for this organization.';
-			productsTableBody.innerHTML =
-				'<tr><td colspan="' + colSpan + '" class="text-center text-muted py-4">' +
-				escapeHtml(message) +
-				'</td></tr>';
-			return;
-		}
-
-		let html = '';
-		records.forEach(function (record, index) {
-			html += '<tr>';
-			html += '<td class="procedure-row-index text-muted">' + (rowOffset + index + 1) + '</td>';
-			productColumns.forEach(function (column) {
-				html += '<td>' + escapeHtml(record[column.key] ?? '') + '</td>';
+			columns.push({
+				text: '', datafield: '__actions', width: 70, sortable: false, filterable: false,
+				align: 'right', cellsalign: 'right', cellsrenderer: productDeleteRenderer,
 			});
+		}
 
-			if (canDeleteProduct) {
-				html +=
-					'<td class="procedure-table-action-col">' +
-						'<button type="button" class="btn btn-sm btn-outline-danger organization-product-delete-btn" ' +
-						'data-product-id="' + escapeHtml(record.id) + '" ' +
-						'data-product-name="' + escapeHtml(record.name || '') + '" ' +
-						'data-mdb-ripple-init aria-label="Delete product">' +
-							'<i class="fas fa-trash" aria-hidden="true"></i>' +
-						'</button>' +
-					'</td>';
-			}
-
-			html += '</tr>';
-		});
-
-		productsTableBody.innerHTML = html;
+		return columns;
 	}
 
-	function buildProductsUrl() {
-		const params = new URLSearchParams();
-		params.set('page', String(productsState.page));
-		params.set('per_page', String(productsState.perPage));
+	function buildProductDatafields() {
+		const names = { id: 'number', name: 'string' };
 
-		if (productsState.search) {
-			params.set('q', productsState.search);
+		productColumns.forEach(function (column) {
+			if (!names[column.key]) {
+				names[column.key] = 'string';
+			}
+		});
+
+		return Object.keys(names).map(function (name) {
+			return { name: name, type: names[name] };
+		});
+	}
+
+	function productsEndpoint() {
+		return productsUrl + '/' + detailState.organizationId;
+	}
+
+	function createProductsGrid() {
+		productsGrid = JqxGrid.remote('#organizationProductsGrid', {
+			url: productsEndpoint(),
+			columns: buildProductColumns(),
+			datafields: buildProductDatafields(),
+			pagesize: perPage,
+			pagesizeoptions: ['10', '20', '50'],
+			height: Math.max(320, window.innerHeight - 280),
+			emptyMessage: 'No products found for this organization.',
+			getParams: function () {
+				return productsState.search ? { q: productsState.search } : {};
+			},
+			onLoad: updateProductsMeta,
+			onError: function () {
+				showToast('Failed to load products.', 'error');
+			},
+		});
+
+		if (productsGrid) {
+			$(productsGrid.$el).on('click', '.organization-product-delete-btn', function (event) {
+				event.preventDefault();
+				event.stopPropagation();
+				openProductDeleteModal(
+					$(this).attr('data-product-id'),
+					$(this).attr('data-product-name')
+				);
+			});
 		}
-
-		if (sortableTable) {
-			sortableTable.appendSortParams(params, productsState);
-		}
-
-		return productsUrl + '/' + detailState.organizationId + '?' + params.toString();
 	}
 
 	function loadProducts() {
@@ -378,61 +369,15 @@
 			return;
 		}
 
-		setProductsLoading(true);
+		if (!productsGrid) {
+			createProductsGrid();
+		} else {
+			productsGrid.source.url = productsEndpoint();
+			productsGrid.gotoFirst();
+			productsGrid.reload();
+		}
 
-		productsRequest = createAbortableRequest(productsRequest);
-
-		fetchApi(buildProductsUrl(), {
-			signal: productsRequest.signal,
-		})
-			.then(function (result) {
-				productsState.sort = result.sort || '';
-				productsState.dir = result.sort_dir === 'asc' || result.sort_dir === 'desc' ? result.sort_dir : '';
-				renderProductTableHead();
-
-				const meta = {
-					total: result.total,
-					page: result.page,
-					total_pages: result.total_pages,
-					range_start: result.range_start,
-					range_end: result.range_end,
-				};
-
-				renderProductsRows(result.data || [], result.row_offset || 0);
-				renderProductsPagination(meta);
-
-				if (productsMeta) {
-					if ((meta.total || 0) > 0) {
-						productsMeta.textContent = meta.range_start + '\u2013' + meta.range_end + ' of ' + meta.total;
-						productsMeta.classList.remove('d-none');
-					} else {
-						productsMeta.textContent = '';
-						productsMeta.classList.add('d-none');
-					}
-				}
-
-				if (footerMeta) {
-					footerMeta.textContent = (meta.total || 0) + ' product(s)';
-				}
-
-				productsLoaded = true;
-			})
-			.catch(function (error) {
-				if (isAbortError(error)) {
-					return;
-				}
-
-				if (productsTableBody) {
-					productsTableBody.innerHTML =
-						'<tr><td colspan="' + getProductsColSpan() + '" class="text-center text-danger py-4">' +
-						escapeHtml(error.message || 'Failed to load products.') +
-						'</td></tr>';
-				}
-			})
-			.finally(function () {
-				setProductsLoading(false);
-				productsRequest = null;
-			});
+		productsLoaded = true;
 	}
 
 	function loadDetail(organizationId) {
@@ -478,17 +423,9 @@
 			updateRequest = null;
 		}
 
-		if (productsRequest) {
-			productsRequest.abort();
-			productsRequest = null;
-		}
-
 		detailState.organizationId = null;
 		detailState.organizationName = '';
-		productsState.page = 1;
 		productsState.search = '';
-		productsState.sort = '';
-		productsState.dir = '';
 		productsLoaded = false;
 
 		if (modalTitle) {
@@ -511,20 +448,6 @@
 			productsMeta.textContent = '';
 			productsMeta.classList.add('d-none');
 		}
-		if (productsTableBody) {
-			productsTableBody.innerHTML =
-				'<tr><td colspan="' + getProductsColSpan() + '" class="text-center text-muted py-4">Select an organization to view products.</td></tr>';
-		}
-
-		if (productsPaginationList) {
-			productsPaginationList.innerHTML = '';
-		}
-		if (productsPaginationNav) {
-			productsPaginationNav.classList.add('d-none');
-		}
-		if (productsPageMeta) {
-			productsPageMeta.textContent = '';
-		}
 
 		const infoTabBtn = document.getElementById('organizationInfoTabBtn');
 		if (infoTabBtn && typeof mdb !== 'undefined') {
@@ -539,10 +462,7 @@
 		}
 
 		detailState.organizationId = organizationId;
-		productsState.page = 1;
 		productsState.search = '';
-		productsState.sort = '';
-		productsState.dir = '';
 		productsLoaded = false;
 
 		if (productsSearchInput) {
@@ -552,7 +472,6 @@
 			productsClearBtn.classList.add('d-none');
 		}
 
-		renderProductTableHead();
 		modal.show();
 		loadDetail(organizationId);
 	}
@@ -590,8 +509,10 @@
 			})
 			.then(function (result) {
 				showToast(result.message || 'Product deleted successfully.', 'success');
-				productsLoaded = false;
-				loadProducts();
+
+				if (productsGrid) {
+					productsGrid.reload();
+				}
 			})
 			.catch(function (error) {
 				if (isConfirmCancelled(error) || isAbortError(error)) {
@@ -603,36 +524,20 @@
 	}
 
 	const scheduleProductsSearch = debounce(function () {
-		productsState.page = 1;
-		loadProducts();
+		if (!productsGrid) {
+			loadProducts();
+			return;
+		}
+
+		productsGrid.gotoFirst();
+		productsGrid.reload();
 	}, 300);
 
-	if (tableBody) {
-		tableBody.addEventListener('click', function (event) {
-			const row = event.target.closest('.entity-list-row-clickable');
-
-			if (!row) {
-				return;
-			}
-
-			openDetail(row.getAttribute('data-record-id'));
-		});
-
-		tableBody.addEventListener('keydown', function (event) {
-			if (event.key !== 'Enter' && event.key !== ' ') {
-				return;
-			}
-
-			const row = event.target.closest('.entity-list-row-clickable');
-
-			if (!row) {
-				return;
-			}
-
-			event.preventDefault();
-			openDetail(row.getAttribute('data-record-id'));
-		});
-	}
+	document.addEventListener('entityListRowSelected', function (event) {
+		if (event.detail && event.detail.id) {
+			openDetail(String(event.detail.id));
+		}
+	});
 
 	if (productsTabBtn) {
 		productsTabBtn.addEventListener('shown.mdb.tab', function () {
@@ -657,54 +562,15 @@
 	if (productsClearBtn) {
 		productsClearBtn.addEventListener('click', function () {
 			productsState.search = '';
-			productsState.page = 1;
 			productsSearchInput.value = '';
 			productsClearBtn.classList.add('d-none');
-			loadProducts();
-		});
-	}
 
-	if (productsPaginationList) {
-		productsPaginationList.addEventListener('click', function (event) {
-			const button = event.target.closest('.organization-products-page-btn');
-
-			if (!button) {
-				return;
+			if (productsGrid) {
+				productsGrid.gotoFirst();
+				productsGrid.reload();
 			}
-
-			productsState.page = parseInt(button.getAttribute('data-page') || '1', 10);
-			loadProducts();
-		});
-	}
-
-	if (productsTableBody) {
-		productsTableBody.addEventListener('click', function (event) {
-			const deleteBtn = event.target.closest('.organization-product-delete-btn');
-
-			if (!deleteBtn) {
-				return;
-			}
-
-			event.preventDefault();
-			event.stopPropagation();
-			openProductDeleteModal(
-				deleteBtn.getAttribute('data-product-id'),
-				deleteBtn.getAttribute('data-product-name')
-			);
-		});
-	}
-
-	if (sortableTable) {
-		sortableTable.bindHeader(productsTableHead, function (columnKey) {
-			const nextSort = sortableTable.cycleSort(productsState, columnKey);
-			productsState.sort = nextSort.sort;
-			productsState.dir = nextSort.dir;
-			productsState.page = 1;
-			renderProductTableHead();
-			loadProducts();
 		});
 	}
 
 	initModal();
-	renderProductTableHead();
 })();

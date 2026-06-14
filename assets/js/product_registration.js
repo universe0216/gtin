@@ -7,6 +7,8 @@
 
 	const config = window.PRODUCT_REGISTRATION_CONFIG;
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
+	const ID_ATTR = 'data-product-registration-id';
+	const BARCODE_CELL_INDEX = 7;
 
 	const uploadForms = document.querySelectorAll('.procedure-upload-form');
 	const uploadModalEl = document.getElementById('procedureUploadModal');
@@ -14,11 +16,6 @@
 	const openImportBtn = document.getElementById('btnOpenImportModal');
 	const importModalEl = document.getElementById('procedureImportModal');
 	const importLoadingEl = document.getElementById('procedureImportLoading');
-	const importTableWrap = document.getElementById('procedureImportTableWrap');
-	const importTableBody = document.getElementById('procedureImportTableBody');
-	const importFooterMeta = document.getElementById('procedureImportFooterMeta');
-	const importPaginationEl = document.getElementById('procedureImportPagination');
-	const importPaginationList = document.getElementById('procedureImportPaginationList');
 	const importSearchInput = document.getElementById('procedureImportSearch');
 	const tabsWrapper = document.getElementById('procedureTabsWrapper');
 	const tabsNav = document.getElementById('procedureTabs');
@@ -51,363 +48,52 @@
 	let importModal;
 	let productModal;
 	let rejectModal;
-	let importListRequest = null;
-	const importState = {
-		page: 1,
-		search: '',
-		perPage: 10,
-	};
+	let importGrid = null;
+	let similarGrid = null;
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
-	let activeDetailRow = null;
 	let barcodeTypingTimer = null;
-	const tabAvailableBarcodes = new Map();
-	const BARCODE_CELL_INDEX = 7;
 
-	function initImportModal() {
-		if (typeof mdb === 'undefined' || !importModalEl) {
-			return;
-		}
+	// Per-tab data + grids; the grid is the single source of truth for the
+	// visible rows, while tabData keeps the columns/meta/barcodes for each tab.
+	const tabData = new Map();
+	const tabGrids = new Map();
 
-		importModal = mdb.Modal.getOrCreateInstance(importModalEl);
-		importModalEl.addEventListener('show.mdb.modal', loadImportList);
-		importModalEl.addEventListener('hidden.mdb.modal', resetImportModal);
-	}
+	// The product currently shown in the detail modal: { regId, rowIndex }.
+	let activeDetail = null;
 
-	function resetImportModal() {
-		if (importListRequest) {
-			importListRequest.abort();
-			importListRequest = null;
-		}
-
-		scheduleImportSearch.cancel();
-
-		importState.page = 1;
-		importState.search = '';
-
-		if (importSearchInput) {
-			importSearchInput.value = '';
-		}
-
-		if (importLoadingEl) {
-			importLoadingEl.classList.add('d-none');
-		}
-
-		if (importTableWrap) {
-			importTableWrap.classList.remove('d-none');
-		}
-
-		if (importPaginationEl) {
-			importPaginationEl.classList.add('d-none');
-		}
-
-		if (importPaginationList) {
-			importPaginationList.innerHTML = '';
-		}
-
-		if (importFooterMeta) {
-			importFooterMeta.textContent = '';
-		}
-	}
-
-	function openImportModal() {
-		if (importModal) {
-			importModal.show();
-		}
-	}
-
-	function setImportLoading(isLoading) {
-		if (importLoadingEl) {
-			importLoadingEl.classList.toggle('d-none', !isLoading);
-		}
-
-		if (importTableWrap) {
-			importTableWrap.classList.toggle('d-none', isLoading);
-		}
-	}
-
-	function renderImportList(registrations, meta) {
-		if (!importTableBody) {
-			return;
-		}
-
-		const rowOffset = meta && meta.range_start > 0 ? meta.range_start - 1 : 0;
-
-		if (!registrations.length) {
-			importTableBody.innerHTML =
-				'<tr><td colspan="9" class="text-center text-muted py-4">No completed procedures found.</td></tr>';
-			renderImportPagination(meta || {});
-			return;
-		}
-
-		importTableBody.innerHTML = registrations.map(function (registration, index) {
-			return '<tr class="procedure-import-row" role="button" tabindex="0" data-product-registration-id="' + registration.id + '">' +
-				'<td class="procedure-row-index text-muted">' + (rowOffset + index + 1) + '</td>' +
-				'<td><i class="fas fa-file-zipper me-1 text-primary"></i>' + escapeHtml(registration.file_name) + '</td>' +
-				'<td>' + escapeHtml(registration.procedure_number) + '</td>' +
-				'<td>' + escapeHtml(registration.organization_name) + '</td>' +
-				'<td>' + escapeHtml(registration.processor_name || '') + '</td>' +
-				'<td>' + escapeHtml(registration.total_products) + '</td>' +
-				'<td>' + escapeHtml(registration.approved) + '</td>' +
-				'<td>' + escapeHtml(registration.rejected) + '</td>' +
-				'<td>' + escapeHtml(registration.created_at) + '</td>' +
-			'</tr>';
-		}).join('');
-
-		renderImportPagination(meta || {});
-	}
-
-	function renderImportPagination(meta) {
-		const total = meta.total || 0;
-		const perPage = meta.per_page || importState.perPage;
-		const rangeStart = meta.range_start || 0;
-		const rangeEnd = meta.range_end || 0;
-
-		if (importFooterMeta) {
-			if (total > 0) {
-				importFooterMeta.textContent = 'Showing ' + rangeStart + '\u2013' + rangeEnd + ' of ' + total;
-			} else {
-				importFooterMeta.textContent = importState.search
-					? 'No results for "' + importState.search + '"'
-					: 'No completed procedures found';
-			}
-		}
-
-		Pagination.update({
-			listEl: importPaginationList,
-			wrapperEl: importPaginationEl,
-			meta: meta,
-			perPage: perPage,
-			buttonClass: 'procedure-import-page-btn',
-		});
-	}
-
-	function buildImportListUrl() {
-		const params = new URLSearchParams();
-		params.set('page', String(importState.page));
-
-		if (importState.search) {
-			params.set('q', importState.search);
-		}
-
-		return baseUrl + '/import_list?' + params.toString();
-	}
-
-	function loadImportList() {
-		setImportLoading(true);
-
-		importListRequest = createAbortableRequest(importListRequest);
-
-		fetchApi(buildImportListUrl(), {
-			signal: importListRequest.signal,
-		})
-			.then(function (result) {
-				importState.page = result.page || 1;
-				importState.perPage = result.per_page || importState.perPage;
-				importState.search = result.search || importState.search;
-
-				renderImportList(result.registrations || [], {
-					total: result.total,
-					page: result.page,
-					per_page: result.per_page,
-					total_pages: result.total_pages,
-					range_start: result.range_start,
-					range_end: result.range_end,
-				});
-			})
-			.catch(function (error) {
-				if (isAbortError(error)) {
-					return;
-				}
-
-				showToast(error.message || 'Failed to load completed procedures.', 'error');
-				renderImportList([], {});
-			})
-			.finally(function () {
-				importListRequest = null;
-				setImportLoading(false);
-			});
-	}
-
-	const scheduleImportSearch = debounce(function () {
-		importState.search = importSearchInput ? importSearchInput.value.trim() : '';
-		importState.page = 1;
-		loadImportList();
-	}, 300);
-
-	function importRegistrationTab(registrationId) {
-		if (!registrationId) {
-			return;
-		}
-
-		if (procedureTabs.tabExists(registrationId)) {
-			if (importModal) {
-				importModal.hide();
-			}
-
-			procedureTabs.activateTab(registrationId);
-			showToast('Procedure is already open.', 'success');
-			return;
-		}
-
-		setImportLoading(true);
-
-		fetchApi(baseUrl + '/import_tab/' + registrationId)
-			.then(function (result) {
-				procedureTabs.prependTabs([result.tab], { imported: true });
-
-				if (importModal) {
-					importModal.hide();
-				}
-
-				showToast(result.message || 'Procedure imported successfully.', 'success');
-			})
-			.catch(function (error) {
-				showToast(error.message || 'Failed to import procedure.', 'error');
-			})
-			.finally(function () {
-				setImportLoading(false);
-			});
-	}
-
-	function initProductModal() {
-		if (typeof mdb === 'undefined' || !productModalEl) {
-			return;
-		}
-
-		productModal = mdb.Modal.getOrCreateInstance(productModalEl);
-		productModalEl.addEventListener('hidden.mdb.modal', function () {
-			cancelBarcodeTyping();
-			clearActiveDetailRow();
-		});
-		initDetailTabs();
-	}
-
-	function ensureRejectModal() {
-		if (rejectModal || typeof mdb === 'undefined' || !rejectModalEl) {
-			return rejectModal;
-		}
-
-		rejectModal = mdb.Modal.getOrCreateInstance(rejectModalEl);
-		rejectModalEl.addEventListener('hidden.mdb.modal', resetRejectModal);
-		return rejectModal;
-	}
-
-	function initRejectModal() {
-		ensureRejectModal();
-	}
-
-	function resetRejectModal() {
-		if (rejectReasonInput) {
-			rejectReasonInput.value = '';
-		}
-
-		if (rejectReasonError) {
-			rejectReasonError.classList.add('d-none');
-		}
-
-		if (confirmRejectBtn) {
-			confirmRejectBtn.disabled = false;
-		}
-	}
-
-	function openRejectModal() {
-		const modal = ensureRejectModal();
-
-		if (!modal || !activeDetailRow || !isRowPending(activeDetailRow)) {
-			return;
-		}
-
-		const payload = parseRowPayload(activeDetailRow);
-		const productLabel = payload
-			? (payload.product_procedure_number || 'Product #' + payload.row_index)
-			: 'this product';
-
-		if (rejectModalMeta) {
-			rejectModalMeta.textContent = 'Provide a reason for rejecting ' + productLabel + '.';
-		}
-
-		resetRejectModal();
-		modal.show();
-
-		if (rejectReasonInput) {
-			rejectReasonInput.focus();
-		}
-	}
+	// ---------------------------------------------------------- status helpers
 
 	function normalizeItemStatus(itemStatus) {
 		const status = String(itemStatus || 'pending').toLowerCase();
-
-		if (status === 'accepted') {
-			return 'approved';
-		}
-
-		return status;
+		return status === 'accepted' ? 'approved' : status;
 	}
 
-	function isRowRejected(row) {
-		return !!row && normalizeItemStatus(row.getAttribute('data-item-status')) === 'rejected';
-	}
-
-	function isRowApproved(row) {
-		return !!row && normalizeItemStatus(row.getAttribute('data-item-status')) === 'approved';
-	}
-
-	function isRowPending(row) {
-		return !!row && normalizeItemStatus(row.getAttribute('data-item-status')) === 'pending';
-	}
-
-	function formatItemStatusIcon(itemStatus) {
-		const status = normalizeItemStatus(itemStatus);
+	function statusIconRenderer(row, columnfield, value) {
+		const status = normalizeItemStatus(value);
+		let icon = '';
 
 		if (status === 'rejected') {
-			return '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="Rejected"></i>';
+			icon = '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="Rejected"></i>';
+		} else if (status === 'approved') {
+			icon = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="Accepted"></i>';
+		}
+
+		return '<div style="text-align:center;margin-top:6px;">' + icon + '</div>';
+	}
+
+	function rowStateClass(row, columnfield, value, rowdata) {
+		const status = normalizeItemStatus(rowdata.item_status);
+
+		if (status === 'rejected') {
+			return 'procedure-grid-row-rejected';
 		}
 
 		if (status === 'approved') {
-			return '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="Accepted"></i>';
+			return 'procedure-grid-row-approved';
 		}
 
 		return '';
-	}
-
-	function renderItemStatusCell(itemStatus) {
-		return '<td class="procedure-item-status-cell">' + formatItemStatusIcon(itemStatus) + '</td>';
-	}
-
-	function updateRowStatusCell(row, itemStatus) {
-		const statusCell = row ? row.querySelector('.procedure-item-status-cell') : null;
-
-		if (statusCell) {
-			statusCell.innerHTML = formatItemStatusIcon(itemStatus);
-		}
-	}
-
-	function buildProcedureDataRowClass(row) {
-		const itemStatus = normalizeItemStatus(row.item_status || row.status || 'pending');
-		let rowClass = 'procedure-data-row';
-
-		if (itemStatus === 'rejected') {
-			rowClass += ' procedure-data-row-rejected';
-		} else if (itemStatus === 'approved') {
-			rowClass += ' procedure-data-row-approved';
-		}
-
-		return rowClass;
-	}
-
-	function updateRowPayload(row, updates) {
-		const payload = parseRowPayload(row);
-
-		if (!payload) {
-			return null;
-		}
-
-		Object.keys(updates).forEach(function (key) {
-			payload[key] = updates[key];
-		});
-		row.setAttribute('data-row-payload', JSON.stringify(payload));
-		return payload;
 	}
 
 	function getBarcodeCellIndex(columns) {
@@ -422,71 +108,224 @@
 		return BARCODE_CELL_INDEX;
 	}
 
-	function updateRowBarcodeCell(row, ean13) {
-		if (!row) {
-			return;
-		}
+	// --------------------------------------------------------------- tab grids
 
-		const barcodeValue = String(ean13 || '').replace(/\D/g, '');
-
-		if (!barcodeValue) {
-			return;
-		}
-
-		const payload = parseRowPayload(row);
-		const cellIndex = getBarcodeCellIndex(payload ? payload.columns : []);
-		const cells = payload ? (payload.cells || []).slice() : [];
-
-		while (cells.length <= cellIndex) {
-			cells.push('');
-		}
-
-		cells[cellIndex] = barcodeValue;
-
-		const dataCells = row.querySelectorAll('td');
-		const domIndex = cellIndex + 2;
-
-		if (dataCells[domIndex]) {
-			dataCells[domIndex].textContent = barcodeValue;
-		}
-
-		if (payload) {
-			updateRowPayload(row, { cells: cells });
+	function registerTabData(tab) {
+		if (tab && tab.product_registration_id !== undefined) {
+			tabData.set(String(tab.product_registration_id), tab);
 		}
 	}
 
-	function markDetailRowRejected(row, reason) {
-		if (!row) {
-			return;
-		}
+	function paneFor(registrationId) {
+		return tabsContent
+			? tabsContent.querySelector('.tab-pane[' + ID_ATTR + '="' + registrationId + '"]')
+			: null;
+	}
 
-		row.classList.add('procedure-data-row-rejected');
-		row.classList.remove('procedure-data-row-approved', 'procedure-data-row-active');
-		row.setAttribute('data-item-status', 'rejected');
-		updateRowPayload(row, {
-			item_status: 'rejected',
-			rejection_reason: reason,
+	function buildGridRowObject(tab, row, index) {
+		const obj = {
+			id: row.id,
+			item_status: normalizeItemStatus(row.item_status || row.status || 'pending'),
+			__num: index + 1,
+			product_procedure_number: row.product_procedure_number,
+		};
+
+		(row.cells || []).forEach(function (cell, cellIndex) {
+			obj['c' + cellIndex] = cell;
 		});
-		updateRowStatusCell(row, 'rejected');
+
+		return obj;
 	}
 
-	function markDetailRowAccepted(row) {
+	function buildGrid(tab, container) {
+		const regId = String(tab.product_registration_id);
+
+		const columns = [
+			{
+				text: '', datafield: 'item_status', width: 44, pinned: true, sortable: false,
+				filterable: false, cellsrenderer: statusIconRenderer, cellclassname: rowStateClass,
+			},
+			{
+				text: '#', datafield: '__num', width: 56, pinned: true, sortable: false,
+				filterable: false, cellsalign: 'right', cellclassname: rowStateClass,
+			},
+		];
+
+		const datafields = [
+			{ name: 'id', type: 'number' },
+			{ name: 'item_status', type: 'string' },
+			{ name: '__num', type: 'number' },
+			{ name: 'product_procedure_number', type: 'string' },
+		];
+
+		(tab.columns || []).forEach(function (column, index) {
+			const field = 'c' + index;
+			datafields.push({ name: field, type: 'string' });
+			columns.push({
+				text: column,
+				datafield: field,
+				pinned: index < 3,
+				width: index < 3 ? 180 : 160,
+				cellclassname: rowStateClass,
+			});
+		});
+
+		const data = (tab.rows || []).map(function (row, index) {
+			return buildGridRowObject(tab, row, index);
+		});
+
+		const grid = JqxGrid.local(container, {
+			id: 'id',
+			data: data,
+			datafields: datafields,
+			columns: columns,
+			sortable: false,
+			selectionmode: 'singlerow',
+			pageable: true,
+			pagesize: 50,
+			pagesizeoptions: ['50', '100', '200'],
+			height: Math.max(360, window.innerHeight - 300),
+			emptyMessage: 'No products found.',
+		});
+
+		if (grid) {
+			grid.$el.on('rowclick', function (event) {
+				openProductDetailModal(regId, event.args.rowindex);
+			});
+		}
+
+		return grid;
+	}
+
+	function ensureGrid(registrationId) {
+		const key = String(registrationId);
+		const pane = paneFor(key);
+
+		if (!pane) {
+			return;
+		}
+
+		const container = pane.querySelector('.product-registration-grid');
+
+		if (!container) {
+			return;
+		}
+
+		if (container.getAttribute('data-grid-ready') === '1') {
+			const existing = tabGrids.get(key);
+			if (existing) {
+				existing.render();
+			}
+			return;
+		}
+
+		if (!container.offsetParent) {
+			return;
+		}
+
+		const tab = tabData.get(key);
+
+		if (!tab) {
+			return;
+		}
+
+		const grid = buildGrid(tab, container);
+
+		if (grid) {
+			tabGrids.set(key, grid);
+			container.setAttribute('data-grid-ready', '1');
+		}
+	}
+
+	function refreshGridRow(regId, rowIndex) {
+		const key = String(regId);
+		const grid = tabGrids.get(key);
+		const tab = tabData.get(key);
+
+		if (!grid || !tab) {
+			return;
+		}
+
+		const row = tab.rows[rowIndex];
+
 		if (!row) {
 			return;
 		}
 
-		row.classList.remove('procedure-data-row-rejected', 'procedure-data-row-active');
-		row.classList.add('procedure-data-row-approved');
-		row.setAttribute('data-item-status', 'approved');
-		updateRowPayload(row, {
-			item_status: 'approved',
-			rejection_reason: '',
-		});
-		updateRowStatusCell(row, 'approved');
+		grid.$el.jqxGrid('updaterow', row.id, buildGridRowObject(tab, row, rowIndex));
 	}
 
-	function updateReviewButtonState(row) {
-		const pending = isRowPending(row);
+	function activeRegistrationId() {
+		const activePane = tabsContent ? tabsContent.querySelector('.tab-pane.active') : null;
+		return activePane ? activePane.getAttribute(ID_ATTR) : null;
+	}
+
+	// ----------------------------------------------------------- detail modal
+
+	function buildRowPayload(tab, row, index) {
+		return {
+			id: row.id,
+			row_index: index + 1,
+			product_procedure_number: row.product_procedure_number,
+			cells: row.cells || [],
+			columns: tab.columns || [],
+			image_urls: row.image_urls || [],
+			procedure_number: tab.procedure_number,
+			organization_name: tab.organization_name,
+			file_name: tab.file_name,
+			processor_name: tab.processor_name || '',
+			status: tab.status || 'uploaded',
+			item_status: normalizeItemStatus(row.item_status || row.status || 'pending'),
+			rejection_reason: row.message || '',
+			created_at: tab.created_at || '',
+		};
+	}
+
+	function getActiveTab() {
+		return activeDetail ? tabData.get(String(activeDetail.regId)) : null;
+	}
+
+	function getActiveRow() {
+		const tab = getActiveTab();
+		return tab && activeDetail ? tab.rows[activeDetail.rowIndex] : null;
+	}
+
+	function activeRowCount() {
+		const tab = getActiveTab();
+		return tab ? (tab.rows || []).length : 0;
+	}
+
+	function isActiveRowPending() {
+		const row = getActiveRow();
+		return !!row && normalizeItemStatus(row.item_status || row.status) === 'pending';
+	}
+
+	function selectGridRow(regId, rowIndex) {
+		const grid = tabGrids.get(String(regId));
+
+		if (!grid) {
+			return;
+		}
+
+		grid.$el.jqxGrid('clearselection');
+		grid.$el.jqxGrid('selectrow', rowIndex);
+		grid.$el.jqxGrid('ensurerowvisible', rowIndex);
+	}
+
+	function clearActiveDetail() {
+		if (activeDetail) {
+			const grid = tabGrids.get(String(activeDetail.regId));
+			if (grid) {
+				grid.$el.jqxGrid('clearselection');
+			}
+			activeDetail = null;
+		}
+
+		updateDetailNavButtons();
+	}
+
+	function updateReviewButtonState() {
+		const pending = isActiveRowPending();
 
 		if (productDetailRejectBtn) {
 			productDetailRejectBtn.disabled = !pending;
@@ -499,21 +338,130 @@
 		}
 	}
 
-	function advanceToNextRowAfterReview(currentRow) {
-		const rows = getActiveTabRows();
-		const currentIndex = rows.indexOf(currentRow);
-		const nextRow = currentIndex >= 0 && currentIndex < rows.length - 1 ? rows[currentIndex + 1] : null;
+	function updateDetailNavButtons() {
+		const count = activeRowCount();
+		const currentIndex = activeDetail ? activeDetail.rowIndex : -1;
 
-		activeDetailRow = null;
+		if (productDetailPrevBtn) {
+			productDetailPrevBtn.disabled = currentIndex <= 0;
+		}
+
+		if (productDetailNextBtn) {
+			productDetailNextBtn.disabled = currentIndex < 0 || currentIndex >= count - 1;
+		}
+
+		updateReviewButtonState();
+
+		if (productDetailFooterMeta) {
+			productDetailFooterMeta.textContent = currentIndex >= 0
+				? 'Row ' + (currentIndex + 1) + ' of ' + count
+				: '';
+		}
+	}
+
+	function getAssignableBarcode(regId, rowIndex) {
+		const tab = tabData.get(String(regId));
+		const barcodes = tab && tab.available_barcodes ? tab.available_barcodes : [];
+
+		if (rowIndex < 0 || rowIndex >= barcodes.length) {
+			return null;
+		}
+
+		return barcodes[rowIndex];
+	}
+
+	function updateAssignableBarcodeDisplay() {
+		if (!assignableBarcodeEl) {
+			return;
+		}
+
+		if (!activeDetail || !isActiveRowPending()) {
+			assignableBarcodeEl.textContent = '';
+			return;
+		}
+
+		const assignable = getAssignableBarcode(activeDetail.regId, activeDetail.rowIndex);
+
+		if (!assignable || !assignable.ean13) {
+			assignableBarcodeEl.innerHTML = '<span class="text-muted">No barcode available for this product.</span>';
+			return;
+		}
+
+		assignableBarcodeEl.innerHTML =
+			'EAN-13 to assign: <strong class="procedure-assignable-barcode-value">' +
+			escapeHtml(assignable.ean13) +
+			'</strong>';
+	}
+
+	function openProductDetailModal(regId, rowIndex) {
+		const tab = tabData.get(String(regId));
+
+		if (!productModal || !tab) {
+			return;
+		}
+
+		const row = tab.rows[rowIndex];
+
+		if (!row) {
+			return;
+		}
+
+		cancelBarcodeTyping();
+
+		activeDetail = { regId: String(regId), rowIndex: rowIndex };
+		selectGridRow(regId, rowIndex);
+
+		const payload = buildRowPayload(tab, row, rowIndex);
+
+		renderModalHeader(payload);
+		renderDetailImages(payload.image_urls || []);
+		renderDetailInfo(payload);
+
+		if (procedureBarcodeInput) {
+			procedureBarcodeInput.value = '';
+			renderBarcodePreview('');
+		}
+
+		updateAssignableBarcodeDisplay();
 		updateDetailNavButtons();
 
-		if (nextRow) {
-			const payload = parseRowPayload(nextRow);
+		const imageTabBtn = document.getElementById('procedureDetailTabImageBtn');
 
-			if (payload) {
-				openProductDetailModal(payload, nextRow);
-				return;
-			}
+		if (imageTabBtn && typeof mdb !== 'undefined') {
+			mdb.Tab.getOrCreateInstance(imageTabBtn).show();
+		}
+
+		productModal.show();
+	}
+
+	function navigateDetailRow(direction) {
+		if (!activeDetail) {
+			return;
+		}
+
+		const nextIndex = activeDetail.rowIndex + direction;
+
+		if (nextIndex < 0 || nextIndex >= activeRowCount()) {
+			return;
+		}
+
+		openProductDetailModal(activeDetail.regId, nextIndex);
+	}
+
+	function advanceToNextRowAfterReview() {
+		if (!activeDetail) {
+			return;
+		}
+
+		const regId = activeDetail.regId;
+		const nextIndex = activeDetail.rowIndex + 1;
+		const count = activeRowCount();
+
+		clearActiveDetail();
+
+		if (nextIndex < count) {
+			openProductDetailModal(regId, nextIndex);
+			return;
 		}
 
 		if (productModal) {
@@ -521,8 +469,137 @@
 		}
 	}
 
+	// --------------------------------------------------------- accept / reject
+
+	function markRowRejected(regId, rowIndex, reason) {
+		const tab = tabData.get(String(regId));
+
+		if (!tab || !tab.rows[rowIndex]) {
+			return;
+		}
+
+		tab.rows[rowIndex].item_status = 'rejected';
+		tab.rows[rowIndex].message = reason;
+		refreshGridRow(regId, rowIndex);
+	}
+
+	function markRowAccepted(regId, rowIndex) {
+		const tab = tabData.get(String(regId));
+
+		if (!tab || !tab.rows[rowIndex]) {
+			return;
+		}
+
+		tab.rows[rowIndex].item_status = 'approved';
+		tab.rows[rowIndex].message = '';
+		refreshGridRow(regId, rowIndex);
+	}
+
+	function updateRowBarcodeCell(regId, rowIndex, ean13) {
+		const tab = tabData.get(String(regId));
+		const barcodeValue = String(ean13 || '').replace(/\D/g, '');
+
+		if (!tab || !tab.rows[rowIndex] || !barcodeValue) {
+			return;
+		}
+
+		const cellIndex = getBarcodeCellIndex(tab.columns || []);
+		const cells = (tab.rows[rowIndex].cells || []).slice();
+
+		while (cells.length <= cellIndex) {
+			cells.push('');
+		}
+
+		cells[cellIndex] = barcodeValue;
+		tab.rows[rowIndex].cells = cells;
+		refreshGridRow(regId, rowIndex);
+	}
+
+	function acceptProduct() {
+		if (!activeDetail || !isActiveRowPending()) {
+			return;
+		}
+
+		const regId = activeDetail.regId;
+		const rowIndex = activeDetail.rowIndex;
+		const row = getActiveRow();
+		const itemId = row ? row.id : null;
+
+		if (!itemId) {
+			showToast('Unable to accept this product.', 'error');
+			return;
+		}
+
+		if (productDetailAcceptBtn) {
+			productDetailAcceptBtn.disabled = true;
+		}
+
+		const assignable = getAssignableBarcode(regId, rowIndex);
+		const formData = new FormData();
+
+		if (assignable && assignable.ean13) {
+			formData.append('barcode', assignable.ean13);
+		}
+
+		fetchApi(baseUrl + '/accept_item/' + itemId, {
+			method: 'POST',
+			body: formData,
+		})
+			.then(function (result) {
+				const savedBarcode = result.data && result.data.barcode
+					? result.data.barcode
+					: (assignable && assignable.ean13 ? assignable.ean13 : '');
+
+				markRowAccepted(regId, rowIndex);
+
+				if (savedBarcode) {
+					updateRowBarcodeCell(regId, rowIndex, savedBarcode);
+				}
+
+				showBarcodesTab();
+
+				const barcodeValue = assignable && assignable.barcode ? assignable.barcode : '';
+
+				typeBarcodeIntoInput(barcodeValue, function () {
+					setTimeout(advanceToNextRowAfterReview, 2000);
+				});
+
+				showToast(result.message, 'success');
+			})
+			.catch(function (error) {
+				showToast(error.message || 'Failed to accept product.', 'error');
+			})
+			.finally(function () {
+				updateReviewButtonState();
+			});
+	}
+
+	function openRejectModal() {
+		const modal = ensureRejectModal();
+
+		if (!modal || !activeDetail || !isActiveRowPending()) {
+			return;
+		}
+
+		const row = getActiveRow();
+		const productLabel = row
+			? (row.product_procedure_number || 'Product #' + (activeDetail.rowIndex + 1))
+			: 'this product';
+
+		if (rejectModalMeta) {
+			rejectModalMeta.textContent = 'Provide a reason for rejecting ' + productLabel + '.';
+		}
+
+		resetRejectModal();
+		modal.show();
+
+		if (rejectReasonInput) {
+			rejectReasonInput.focus();
+		}
+	}
+
 	function confirmRejectProduct() {
-		if (!activeDetailRow) {
+		if (!activeDetail) {
 			return;
 		}
 
@@ -544,7 +621,10 @@
 			rejectReasonError.classList.add('d-none');
 		}
 
-		const itemId = activeDetailRow.getAttribute('data-id');
+		const regId = activeDetail.regId;
+		const rowIndex = activeDetail.rowIndex;
+		const row = getActiveRow();
+		const itemId = row ? row.id : null;
 
 		if (!itemId) {
 			showToast('Unable to reject this product.', 'error');
@@ -563,17 +643,14 @@
 			body: formData,
 		})
 			.then(function (result) {
-				const rejectedRow = activeDetailRow;
-				const reasonText = result.data && result.data.message
-					? result.data.message
-					: reason;
+				const reasonText = result.data && result.data.message ? result.data.message : reason;
 
 				if (rejectModal) {
 					rejectModal.hide();
 				}
 
-				markDetailRowRejected(rejectedRow, reasonText);
-				advanceToNextRowAfterReview(rejectedRow);
+				markRowRejected(regId, rowIndex, reasonText);
+				advanceToNextRowAfterReview();
 				showToast(result.message, 'success');
 			})
 			.catch(function (error) {
@@ -586,63 +663,43 @@
 			});
 	}
 
-	function acceptProduct() {
-		if (!activeDetailRow || !isRowPending(activeDetailRow)) {
+	// ------------------------------------------------------- detail modal init
+
+	function initProductModal() {
+		if (typeof mdb === 'undefined' || !productModalEl) {
 			return;
 		}
 
-		const itemId = activeDetailRow.getAttribute('data-id');
+		productModal = mdb.Modal.getOrCreateInstance(productModalEl);
+		productModalEl.addEventListener('hidden.mdb.modal', function () {
+			cancelBarcodeTyping();
+			clearActiveDetail();
+		});
+		initDetailTabs();
+	}
 
-		if (!itemId) {
-			showToast('Unable to accept this product.', 'error');
-			return;
+	function ensureRejectModal() {
+		if (rejectModal || typeof mdb === 'undefined' || !rejectModalEl) {
+			return rejectModal;
 		}
 
-		if (productDetailAcceptBtn) {
-			productDetailAcceptBtn.disabled = true;
+		rejectModal = mdb.Modal.getOrCreateInstance(rejectModalEl);
+		rejectModalEl.addEventListener('hidden.mdb.modal', resetRejectModal);
+		return rejectModal;
+	}
+
+	function resetRejectModal() {
+		if (rejectReasonInput) {
+			rejectReasonInput.value = '';
 		}
 
-		const assignable = getAssignableBarcodeForRow(activeDetailRow);
-		const formData = new FormData();
-
-		if (assignable && assignable.ean13) {
-			formData.append('barcode', assignable.ean13);
+		if (rejectReasonError) {
+			rejectReasonError.classList.add('d-none');
 		}
 
-		fetchApi(baseUrl + '/accept_item/' + itemId, {
-			method: 'POST',
-			body: formData,
-		})
-			.then(function (result) {
-				const acceptedRow = activeDetailRow;
-				const savedBarcode = result.data && result.data.barcode
-					? result.data.barcode
-					: (assignable && assignable.ean13 ? assignable.ean13 : '');
-
-				markDetailRowAccepted(acceptedRow);
-
-				if (savedBarcode) {
-					updateRowBarcodeCell(acceptedRow, savedBarcode);
-				}
-
-				showBarcodesTab();
-
-				const barcodeValue = assignable && assignable.barcode ? assignable.barcode : '';
-
-				typeBarcodeIntoInput(barcodeValue, function () {
-					setTimeout(function () {
-						advanceToNextRowAfterReview(acceptedRow);
-					}, 2000);
-				});
-
-				showToast(result.message, 'success');
-			})
-			.catch(function (error) {
-				showToast(error.message || 'Failed to accept product.', 'error');
-			})
-			.finally(function () {
-				updateReviewButtonState(activeDetailRow);
-			});
+		if (confirmRejectBtn) {
+			confirmRejectBtn.disabled = false;
+		}
 	}
 
 	function initDetailTabs() {
@@ -654,6 +711,138 @@
 			mdb.Tab.getOrCreateInstance(element);
 		});
 	}
+
+	function ensureSimilarGrid() {
+		if (similarGrid || typeof JqxGrid === 'undefined' || !document.getElementById('procedureSimilarGrid')) {
+			if (similarGrid) {
+				similarGrid.render();
+			}
+			return;
+		}
+
+		similarGrid = JqxGrid.local('#procedureSimilarGrid', {
+			data: [],
+			datafields: [
+				{ name: 'product_procedure_number', type: 'string' },
+				{ name: 'product_name', type: 'string' },
+				{ name: 'match', type: 'string' },
+			],
+			columns: [
+				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+				{ text: 'Product #', datafield: 'product_procedure_number', width: 160 },
+				{ text: 'Product Name', datafield: 'product_name' },
+				{ text: 'Match', datafield: 'match', width: 120 },
+			],
+			height: Math.max(280, window.innerHeight - 320),
+			emptyMessage: 'No similar products found.',
+		});
+	}
+
+	// ------------------------------------------------------------- modal header
+
+	function renderModalHeader(payload) {
+		if (!productModalTitle) {
+			return;
+		}
+
+		const orgName = escapeHtml(payload.organization_name || '');
+		const productNumber = escapeHtml(payload.product_procedure_number || 'Product');
+		const status = escapeHtml(payload.status || 'uploaded');
+
+		productModalTitle.innerHTML =
+			(orgName ? '<span class="procedure-detail-header-org">' + orgName + '</span>' : '') +
+			'<span class="procedure-detail-header-product">' + productNumber + '</span>' +
+			'<span class="badge bg-info text-dark">' + status + '</span>';
+	}
+
+	function renderDetailInfo(payload) {
+		const fields = [];
+		const columns = payload.columns || [];
+		const cells = payload.cells || [];
+
+		columns.forEach(function (column, index) {
+			fields.push({ label: column, value: cells[index] ?? '' });
+		});
+
+		fields.push(
+			{ label: 'Procedure #', value: payload.procedure_number || '' },
+			{ label: 'Zip File', value: payload.file_name || '' },
+			{ label: 'Processor', value: payload.processor_name || '' },
+			{ label: 'Uploaded', value: payload.created_at || '' }
+		);
+
+		const fieldsHtml = fields.map(function (field) {
+			return '<div class="procedure-detail-info-item">' +
+				'<span class="procedure-detail-info-label">' + escapeHtml(field.label) + '</span>' +
+				'<span class="procedure-detail-info-value">' + escapeHtml(field.value) + '</span>' +
+			'</div>';
+		}).join('');
+
+		productDetailInfo.innerHTML = '<div class="procedure-detail-info-grid">' + fieldsHtml + '</div>';
+	}
+
+	// ---------------------------------------------------------------- images
+
+	function destroyProductImageViewer() {
+		if (productImageViewer) {
+			productImageViewer.destroy();
+			productImageViewer = null;
+		}
+	}
+
+	function initProductImageViewer() {
+		destroyProductImageViewer();
+
+		const viewport = document.getElementById('procedureImageViewport');
+
+		if (!viewport || typeof ImageViewer === 'undefined') {
+			return;
+		}
+
+		productImageViewer = new ImageViewer(viewport);
+	}
+
+	function renderDetailImages(imageUrls) {
+		destroyProductImageViewer();
+
+		if (!Array.isArray(imageUrls) || !imageUrls.length) {
+			productDetailImageGallery.innerHTML =
+				'<div class="procedure-detail-empty-image">' +
+					'<i class="fas fa-image d-block"></i>' +
+					'<p class="mb-0">No design image found for this product.</p>' +
+				'</div>';
+			return;
+		}
+
+		const mainUrl = imageUrls[0];
+		let thumbsHtml = '';
+
+		imageUrls.forEach(function (url, index) {
+			thumbsHtml +=
+				'<button type="button" class="procedure-detail-thumb-btn' + (index === 0 ? ' active' : '') + '" data-image-url="' + escapeAttr(url) + '">' +
+					'<img src="' + escapeAttr(url) + '" alt="">' +
+				'</button>';
+		});
+
+		productDetailImageGallery.innerHTML =
+			'<div class="procedure-image-viewport image-viewer" id="procedureImageViewport">' +
+				'<div class="image-viewer-stage procedure-image-stage">' +
+					'<img src="' + escapeAttr(mainUrl) + '" alt="" class="image-viewer-target procedure-detail-main-image" id="procedureDetailMainImage" draggable="false">' +
+				'</div>' +
+			'</div>' +
+			'<div class="procedure-image-viewer-toolbar">' +
+				'<span class="text-muted small"><i class="fas fa-mouse me-1"></i>Scroll to zoom</span>' +
+				'<span class="text-muted small"><i class="fas fa-hand-pointer me-1"></i>Drag to move</span>' +
+				'<button type="button" class="btn btn-sm btn-outline-secondary" id="procedureImageResetBtn" data-mdb-ripple-init>Reset View</button>' +
+			'</div>' +
+			(imageUrls.length > 1
+				? '<div class="procedure-detail-thumb-list" id="procedureDetailThumbList">' + thumbsHtml + '</div>'
+				: '');
+
+		initProductImageViewer();
+	}
+
+	// --------------------------------------------------------------- barcodes
 
 	function resetBarcodePreview() {
 		if (procedureBarcodeSvg) {
@@ -709,93 +898,6 @@
 			textEl.setAttribute('letter-spacing', '0.32em');
 			textEl.setAttribute('fill', '#000000');
 		});
-	}
-
-	function registerTabBarcodes(tab) {
-		if (!tab || !tab.product_registration_id) {
-			return;
-		}
-
-		tabAvailableBarcodes.set(String(tab.product_registration_id), tab.available_barcodes || []);
-	}
-
-	function getTabAvailableBarcodes(registrationId) {
-		const key = String(registrationId || '');
-
-		if (!key) {
-			return [];
-		}
-
-		if (tabAvailableBarcodes.has(key)) {
-			return tabAvailableBarcodes.get(key);
-		}
-
-		const pane = tabsContent
-			? tabsContent.querySelector('.tab-pane[data-product-registration-id="' + key + '"]')
-			: null;
-
-		if (!pane) {
-			return [];
-		}
-
-		const raw = pane.getAttribute('data-available-barcodes');
-
-		if (!raw) {
-			return [];
-		}
-
-		try {
-			const parsed = JSON.parse(raw);
-			tabAvailableBarcodes.set(key, Array.isArray(parsed) ? parsed : []);
-			return tabAvailableBarcodes.get(key);
-		} catch (error) {
-			return [];
-		}
-	}
-
-	function getActiveTabRegistrationId() {
-		const activePane = tabsContent ? tabsContent.querySelector('.tab-pane.active') : null;
-
-		return activePane ? activePane.getAttribute('data-product-registration-id') : null;
-	}
-
-	function getAssignableBarcodeForRow(row) {
-		if (!row) {
-			return null;
-		}
-
-		const rows = getActiveTabRows();
-		const rowIndex = rows.indexOf(row);
-		const barcodes = getTabAvailableBarcodes(getActiveTabRegistrationId());
-
-		if (rowIndex < 0 || rowIndex >= barcodes.length) {
-			return null;
-		}
-
-		return barcodes[rowIndex];
-	}
-
-	function updateAssignableBarcodeDisplay(row) {
-		if (!assignableBarcodeEl) {
-			return;
-		}
-
-		if (!row || !isRowPending(row)) {
-			assignableBarcodeEl.textContent = '';
-			return;
-		}
-
-		const assignable = getAssignableBarcodeForRow(row);
-
-		if (!assignable || !assignable.ean13) {
-			assignableBarcodeEl.innerHTML = '<span class="text-muted">No barcode available for this product.</span>';
-			return;
-		}
-
-		assignableBarcodeEl.innerHTML =
-			'EAN-13 to assign: <strong class="procedure-assignable-barcode-value">' +
-			escapeHtml(assignable.ean13) +
-			'</strong>';
 	}
 
 	function cancelBarcodeTyping() {
@@ -885,7 +987,6 @@
 
 		if (typeof JsBarcode !== 'undefined' && procedureBarcodeSvg && ean13Full) {
 			try {
-				// Pass 12 data digits only; JsBarcode calculates and displays the checksum digit.
 				JsBarcode(procedureBarcodeSvg, ean13Full.slice(0, 12), {
 					format: 'EAN13',
 					lineColor: '#000000',
@@ -932,273 +1033,152 @@
 		}
 	}
 
-	function buildRowPayload(tab, row, index) {
-		return {
-			id: row.id,
-			row_index: index + 1,
-			product_procedure_number: row.product_procedure_number,
-			cells: row.cells || [],
-			columns: tab.columns || [],
-			image_urls: row.image_urls || [],
-			procedure_number: tab.procedure_number,
-			organization_name: tab.organization_name,
-			file_name: tab.file_name,
-			processor_name: tab.processor_name || '',
-			status: tab.status || 'uploaded',
-			item_status: row.item_status || row.status || 'pending',
-			rejection_reason: row.message || '',
-			created_at: tab.created_at || '',
-		};
-	}
+	// ---------------------------------------------------------- import modal
 
-	function destroyProductImageViewer() {
-		if (productImageViewer) {
-			productImageViewer.destroy();
-			productImageViewer = null;
-		}
-	}
-
-	function initProductImageViewer() {
-		destroyProductImageViewer();
-
-		const viewport = document.getElementById('procedureImageViewport');
-
-		if (!viewport || typeof ImageViewer === 'undefined') {
+	function initImportModal() {
+		if (typeof mdb === 'undefined' || !importModalEl) {
 			return;
 		}
 
-		productImageViewer = new ImageViewer(viewport);
+		importModal = mdb.Modal.getOrCreateInstance(importModalEl);
+		importModalEl.addEventListener('shown.mdb.modal', openImportGrid);
+		importModalEl.addEventListener('hidden.mdb.modal', resetImportModal);
 	}
 
-	function renderDetailImages(imageUrls) {
-		destroyProductImageViewer();
-
-		if (!Array.isArray(imageUrls) || !imageUrls.length) {
-			productDetailImageGallery.innerHTML =
-				'<div class="procedure-detail-empty-image">' +
-					'<i class="fas fa-image d-block"></i>' +
-					'<p class="mb-0">No design image found for this product.</p>' +
-				'</div>';
-			return;
+	function setImportLoading(isLoading) {
+		if (importLoadingEl) {
+			importLoadingEl.classList.toggle('d-none', !isLoading);
 		}
-
-		const mainUrl = imageUrls[0];
-		let thumbsHtml = '';
-
-		imageUrls.forEach(function (url, index) {
-			thumbsHtml +=
-				'<button type="button" class="procedure-detail-thumb-btn' + (index === 0 ? ' active' : '') + '" data-image-url="' + escapeAttr(url) + '">' +
-					'<img src="' + escapeAttr(url) + '" alt="">' +
-				'</button>';
-		});
-
-		productDetailImageGallery.innerHTML =
-			'<div class="procedure-image-viewport image-viewer" id="procedureImageViewport">' +
-				'<div class="image-viewer-stage procedure-image-stage">' +
-					'<img src="' + escapeAttr(mainUrl) + '" alt="" class="image-viewer-target procedure-detail-main-image" id="procedureDetailMainImage" draggable="false">' +
-				'</div>' +
-			'</div>' +
-			'<div class="procedure-image-viewer-toolbar">' +
-				'<span class="text-muted small"><i class="fas fa-mouse me-1"></i>Scroll to zoom</span>' +
-				'<span class="text-muted small"><i class="fas fa-hand-pointer me-1"></i>Drag to move</span>' +
-				'<button type="button" class="btn btn-sm btn-outline-secondary" id="procedureImageResetBtn" data-mdb-ripple-init>Reset View</button>' +
-			'</div>' +
-			(imageUrls.length > 1
-				? '<div class="procedure-detail-thumb-list" id="procedureDetailThumbList">' + thumbsHtml + '</div>'
-				: '');
-
-		initProductImageViewer();
 	}
 
-	function renderDetailInfo(payload) {
-		const fields = [];
-		const columns = payload.columns || [];
-		const cells = payload.cells || [];
-
-		columns.forEach(function (column, index) {
-			fields.push({
-				label: column,
-				value: cells[index] ?? '',
-			});
-		});
-
-		fields.push(
-			{ label: 'Procedure #', value: payload.procedure_number || '' },
-			{ label: 'Zip File', value: payload.file_name || '' },
-			{ label: 'Processor', value: payload.processor_name || '' },
-			{ label: 'Uploaded', value: payload.created_at || '' }
+	function fileRenderer(row, columnfield, value) {
+		return JqxGrid.htmlCellRenderer(
+			'<i class="fas fa-file-zipper me-1 text-primary"></i>' + JqxGrid.escapeAttr(value)
 		);
-
-		const fieldsHtml = fields.map(function (field) {
-			return '<div class="procedure-detail-info-item">' +
-				'<span class="procedure-detail-info-label">' + escapeHtml(field.label) + '</span>' +
-				'<span class="procedure-detail-info-value">' + escapeHtml(field.value) + '</span>' +
-			'</div>';
-		}).join('');
-
-		productDetailInfo.innerHTML =
-			'<div class="procedure-detail-info-grid">' + fieldsHtml + '</div>';
 	}
 
-	function renderModalHeader(payload) {
-		if (!productModalTitle) {
+	function createImportGrid() {
+		importGrid = JqxGrid.remote('#procedureImportGrid', {
+			url: baseUrl + '/import_list',
+			root: 'registrations',
+			pagesize: 10,
+			pagesizeoptions: ['10', '20', '50'],
+			height: Math.max(320, window.innerHeight - 240),
+			emptyMessage: 'No completed procedures found.',
+			datafields: [
+				{ name: 'id', type: 'number' },
+				{ name: 'file_name', type: 'string' },
+				{ name: 'procedure_number', type: 'string' },
+				{ name: 'organization_name', type: 'string' },
+				{ name: 'processor_name', type: 'string' },
+				{ name: 'total_products', type: 'number' },
+				{ name: 'approved', type: 'number' },
+				{ name: 'rejected', type: 'number' },
+				{ name: 'created_at', type: 'string' },
+			],
+			columns: [
+				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+				{ text: 'File', datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
+				{ text: 'Procedure #', datafield: 'procedure_number', width: 130 },
+				{ text: 'Organization', datafield: 'organization_name' },
+				{ text: 'Processor', datafield: 'processor_name', width: 150 },
+				{ text: 'Products', datafield: 'total_products', width: 100, cellsalign: 'right' },
+				{ text: 'Approved', datafield: 'approved', width: 100, cellsalign: 'right' },
+				{ text: 'Rejected', datafield: 'rejected', width: 100, cellsalign: 'right' },
+				{ text: 'Completed', datafield: 'created_at', width: 160 },
+			],
+			getParams: function () {
+				const search = importSearchInput ? importSearchInput.value.trim() : '';
+				return search ? { q: search } : {};
+			},
+			onLoad: function () {
+				setImportLoading(false);
+			},
+			onError: function () {
+				setImportLoading(false);
+				showToast('Failed to load completed procedures.', 'error');
+			},
+		});
+
+		if (importGrid) {
+			importGrid.$el.on('rowclick', function (event) {
+				const args = event.args;
+				const rowdata = args.row && args.row.bounddata
+					? args.row.bounddata
+					: importGrid.$el.jqxGrid('getrowdata', args.rowindex);
+
+				if (rowdata && rowdata.id) {
+					importRegistrationTab(rowdata.id);
+				}
+			});
+		}
+	}
+
+	function openImportGrid() {
+		if (!importGrid) {
+			createImportGrid();
+		} else {
+			importGrid.gotoFirst();
+			importGrid.reload();
+		}
+	}
+
+	function resetImportModal() {
+		scheduleImportSearch.cancel();
+
+		if (importSearchInput) {
+			importSearchInput.value = '';
+		}
+
+		setImportLoading(false);
+	}
+
+	const scheduleImportSearch = debounce(function () {
+		if (importGrid) {
+			importGrid.gotoFirst();
+			importGrid.reload();
+		}
+	}, 300);
+
+	function importRegistrationTab(registrationId) {
+		if (!registrationId) {
 			return;
 		}
 
-		const orgName = escapeHtml(payload.organization_name || '');
-		const productNumber = escapeHtml(payload.product_procedure_number || 'Product');
-		const status = escapeHtml(payload.status || 'uploaded');
-
-		productModalTitle.innerHTML =
-			(orgName ? '<span class="procedure-detail-header-org">' + orgName + '</span>' : '') +
-			'<span class="procedure-detail-header-product">' + productNumber + '</span>' +
-			'<span class="badge bg-info text-dark">' + status + '</span>';
-	}
-
-	function getActiveTabRows() {
-		const activePane = tabsContent ? tabsContent.querySelector('.tab-pane.active') : null;
-
-		if (!activePane) {
-			return [];
-		}
-
-		return Array.from(activePane.querySelectorAll('tr.procedure-data-row'));
-	}
-
-	function clearActiveDetailRow() {
-		if (activeDetailRow) {
-			activeDetailRow.classList.remove('procedure-data-row-active');
-			activeDetailRow = null;
-		}
-
-		updateDetailNavButtons();
-	}
-
-	function setActiveDetailRow(row) {
-		clearActiveDetailRow();
-
-		if (!row) {
-			return;
-		}
-
-		row.classList.add('procedure-data-row-active');
-		activeDetailRow = row;
-		row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-		updateDetailNavButtons();
-	}
-
-	function updateDetailNavButtons() {
-		const rows = getActiveTabRows();
-		const currentIndex = activeDetailRow ? rows.indexOf(activeDetailRow) : -1;
-
-		if (productDetailPrevBtn) {
-			productDetailPrevBtn.disabled = currentIndex <= 0;
-		}
-
-		if (productDetailNextBtn) {
-			productDetailNextBtn.disabled = currentIndex < 0 || currentIndex >= rows.length - 1;
-		}
-
-		updateReviewButtonState(activeDetailRow);
-
-		if (productDetailFooterMeta) {
-			if (currentIndex >= 0) {
-				productDetailFooterMeta.textContent = 'Row ' + (currentIndex + 1) + ' of ' + rows.length;
-			} else {
-				productDetailFooterMeta.textContent = '';
+		if (procedureTabs.tabExists(registrationId)) {
+			if (importModal) {
+				importModal.hide();
 			}
-		}
-	}
 
-	function navigateDetailRow(direction) {
-		const rows = getActiveTabRows();
-		const currentIndex = activeDetailRow ? rows.indexOf(activeDetailRow) : -1;
-		const nextIndex = currentIndex + direction;
-
-		if (nextIndex < 0 || nextIndex >= rows.length) {
+			procedureTabs.activateTab(registrationId);
+			showToast('Procedure is already open.', 'success');
 			return;
 		}
 
-		const row = rows[nextIndex];
-		const payload = parseRowPayload(row);
+		setImportLoading(true);
 
-		if (payload) {
-			openProductDetailModal(payload, row);
-		}
+		fetchApi(baseUrl + '/import_tab/' + registrationId)
+			.then(function (result) {
+				procedureTabs.prependTabs([result.tab], { imported: true });
+
+				if (importModal) {
+					importModal.hide();
+				}
+
+				showToast(result.message || 'Procedure imported successfully.', 'success');
+			})
+			.catch(function (error) {
+				showToast(error.message || 'Failed to import procedure.', 'error');
+			})
+			.finally(function () {
+				setImportLoading(false);
+			});
 	}
 
-	function openProductDetailModal(payload, row) {
-		if (!productModal || !payload) {
-			return;
-		}
+	// --------------------------------------------------------------- tab html
 
-		cancelBarcodeTyping();
-
-		if (row) {
-			setActiveDetailRow(row);
-		}
-
-		renderModalHeader(payload);
-		renderDetailImages(payload.image_urls || []);
-		renderDetailInfo(payload);
-
-		if (procedureBarcodeInput) {
-			procedureBarcodeInput.value = '';
-			renderBarcodePreview('');
-		}
-
-		updateAssignableBarcodeDisplay(row);
-
-		const imageTabBtn = document.getElementById('procedureDetailTabImageBtn');
-
-		if (imageTabBtn && typeof mdb !== 'undefined') {
-			mdb.Tab.getOrCreateInstance(imageTabBtn).show();
-		}
-
-		productModal.show();
-	}
-
-	function parseRowPayload(row) {
-		const raw = row.getAttribute('data-row-payload');
-
-		if (!raw) {
-			return null;
-		}
-
-		try {
-			return JSON.parse(raw);
-		} catch (error) {
-			return null;
-		}
-	}
-
-	function buildTableHtml(tab) {
-		const headerHtml = '<th class="procedure-item-status-col"></th>' +
-			'<th class="procedure-row-index">#</th>' +
-			(tab.columns || []).map(function (column) {
-				return '<th>' + escapeHtml(column) + '</th>';
-			}).join('');
-
-		const bodyHtml = (tab.rows || []).map(function (row, index) {
-			const payload = buildRowPayload(tab, row, index);
-			const itemStatus = payload.item_status || 'pending';
-			const cellsHtml = (row.cells || []).map(function (cell) {
-				return '<td>' + escapeHtml(cell) + '</td>';
-			}).join('');
-
-			return '<tr class="' + buildProcedureDataRowClass(row) + '" data-id="' + row.id + '" data-item-status="' + escapeAttr(itemStatus) + '" data-product-number="' + escapeAttr(row.product_procedure_number) + '" data-row-payload="' + escapeAttr(JSON.stringify(payload)) + '">' +
-				renderItemStatusCell(itemStatus) +
-				'<td class="procedure-row-index text-muted">' + (index + 1) + '</td>' +
-				cellsHtml +
-			'</tr>';
-		}).join('');
-
-		return '<div class="procedure-table-scroll">' +
-			'<table class="table table-hover align-middle mb-0 procedure-data-table">' +
-				'<thead><tr>' + headerHtml + '</tr></thead>' +
-				'<tbody>' + bodyHtml + '</tbody>' +
-			'</table>' +
-		'</div>';
+	function buildTableHtml() {
+		return '<div class="product-registration-grid"></div>';
 	}
 
 	function buildTabNavCloseButton(tab, isCompleted) {
@@ -1267,7 +1247,6 @@
 			'id="product-registration-tab-' + tab.product_registration_id + '" role="tabpanel" ' +
 			'aria-labelledby="product-registration-tab-' + tab.product_registration_id + '-tab" ' +
 			'data-product-registration-id="' + tab.product_registration_id + '" ' +
-			'data-available-barcodes="' + escapeAttr(JSON.stringify(tab.available_barcodes || [])) + '"' +
 			(isImported ? ' data-imported="true"' : '') + '>' +
 			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
@@ -1288,7 +1267,7 @@
 		initialUpload: initialUpload,
 		openUploadBtn: openUploadBtn,
 		tabCountEl: tabCount,
-		idAttribute: 'data-product-registration-id',
+		idAttribute: ID_ATTR,
 		getTabId: function (tab) {
 			return tab.product_registration_id;
 		},
@@ -1304,7 +1283,10 @@
 		},
 		deleteBtnSelector: '.product-registration-tab-delete-btn',
 		closeBtnSelector: '.product-registration-tab-close-btn',
-		onBeforePrepend: registerTabBarcodes,
+		onBeforePrepend: registerTabData,
+		onAfterPrepend: function (tab) {
+			ensureGrid(tab.product_registration_id);
+		},
 	});
 
 	const procedureUpload = ProcedureUpload.create({
@@ -1343,7 +1325,20 @@
 	procedureTabs.init();
 	initImportModal();
 	initProductModal();
-	initRejectModal();
+	ensureRejectModal();
+
+	// Build a tab's grid when it becomes visible (and the similar-products grid).
+	document.addEventListener('shown.mdb.tab', function (event) {
+		const tabButton = event.target.closest('[' + ID_ATTR + ']');
+
+		if (tabButton && tabsNav && tabsNav.contains(tabButton)) {
+			ensureGrid(tabButton.getAttribute(ID_ATTR));
+		}
+
+		if (event.target.id === 'procedureDetailTabSimilarBtn') {
+			ensureSimilarGrid();
+		}
+	});
 
 	if (confirmRejectBtn) {
 		confirmRejectBtn.addEventListener('click', confirmRejectProduct);
@@ -1365,55 +1360,6 @@
 		});
 	}
 
-	document.addEventListener('click', function (event) {
-		const importPageBtn = event.target.closest('.procedure-import-page-btn');
-
-		if (importPageBtn) {
-			event.preventDefault();
-			importState.page = parseInt(importPageBtn.getAttribute('data-page'), 10) || 1;
-			loadImportList();
-			return;
-		}
-
-		const importRow = event.target.closest('.procedure-import-row');
-
-		if (importRow) {
-			event.preventDefault();
-			importRegistrationTab(importRow.getAttribute('data-product-registration-id'));
-		}
-	});
-
-	document.addEventListener('keydown', function (event) {
-		if (event.key !== 'Enter' && event.key !== ' ') {
-			return;
-		}
-
-		const importRow = event.target.closest('.procedure-import-row');
-
-		if (!importRow) {
-			return;
-		}
-
-		event.preventDefault();
-		importRegistrationTab(importRow.getAttribute('data-product-registration-id'));
-	});
-
-	if (tabsWrapper) {
-		tabsWrapper.addEventListener('click', function (event) {
-			const row = event.target.closest('tr.procedure-data-row');
-
-			if (!row) {
-				return;
-			}
-
-			const payload = parseRowPayload(row);
-
-			if (payload) {
-				openProductDetailModal(payload, row);
-			}
-		});
-	}
-
 	if (productDetailPrevBtn) {
 		productDetailPrevBtn.addEventListener('click', function () {
 			navigateDetailRow(-1);
@@ -1428,31 +1374,31 @@
 
 	if (productDetailImageGallery) {
 		productDetailImageGallery.addEventListener('click', function (event) {
-		const resetBtn = event.target.closest('#procedureImageResetBtn');
+			const resetBtn = event.target.closest('#procedureImageResetBtn');
 
-		if (resetBtn) {
-			if (productImageViewer) {
-				productImageViewer.reset();
+			if (resetBtn) {
+				if (productImageViewer) {
+					productImageViewer.reset();
+				}
+				return;
 			}
-			return;
-		}
 
-		const thumbBtn = event.target.closest('.procedure-detail-thumb-btn');
+			const thumbBtn = event.target.closest('.procedure-detail-thumb-btn');
 
-		if (!thumbBtn) {
-			return;
-		}
+			if (!thumbBtn) {
+				return;
+			}
 
-		const imageUrl = thumbBtn.getAttribute('data-image-url');
+			const imageUrl = thumbBtn.getAttribute('data-image-url');
 
-		if (productImageViewer && imageUrl) {
-			productImageViewer.setImage(imageUrl);
-		}
+			if (productImageViewer && imageUrl) {
+				productImageViewer.setImage(imageUrl);
+			}
 
-		productDetailImageGallery.querySelectorAll('.procedure-detail-thumb-btn').forEach(function (button) {
-			button.classList.remove('active');
-		});
-		thumbBtn.classList.add('active');
+			productDetailImageGallery.querySelectorAll('.procedure-detail-thumb-btn').forEach(function (button) {
+				button.classList.remove('active');
+			});
+			thumbBtn.classList.add('active');
 		});
 	}
 
@@ -1463,13 +1409,23 @@
 	}
 
 	if (openImportBtn) {
-		openImportBtn.addEventListener('click', openImportModal);
+		openImportBtn.addEventListener('click', function () {
+			if (importModal) {
+				importModal.show();
+			}
+		});
 	}
 
 	if (importSearchInput) {
 		importSearchInput.addEventListener('input', scheduleImportSearch);
 	}
 
-	(config.initialTabs || []).forEach(registerTabBarcodes);
-})();
+	// Register server-rendered tabs and render the active one.
+	(config.initialTabs || []).forEach(registerTabData);
 
+	const activeId = activeRegistrationId();
+
+	if (activeId) {
+		ensureGrid(activeId);
+	}
+})();

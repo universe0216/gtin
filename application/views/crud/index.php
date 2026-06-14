@@ -23,49 +23,7 @@ $can_edit = $can_edit ?? TRUE;
 
 <div class="card shadow-sm app-panel">
 	<div class="card-body p-0">
-		<div class="table-responsive">
-			<table class="table table-hover table-dark mb-0" id="crudTable">
-				<thead>
-					<tr>
-						<th scope="col">#</th>
-						<?php foreach ($list_fields as $field): ?>
-							<th scope="col"><?php echo html_escape($field['label']); ?></th>
-						<?php endforeach; ?>
-						<?php if ($can_edit): ?>
-							<th scope="col" class="text-end" style="width: 140px;">Actions</th>
-						<?php endif; ?>
-					</tr>
-				</thead>
-				<tbody>
-					<?php if (empty($records)): ?>
-						<tr id="emptyRow">
-							<td colspan="<?php echo count($list_fields) + 1 + ($can_edit ? 1 : 0); ?>" class="text-center text-muted py-4">
-								No records found.<?php echo $can_edit ? ' Click "Add New" to create one.' : ''; ?>
-							</td>
-						</tr>
-					<?php else: ?>
-						<?php foreach ($records as $record): ?>
-							<tr data-id="<?php echo (int) $record['id']; ?>">
-								<td><?php echo (int) $record['id']; ?></td>
-								<?php foreach ($list_fields as $field): ?>
-									<td><?php echo html_escape($record[$field['name']] ?? ''); ?></td>
-								<?php endforeach; ?>
-								<?php if ($can_edit): ?>
-									<td class="text-end">
-										<button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-mdb-ripple-init>
-											<i class="fas fa-pen"></i>
-										</button>
-										<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-mdb-ripple-init>
-											<i class="fas fa-trash"></i>
-										</button>
-									</td>
-								<?php endif; ?>
-							</tr>
-						<?php endforeach; ?>
-					<?php endif; ?>
-				</tbody>
-			</table>
-		</div>
+		<div id="crudGrid"></div>
 	</div>
 </div>
 
@@ -83,8 +41,17 @@ $this->load->view('partials/basic_modal', array(
 	window.CRUD_CONFIG = <?php echo json_encode(array(
 		'entity'      => $entity,
 		'entityLabel' => $title,
-		'fields'      => $list_fields,
+		'fields'      => array_values($list_fields),
 		'baseUrl'     => site_url($entity),
 		'canEdit'     => $can_edit,
+		'records'     => array_map(function ($record) use ($list_fields) {
+			$row = array('id' => isset($record['id']) ? (int) $record['id'] : null);
+
+			foreach ($list_fields as $field) {
+				$row[$field['name']] = $record[$field['name']] ?? '';
+			}
+
+			return $row;
+		}, $records),
 	)); ?>;
 </script>

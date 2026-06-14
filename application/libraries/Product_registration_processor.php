@@ -29,6 +29,7 @@ class Product_registration_processor {
 			throw new RuntimeException('No valid zip files were uploaded.');
 		}
 
+		$this->assign_procedure_numbers($normalized);
 		$this->validate_no_duplicate_registrations($normalized);
 
 		$month_dir = $this->storage_root.date('Y-m').DIRECTORY_SEPARATOR;
@@ -63,8 +64,7 @@ class Product_registration_processor {
 
 		foreach ($files as $file)
 		{
-			$parsed = $this->parse_zip_filename($file['name']);
-			$key = $parsed['procedure_number'].'|'.$file['name'];
+			$key = $file['name'];
 
 			if (isset($seen[$key]))
 			{
@@ -75,10 +75,10 @@ class Product_registration_processor {
 
 			$seen[$key] = TRUE;
 
-			if ($this->CI->product_registration_model->exists_by_file_and_procedure($file['name'], $parsed['procedure_number']))
+			if ($this->CI->product_registration_model->exists_by_file_and_procedure($file['name'], $file['procedure_number']))
 			{
 				throw new RuntimeException(
-					'Registration '.$parsed['procedure_number'].' with file '.$file['name'].' already exists.'
+					'Registration '.$file['procedure_number'].' with file '.$file['name'].' already exists.'
 				);
 			}
 		}
@@ -87,7 +87,10 @@ class Product_registration_processor {
 	protected function process_single_zip($file, $month_dir, $account_id)
 	{
 		$original_name = $file['name'];
-		$parsed = $this->parse_zip_filename($original_name);
+		$parsed = array(
+			'procedure_number'  => $file['procedure_number'],
+			'organization_name' => $this->parse_organization_name($original_name),
+		);
 		$folder_name = $parsed['procedure_number'].'_'.$parsed['organization_name'];
 		$registration_dir = $month_dir.$folder_name.DIRECTORY_SEPARATOR;
 		$this->ensure_directory($registration_dir);
@@ -214,19 +217,33 @@ class Product_registration_processor {
 		return $normalized;
 	}
 
-	protected function parse_zip_filename($filename)
+	protected function assign_procedure_numbers(&$files)
+	{
+		$timestamp = date('YmdHis');
+		$single = count($files) === 1;
+
+		foreach ($files as $index => &$file)
+		{
+			$file['procedure_number'] = $single
+				? $timestamp
+				: $timestamp.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT);
+		}
+
+		unset($file);
+	}
+
+	protected function parse_organization_name($filename)
 	{
 		$basename = pathinfo($filename, PATHINFO_FILENAME);
 
-		if ( ! preg_match('/^(\d+)_(.+)$/u', $basename, $matches))
+		// Keep backwards compatibility with the old [number]_[name] convention
+		// without requiring it; fall back to the full file name otherwise.
+		if (preg_match('/^\d+_(.+)$/u', $basename, $matches))
 		{
-			throw new RuntimeException('Invalid zip filename format: '.$filename.'. Expected [procedure_number]_[organization_name].zip');
+			return trim($matches[1]);
 		}
 
-		return array(
-			'procedure_number'  => $matches[1],
-			'organization_name' => trim($matches[2]),
-		);
+		return trim($basename);
 	}
 
 	protected function extract_zip($zip_path, $destination)
@@ -512,13 +529,15 @@ class Product_registration_processor {
 			$rows[] = array(
 				'id'                       => (int) $item['id'],
 				'product_procedure_number' => $item['product_procedure_number'],
-				'cells'                    => $this->normalize_row_cells($cells, count($columns)),
+				'cells'                    => $this->reorder_display_cells($this->normalize_row_cells($cells, count($columns))),
 				'image_urls'               => $info['image_urls'] ?? array(),
 				'has_image'                => ! empty($info['has_image']),
 				'item_status'              => $item['status'] ?? 'pending',
 				'message'                  => $item['message'] ?? '',
 			);
 		}
+
+		$columns = $this->reorder_display_cells($columns);
 
 		$tab = array(
 			'product_registration_id' => (int) $registration['id'],
@@ -667,6 +686,21 @@ class Product_registration_processor {
 		}
 
 		return (string) ((10 - ($sum % 10)) % 10);
+	}
+
+	protected function reorder_display_cells($cells)
+	{
+		// Display the 4th column (index 3, the name) in the 3rd position (index 2).
+		if ( ! is_array($cells) || count($cells) < 4)
+		{
+			return $cells;
+		}
+
+		$cells = array_values($cells);
+		$moved = array_splice($cells, 3, 1);
+		array_splice($cells, 2, 0, $moved);
+
+		return $cells;
 	}
 
 	protected function normalize_row_cells($row, $column_count)

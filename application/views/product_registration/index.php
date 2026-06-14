@@ -78,70 +78,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							</button>
 						</div>
 
-						<div class="procedure-table-scroll">
-							<table class="table table-hover align-middle mb-0 procedure-data-table">
-								<thead>
-									<tr>
-										<th class="procedure-item-status-col"></th>
-										<th class="procedure-row-index">#</th>
-										<?php foreach ($tab['columns'] as $column): ?>
-											<th><?php echo html_escape($column); ?></th>
-										<?php endforeach; ?>
-									</tr>
-								</thead>
-								<tbody>
-									<?php foreach ($tab['rows'] as $row_index => $row): ?>
-										<?php
-										$row_payload = array(
-											'id'                       => (int) $row['id'],
-											'row_index'                => (int) $row_index + 1,
-											'product_procedure_number' => $row['product_procedure_number'],
-											'cells'                    => $row['cells'],
-											'columns'                  => $tab['columns'],
-											'image_urls'               => $row['image_urls'] ?? array(),
-											'procedure_number'         => $tab['procedure_number'],
-											'organization_name'        => $tab['organization_name'],
-											'file_name'                => $tab['file_name'],
-											'processor_name'           => $tab['processor_name'],
-											'status'                   => $tab['status'],
-											'item_status'              => $row['item_status'] ?? 'pending',
-											'rejection_reason'         => $row['message'] ?? '',
-											'created_at'               => $tab['created_at'],
-										);
-										$item_status = $row['item_status'] ?? 'pending';
-										$is_rejected = $item_status === 'rejected';
-										$is_approved = $item_status === 'approved' || $item_status === 'accepted';
-										$row_state_class = $is_rejected
-											? ' procedure-data-row-rejected'
-											: ($is_approved ? ' procedure-data-row-approved' : '');
-										$status_icon_html = '';
-
-										if ($item_status === 'rejected')
-										{
-											$status_icon_html = '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="Rejected"></i>';
-										}
-										elseif ($item_status === 'approved' || $item_status === 'accepted')
-										{
-											$status_icon_html = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="Accepted"></i>';
-										}
-										?>
-										<tr
-											class="procedure-data-row<?php echo $row_state_class; ?>"
-											data-id="<?php echo (int) $row['id']; ?>"
-											data-item-status="<?php echo html_escape($row['item_status'] ?? 'pending'); ?>"
-											data-product-number="<?php echo html_escape($row['product_procedure_number']); ?>"
-											data-row-payload="<?php echo html_escape(json_encode($row_payload), ENT_QUOTES, 'UTF-8'); ?>"
-										>
-											<td class="procedure-item-status-cell"><?php echo $status_icon_html; ?></td>
-											<td class="procedure-row-index text-muted"><?php echo (int) $row_index + 1; ?></td>
-											<?php foreach ($row['cells'] as $cell): ?>
-												<td><?php echo html_escape($cell); ?></td>
-											<?php endforeach; ?>
-										</tr>
-									<?php endforeach; ?>
-								</tbody>
-							</table>
-						</div>
+						<div class="product-registration-grid"></div>
 					</div>
 				<?php endforeach; ?>
 			</div>
@@ -249,23 +186,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								<div id="procedureDetailImageGallery" class="procedure-detail-image-gallery"></div>
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabSimilar" role="tabpanel" aria-labelledby="procedureDetailTabSimilarBtn">
-								<div class="table-responsive">
-									<table class="table table-hover align-middle mb-0 procedure-data-table">
-										<thead>
-											<tr>
-												<th class="procedure-row-index">#</th>
-												<th>Product #</th>
-												<th>Product Name</th>
-												<th>Match</th>
-											</tr>
-										</thead>
-										<tbody>
-											<tr>
-												<td colspan="4" class="text-center text-muted py-4">No similar products found.</td>
-											</tr>
-										</tbody>
-									</table>
-								</div>
+								<div id="procedureSimilarGrid"></div>
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabBarcodes" role="tabpanel" aria-labelledby="procedureDetailTabBarcodesBtn">
 								<div class="procedure-barcode-form mb-4">
@@ -339,35 +260,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					<div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
 					Loading completed procedures...
 				</div>
-				<div id="procedureImportTableWrap" class="procedure-import-modal-table">
-					<div class="table-responsive">
-						<table class="table table-hover align-middle mb-0 procedure-data-table">
-							<thead>
-								<tr>
-									<th class="procedure-row-index">#</th>
-									<th>File</th>
-									<th>Procedure #</th>
-									<th>Organization</th>
-									<th>Processor</th>
-									<th>Products</th>
-									<th>Approved</th>
-									<th>Rejected</th>
-									<th>Completed</th>
-								</tr>
-							</thead>
-							<tbody id="procedureImportTableBody">
-								<tr>
-									<td colspan="9" class="text-center text-muted py-4">No completed procedures found.</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</div>
-				<div id="procedureImportPagination" class="procedure-import-pagination app-pagination d-none d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
-					<p class="text-muted small mb-0" id="procedureImportFooterMeta"></p>
-					<nav class="app-pagination-nav" aria-label="Import procedure pages">
-						<ul class="pagination pagination-sm pagination-circle mb-0" id="procedureImportPaginationList"></ul>
-					</nav>
+				<div id="procedureImportTableWrap" class="procedure-import-modal-table p-2">
+					<div id="procedureImportGrid"></div>
 				</div>
 			</div>
 			<div class="modal-footer procedure-import-modal-footer">

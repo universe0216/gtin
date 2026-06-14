@@ -7,62 +7,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<p class="text-muted small mb-0">Organization registration files.</p>
 	</div>
 
-	<div class="app-panel p-0">
-		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 procedure-data-table">
-				<thead>
-					<tr>
-						<th class="procedure-row-index">#</th>
-						<th>File</th>
-						<th>Procedure #</th>
-						<th>Organization</th>
-						<th>Processor</th>
-						<th>Items</th>
-						<th>Status</th>
-						<th>Uploaded</th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php if (empty($registrations)): ?>
-						<tr>
-							<td colspan="8" class="text-center text-muted py-4">No organization registrations found.</td>
-						</tr>
-					<?php else: ?>
-						<?php foreach ($registrations as $index => $registration): ?>
-							<tr
-								class="history-organization-row"
-								role="button"
-								tabindex="0"
-								data-organization-registration-id="<?php echo (int) $registration['id']; ?>"
-							>
-								<td class="procedure-row-index text-muted"><?php echo (int) $row_offset + $index + 1; ?></td>
-								<td>
-									<i class="fas fa-file-zipper me-1 text-primary"></i>
-									<?php echo html_escape($registration['file_name']); ?>
-								</td>
-								<td><?php echo html_escape($registration['procedure_number']); ?></td>
-								<td><?php echo html_escape($registration['organization_name']); ?></td>
-								<td><?php echo html_escape($registration['processor_name'] ?? ''); ?></td>
-								<td><?php echo (int) $registration['total_items']; ?></td>
-								<td><?php echo html_escape($registration['status']); ?></td>
-								<td><?php echo html_escape($registration['created_at']); ?></td>
-							</tr>
-						<?php endforeach; ?>
-					<?php endif; ?>
-				</tbody>
-			</table>
-		</div>
-
-		<?php if ($total > 0): ?>
-			<div class="app-pagination d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
-				<p class="text-muted small mb-0">
-					Showing <?php echo (int) $range_start; ?>–<?php echo (int) $range_end; ?> of <?php echo (int) $total; ?>
-				</p>
-				<?php if ($total > $per_page): ?>
-					<?php echo $pagination; ?>
-				<?php endif; ?>
-			</div>
-		<?php endif; ?>
+	<div class="app-panel p-2">
+		<div id="historyOrganizationsGrid"></div>
 	</div>
 </div>
 
@@ -97,6 +43,19 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script>
 	window.HISTORY_CONFIG = {
 		type: 'organizations',
-		baseUrl: <?php echo json_encode(site_url('history/organizations')); ?>
+		baseUrl: <?php echo json_encode(site_url('history/organizations')); ?>,
+		gridSelector: '#historyOrganizationsGrid',
+		rows: <?php echo json_encode(array_map(function ($registration) {
+			return array(
+				'id'                => (int) $registration['id'],
+				'file_name'         => $registration['file_name'],
+				'procedure_number'  => $registration['procedure_number'],
+				'organization_name' => $registration['organization_name'] ?? '',
+				'processor_name'    => $registration['processor_name'] ?? '',
+				'total_items'       => (int) $registration['total_items'],
+				'status'            => $registration['status'],
+				'created_at'        => $registration['created_at'],
+			);
+		}, $registrations)); ?>
 	};
 </script>

@@ -69,46 +69,18 @@ class History extends AuthenticatedController {
 			show_404();
 		}
 
-		$per_page = $this->history_per_page;
-		$page = max(1, (int) $this->input->get('page'));
-		$total = $this->organization_registration_model->count_all();
-		$total_pages = max(1, (int) ceil($total / $per_page));
-
-		if ($page > $total_pages)
-		{
-			$page = $total_pages;
-		}
-
-		$offset = ($page - 1) * $per_page;
-		$registrations = $this->organization_registration_model->get_all($per_page, $offset);
+		$registrations = $this->organization_registration_model->get_all();
 
 		foreach ($registrations as $index => $registration)
 		{
 			$registrations[$index]['organization_name'] = $this->organization_name_from_file($registration['file_name']);
 		}
 
-		$this->load->library('pagination');
-		$this->pagination->initialize($this->pagination_config(
-			site_url('history/organizations'),
-			$total,
-			$per_page,
-			'Organization history pages'
-		));
-
-		$range_start = $total > 0 ? $offset + 1 : 0;
-		$range_end = min($offset + count($registrations), $total);
-
 		$data = array(
 			'title'         => 'Organizations History',
 			'nav_active'    => 'history_organizations',
 			'registrations' => $registrations,
-			'pagination'    => $this->pagination->create_links(),
-			'total'         => $total,
-			'page'          => $page,
-			'per_page'      => $per_page,
-			'row_offset'    => $offset,
-			'range_start'   => $range_start,
-			'range_end'     => $range_end,
+			'total'         => count($registrations),
 		);
 
 		$data['content'] = $this->load->view('history/organizations', $data, TRUE);
@@ -117,41 +89,13 @@ class History extends AuthenticatedController {
 
 	protected function render_product_registration_history($title, $nav_active, $route)
 	{
-		$per_page = $this->history_per_page;
-		$page = max(1, (int) $this->input->get('page'));
-		$total = $this->product_registration_model->count_by_status('completed');
-		$total_pages = max(1, (int) ceil($total / $per_page));
-
-		if ($page > $total_pages)
-		{
-			$page = $total_pages;
-		}
-
-		$offset = ($page - 1) * $per_page;
-		$registrations = $this->product_registration_model->get_by_status('completed', $per_page, $offset);
-
-		$this->load->library('pagination');
-		$this->pagination->initialize($this->pagination_config(
-			site_url($route),
-			$total,
-			$per_page,
-			'Product history pages'
-		));
-
-		$range_start = $total > 0 ? $offset + 1 : 0;
-		$range_end = min($offset + count($registrations), $total);
+		$registrations = $this->product_registration_model->get_by_status('completed');
 
 		$data = array(
 			'title'         => $title,
 			'nav_active'    => $nav_active,
 			'registrations' => $registrations,
-			'pagination'    => $this->pagination->create_links(),
-			'total'         => $total,
-			'page'          => $page,
-			'per_page'      => $per_page,
-			'row_offset'    => $offset,
-			'range_start'   => $range_start,
-			'range_end'     => $range_end,
+			'total'         => count($registrations),
 			'history_route' => $route,
 		);
 

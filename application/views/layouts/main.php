@@ -10,6 +10,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<link href="<?php echo base_url('assets/vendor/font-awesome/css/all.min.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/vendor/roboto/css/roboto.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/vendor/mdb/css/mdb.min.css'); ?>" rel="stylesheet">
+	<link href="<?php echo base_url('assets/vendor/jqwidgets/styles/jqx.base.css'); ?>" rel="stylesheet">
+	<link href="<?php echo base_url('assets/vendor/jqwidgets/styles/jqx.dark.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/css/app.css'); ?>" rel="stylesheet">
 </head>
 <body class="text-body">
@@ -22,10 +24,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 <script src="<?php echo base_url('assets/vendor/jquery/js/jquery.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/mdb/js/mdb.umd.min.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/jqwidgets/jqx-all.js'); ?>"></script>
 <script>
 	window.APP_BASE_URL = <?php echo json_encode(base_url()); ?>;
 </script>
 <script src="<?php echo base_url('assets/js/app.js'); ?>"></script>
+<script src="<?php echo base_url('assets/js/jqx_grid.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/sortable_table.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/entity_list.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/organization_detail.js'); ?>"></script>

@@ -66,30 +66,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								<p class="text-muted small mb-0 d-none" id="organizationProductsMeta"></p>
 							</div>
 
-							<div class="entity-detail-products-table procedure-table-scroll position-relative">
-								<div id="organizationProductsLoading" class="entity-list-loading d-none">
-									<span>
-										<div class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></div>
-										Loading products...
-									</span>
-								</div>
-								<table class="table table-hover align-middle mb-0 procedure-data-table entity-detail-products-data-table">
-									<thead>
-										<tr id="organizationProductsTableHead"></tr>
-									</thead>
-									<tbody id="organizationProductsTableBody">
-										<tr>
-											<td class="text-center text-muted py-4">Select an organization to view products.</td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
-
-							<div id="organizationProductsPagination" class="entity-list-pagination app-pagination d-flex flex-wrap justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
-								<p class="text-muted small mb-0" id="organizationProductsPageMeta"></p>
-								<nav class="app-pagination-nav d-none" id="organizationProductsPaginationNav" aria-label="Organization product pages">
-									<ul class="pagination pagination-sm pagination-circle mb-0" id="organizationProductsPaginationList"></ul>
-								</nav>
+							<div class="entity-detail-products-table p-2">
+								<div id="organizationProductsGrid"></div>
 							</div>
 						</div>
 					</div>
