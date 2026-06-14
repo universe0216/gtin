@@ -30,7 +30,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 </script>
 <script src="<?php echo base_url('assets/js/app.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/jqx_grid.js'); ?>"></script>
-<script src="<?php echo base_url('assets/js/sortable_table.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/entity_list.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/organization_detail.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/crud.js'); ?>"></script>

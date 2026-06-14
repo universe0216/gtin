@@ -5,8 +5,6 @@ require_once APPPATH.'core/AuthenticatedController.php';
 
 class History extends AuthenticatedController {
 
-	protected $history_per_page = 10;
-
 	public function __construct()
 	{
 		parent::__construct();
