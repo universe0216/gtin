@@ -8,20 +8,24 @@ class Organization_model extends Basic_model {
 	protected $table = 'organizations';
 	protected $searchable_columns = array(
 		'name',
-		'registration_number',
+		'reg_number',
 		'gs1_prefix',
-		'procedure_number',
+		'parent_org',
+		'phone',
+		'c_code',
 		'address',
 	);
 	protected $sortable_columns = array(
-		'name'                => 'organizations.name',
-		'registration_number' => 'organizations.registration_number',
-		'gs1_prefix'          => 'organizations.gs1_prefix',
-		'procedure_number'    => 'organizations.procedure_number',
-		'registration_date'   => 'organizations.registration_date',
-		'reregistration_date' => 'organizations.reregistration_date',
-		'expiry_date'         => 'organizations.expiry_date',
-		'address'             => 'organizations.address',
+		'name'        => 'organizations.name',
+		'reg_number'  => 'organizations.reg_number',
+		'parent_org'  => 'organizations.parent_org',
+		'gs1_prefix'  => 'organizations.gs1_prefix',
+		'init_date'   => 'organizations.init_date',
+		'reg_date'    => 'organizations.reg_date',
+		'expiry_date' => 'organizations.expiry_date',
+		'phone'       => 'organizations.phone',
+		'c_code'      => 'organizations.c_code',
+		'address'     => 'organizations.address',
 	);
 
 	public function get_by_name($name)

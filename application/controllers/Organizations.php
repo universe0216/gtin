@@ -8,41 +8,45 @@ class Organizations extends BasicController {
 	protected $entity = 'organizations';
 	protected $entity_label = 'Organizations';
 	protected $add_url_route = 'organization_registration';
-	protected $list_search_placeholder = 'Search name, registration number, GS1 prefix, procedure number...';
+	protected $list_search_placeholder = 'Search name, registration number, GS1 prefix, parent, phone...';
 	protected $list_empty_message = 'No organizations found.';
 	protected $list_empty_search_message = 'No organizations match your search.';
 	protected $list_columns = array(
 		array('key' => 'name', 'label' => 'Name'),
-		array('key' => 'registration_number', 'label' => 'Registration Number'),
+		array('key' => 'reg_number', 'label' => 'Registration Number'),
 		array('key' => 'gs1_prefix', 'label' => 'GS1 Prefix'),
-		array('key' => 'procedure_number', 'label' => 'Procedure Number'),
-		array('key' => 'registration_date', 'label' => 'Registration Date'),
-		array('key' => 'reregistration_date', 'label' => 'Re-registration Date'),
+		array('key' => 'parent_org', 'label' => 'Parent Organization'),
+		array('key' => 'phone', 'label' => 'Phone'),
+		array('key' => 'init_date', 'label' => 'Initial Date'),
+		array('key' => 'reg_date', 'label' => 'Registration Date'),
 		array('key' => 'expiry_date', 'label' => 'Expiry Date'),
-		array('key' => 'address', 'label' => 'Address'),
 	);
 	protected $detail_info_fields = array(
 		array('key' => 'id', 'label' => 'ID'),
 		array('key' => 'name', 'label' => 'Name'),
-		array('key' => 'registration_number', 'label' => 'Registration Number'),
+		array('key' => 'reg_number', 'label' => 'Registration Number'),
+		array('key' => 'parent_org', 'label' => 'Parent Organization'),
+		array('key' => 'location_id', 'label' => 'Location'),
 		array('key' => 'gs1_prefix', 'label' => 'GS1 Prefix'),
-		array('key' => 'procedure_number', 'label' => 'Procedure Number'),
-		array('key' => 'registration_date', 'label' => 'Registration Date'),
-		array('key' => 'reregistration_date', 'label' => 'Re-registration Date'),
+		array('key' => 'init_date', 'label' => 'Initial Date'),
+		array('key' => 'reg_date', 'label' => 'Registration Date'),
 		array('key' => 'expiry_date', 'label' => 'Expiry Date'),
 		array('key' => 'address', 'label' => 'Address'),
+		array('key' => 'phone', 'label' => 'Phone'),
+		array('key' => 'c_code', 'label' => 'Country Code'),
 		array('key' => 'description', 'label' => 'Description'),
 		array('key' => 'created_at', 'label' => 'Created At'),
 		array('key' => 'updated_at', 'label' => 'Updated At'),
 	);
 	protected $detail_product_columns = array(
 		array('key' => 'name', 'label' => 'Name'),
+		array('key' => 'brand', 'label' => 'Brand'),
 		array('key' => 'standard_number', 'label' => 'Standard Number'),
-		array('key' => 'barcode', 'label' => 'Barcode'),
-		array('key' => 'barcode_type', 'label' => 'Barcode Type'),
+		array('key' => 'barcode_1d', 'label' => 'Barcode'),
 		array('key' => 'package_type', 'label' => 'Package Type'),
-		array('key' => 'registration_date', 'label' => 'Registration Date'),
-		array('key' => 'expiry_date', 'label' => 'Expiry Date'),
+		array('key' => 'price', 'label' => 'Price'),
+		array('key' => 'reg_date', 'label' => 'Registration Date'),
+		array('key' => 'test_status', 'label' => 'Test Status'),
 	);
 	protected $fields = array(
 		array(
@@ -53,11 +57,25 @@ class Organizations extends BasicController {
 			'rules'    => array('trim', 'max_length[255]'),
 		),
 		array(
-			'name'     => 'registration_number',
+			'name'     => 'reg_number',
 			'label'    => 'Registration Number',
+			'type'     => 'number',
+			'required' => FALSE,
+			'rules'    => array('trim', 'integer'),
+		),
+		array(
+			'name'     => 'parent_org',
+			'label'    => 'Parent Organization',
 			'type'     => 'text',
 			'required' => FALSE,
-			'rules'    => array('trim', 'max_length[100]'),
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
+			'name'     => 'location_id',
+			'label'    => 'Location',
+			'type'     => 'number',
+			'required' => FALSE,
+			'rules'    => array('trim', 'integer'),
 		),
 		array(
 			'name'     => 'gs1_prefix',
@@ -67,15 +85,15 @@ class Organizations extends BasicController {
 			'rules'    => array('trim', 'max_length[50]'),
 		),
 		array(
-			'name'     => 'registration_date',
-			'label'    => 'Registration Date',
+			'name'     => 'init_date',
+			'label'    => 'Initial Date',
 			'type'     => 'date',
 			'required' => FALSE,
 			'rules'    => array('trim'),
 		),
 		array(
-			'name'     => 'reregistration_date',
-			'label'    => 'Re-registration Date',
+			'name'     => 'reg_date',
+			'label'    => 'Registration Date',
 			'type'     => 'date',
 			'required' => FALSE,
 			'rules'    => array('trim'),
@@ -95,8 +113,15 @@ class Organizations extends BasicController {
 			'rules'    => array('trim'),
 		),
 		array(
-			'name'     => 'procedure_number',
-			'label'    => 'Procedure Number',
+			'name'     => 'phone',
+			'label'    => 'Phone',
+			'type'     => 'text',
+			'required' => FALSE,
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
+			'name'     => 'c_code',
+			'label'    => 'Country Code',
 			'type'     => 'text',
 			'required' => FALSE,
 			'rules'    => array('trim', 'max_length[50]'),

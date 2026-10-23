@@ -606,7 +606,7 @@ class Product_registration_processor {
 
 		foreach ($products as $product)
 		{
-			$product_number = $this->extract_product_number_from_barcode($product['barcode'], $gs1_prefix);
+			$product_number = $this->extract_product_number_from_barcode($product['barcode_1d'], $gs1_prefix);
 
 			if ($product_number !== NULL && $product_number >= 0 && $product_number <= 999)
 			{

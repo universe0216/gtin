@@ -8,21 +8,26 @@ class Product_model extends Basic_model {
 	protected $table = 'products';
 	protected $searchable_columns = array(
 		'products.name',
+		'products.brand',
 		'products.standard_number',
-		'products.barcode',
-		'products.barcode_type',
+		'products.barcode_1d',
+		'products.barcode_2d',
 		'products.package_type',
 		'organizations.name',
 	);
 	protected $sortable_columns = array(
-		'name'                => 'products.name',
-		'standard_number'     => 'products.standard_number',
-		'barcode'             => 'products.barcode',
-		'barcode_type'        => 'products.barcode_type',
-		'package_type'        => 'products.package_type',
-		'organization_name'   => 'organizations.name',
-		'registration_date'   => 'products.registration_date',
-		'expiry_date'         => 'products.expiry_date',
+		'name'              => 'products.name',
+		'brand'             => 'products.brand',
+		'standard_number'   => 'products.standard_number',
+		'barcode_1d'        => 'products.barcode_1d',
+		'barcode_1d_type'   => 'products.barcode_1d_type',
+		'barcode_2d'        => 'products.barcode_2d',
+		'package_type'      => 'products.package_type',
+		'organization_name' => 'organizations.name',
+		'price'             => 'products.price',
+		'reg_date'          => 'products.reg_date',
+		'test_date'         => 'products.test_date',
+		'test_status'       => 'products.test_status',
 	);
 
 	protected function prepare_list_query()
@@ -30,7 +35,7 @@ class Product_model extends Basic_model {
 		$this->db
 			->select('products.*, organizations.name AS organization_name')
 			->from($this->table)
-			->join('organizations', 'organizations.id = products.organization_id', 'left');
+			->join('organizations', 'organizations.id = products.org_id', 'left');
 	}
 
 	protected function list_order_column()
@@ -67,7 +72,7 @@ class Product_model extends Basic_model {
 	{
 		$this->db
 			->from($this->table)
-			->where('products.organization_id', (int) $organization_id);
+			->where('products.org_id', (int) $organization_id);
 	}
 
 	protected function apply_organization_product_search_filters($search)
@@ -81,22 +86,23 @@ class Product_model extends Basic_model {
 
 		$this->db->group_start();
 		$this->db->like('products.name', $search);
+		$this->db->or_like('products.brand', $search);
 		$this->db->or_like('products.standard_number', $search);
-		$this->db->or_like('products.barcode', $search);
-		$this->db->or_like('products.barcode_type', $search);
+		$this->db->or_like('products.barcode_1d', $search);
+		$this->db->or_like('products.barcode_1d_type', $search);
+		$this->db->or_like('products.barcode_2d', $search);
 		$this->db->or_like('products.package_type', $search);
-		$this->db->or_like('products.barcode_2d_value', $search);
 		$this->db->group_end();
 	}
 
 	public function get_barcodes_by_organization($organization_id)
 	{
 		return $this->db
-			->select('barcode')
+			->select('barcode_1d')
 			->from($this->table)
-			->where('organization_id', (int) $organization_id)
-			->where('barcode IS NOT NULL', NULL, FALSE)
-			->where('barcode !=', '')
+			->where('org_id', (int) $organization_id)
+			->where('barcode_1d IS NOT NULL', NULL, FALSE)
+			->where('barcode_1d !=', '')
 			->get()
 			->result_array();
 	}

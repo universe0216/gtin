@@ -8,18 +8,19 @@ class Products extends BasicController {
 	protected $entity = 'products';
 	protected $entity_label = 'Products';
 	protected $add_url_route = 'product_registration';
-	protected $list_search_placeholder = 'Search name, barcode, standard number, organization...';
+	protected $list_search_placeholder = 'Search name, brand, barcode, standard number, organization...';
 	protected $list_empty_message = 'No products found.';
 	protected $list_empty_search_message = 'No products match your search.';
 	protected $list_columns = array(
 		array('key' => 'name', 'label' => 'Name'),
+		array('key' => 'brand', 'label' => 'Brand'),
 		array('key' => 'standard_number', 'label' => 'Standard Number'),
-		array('key' => 'barcode', 'label' => 'Barcode'),
-		array('key' => 'barcode_type', 'label' => 'Barcode Type'),
+		array('key' => 'barcode_1d', 'label' => 'Barcode'),
 		array('key' => 'package_type', 'label' => 'Package Type'),
 		array('key' => 'organization_name', 'label' => 'Organization'),
-		array('key' => 'registration_date', 'label' => 'Registration Date'),
-		array('key' => 'expiry_date', 'label' => 'Expiry Date'),
+		array('key' => 'price', 'label' => 'Price'),
+		array('key' => 'reg_date', 'label' => 'Registration Date'),
+		array('key' => 'test_status', 'label' => 'Test Status'),
 	);
 	protected $fields = array(
 		array(
@@ -30,6 +31,13 @@ class Products extends BasicController {
 			'rules'    => array('trim', 'max_length[255]'),
 		),
 		array(
+			'name'     => 'brand',
+			'label'    => 'Brand',
+			'type'     => 'text',
+			'required' => FALSE,
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
 			'name'     => 'standard_number',
 			'label'    => 'Standard Number',
 			'type'     => 'text',
@@ -37,21 +45,84 @@ class Products extends BasicController {
 			'rules'    => array('trim', 'max_length[100]'),
 		),
 		array(
-			'name'     => 'barcode',
-			'label'    => 'Barcode',
+			'name'     => 'package_type',
+			'label'    => 'Package Type',
 			'type'     => 'text',
 			'required' => FALSE,
 			'rules'    => array('trim', 'max_length[100]'),
 		),
 		array(
-			'name'     => 'barcode_type',
+			'name'     => 'org_id',
+			'label'    => 'Organization',
+			'type'     => 'number',
+			'required' => FALSE,
+			'rules'    => array('trim', 'integer'),
+		),
+		array(
+			'name'     => 'effect',
+			'label'    => 'Effect',
+			'type'     => 'textarea',
+			'required' => FALSE,
+			'rules'    => array('trim'),
+		),
+		array(
+			'name'     => 'usage',
+			'label'    => 'Usage',
+			'type'     => 'textarea',
+			'required' => FALSE,
+			'rules'    => array('trim'),
+		),
+		array(
+			'name'     => 'price',
+			'label'    => 'Price',
+			'type'     => 'text',
+			'required' => FALSE,
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
+			'name'     => 'effective_period',
+			'label'    => 'Effective Period',
+			'type'     => 'text',
+			'required' => FALSE,
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
+			'name'     => 'test_date',
+			'label'    => 'Test Date',
+			'type'     => 'date',
+			'required' => FALSE,
+			'rules'    => array('trim'),
+		),
+		array(
+			'name'     => 'test_status',
+			'label'    => 'Test Status',
+			'type'     => 'text',
+			'required' => FALSE,
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
+			'name'     => 'description',
+			'label'    => 'Description',
+			'type'     => 'textarea',
+			'required' => FALSE,
+			'rules'    => array('trim'),
+		),
+		array(
+			'name'     => 'barcode_1d',
+			'label'    => 'Barcode',
+			'type'     => 'text',
+			'required' => FALSE,
+			'rules'    => array('trim', 'max_length[255]'),
+		),
+		array(
+			'name'     => 'barcode_1d_type',
 			'label'    => 'Barcode Type',
 			'type'     => 'text',
 			'required' => FALSE,
 			'rules'    => array('trim', 'max_length[50]'),
 		),
 		array(
-			'name'     => 'barcode_2d_value',
+			'name'     => 'barcode_2d',
 			'label'    => '2D Barcode',
 			'type'     => 'text',
 			'required' => FALSE,
@@ -65,46 +136,32 @@ class Products extends BasicController {
 			'rules'    => array('trim', 'max_length[50]'),
 		),
 		array(
-			'name'     => 'package_type',
-			'label'    => 'Package Type',
-			'type'     => 'text',
-			'required' => FALSE,
-			'rules'    => array('trim', 'max_length[100]'),
-		),
-		array(
-			'name'     => 'organization_id',
-			'label'    => 'Organization ID',
-			'type'     => 'number',
-			'required' => FALSE,
-			'rules'    => array('trim', 'integer'),
-		),
-		array(
-			'name'     => 'registration_date',
+			'name'     => 'reg_date',
 			'label'    => 'Registration Date',
 			'type'     => 'date',
 			'required' => FALSE,
 			'rules'    => array('trim'),
 		),
 		array(
-			'name'     => 'reregistration_date',
-			'label'    => 'Re-registration Date',
-			'type'     => 'date',
+			'name'     => 'processor_name',
+			'label'    => 'Processor',
+			'type'     => 'text',
 			'required' => FALSE,
-			'rules'    => array('trim'),
+			'rules'    => array('trim', 'max_length[255]'),
 		),
 		array(
-			'name'     => 'expiry_date',
-			'label'    => 'Expiry Date',
-			'type'     => 'date',
+			'name'     => 'global_id',
+			'label'    => 'Global ID',
+			'type'     => 'number',
 			'required' => FALSE,
-			'rules'    => array('trim'),
+			'rules'    => array('trim', 'integer'),
 		),
 		array(
-			'name'     => 'description',
-			'label'    => 'Description',
-			'type'     => 'textarea',
+			'name'     => 'c_code',
+			'label'    => 'Country Code',
+			'type'     => 'text',
 			'required' => FALSE,
-			'rules'    => array('trim'),
+			'rules'    => array('trim', 'max_length[255]'),
 		),
 	);
 

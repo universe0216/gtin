@@ -57,11 +57,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 										type="search"
 										class="form-control"
 										id="organizationProductsSearchInput"
-										placeholder="Search products..."
+										placeholder="<?php echo html_escape(app_line('search_products')); ?>"
 										autocomplete="off"
-										aria-label="Search organization products"
+										aria-label="<?php echo html_escape(app_line('search_products')); ?>"
 									>
-									<button type="button" class="btn btn-outline-secondary d-none" id="organizationProductsClearBtn" data-mdb-ripple-init>Clear</button>
+									<button type="button" class="btn btn-outline-secondary d-none" id="organizationProductsClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
 								</div>
 								<p class="text-muted small mb-0 d-none" id="organizationProductsMeta"></p>
 							</div>

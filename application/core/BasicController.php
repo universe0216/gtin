@@ -431,7 +431,15 @@ class BasicController extends AuthenticatedController {
 
 		foreach ($this->fields as $field)
 		{
-			$data[$field['name']] = $this->input->post($field['name']);
+			$value = $this->input->post($field['name']);
+			$type = isset($field['type']) ? $field['type'] : 'text';
+
+			if (($type === 'number' || $type === 'date') && ($value === '' || $value === FALSE))
+			{
+				$value = NULL;
+			}
+
+			$data[$field['name']] = $value;
 		}
 
 		return $data;
