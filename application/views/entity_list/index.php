@@ -25,9 +25,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						id="entityListSearchInput"
 						placeholder="<?php echo html_escape($list_search_placeholder); ?>"
 						autocomplete="off"
-						aria-label="Search <?php echo html_escape($title); ?>"
+						aria-label="<?php echo html_escape(app_line('search_aria', $title)); ?>"
 					>
-					<button type="button" class="btn btn-outline-secondary d-none" id="entityListClearBtn" data-mdb-ripple-init>Clear</button>
+					<button type="button" class="btn btn-outline-secondary d-none" id="entityListClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
 				</div>
 			</form>
 			<p class="text-muted small mb-0 entity-list-toolbar-meta d-none" id="entityListToolbarMeta"></p>

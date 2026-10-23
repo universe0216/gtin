@@ -119,6 +119,6 @@ class Products extends BasicController {
 
 	protected function get_add_label()
 	{
-		return 'Register Products';
+		return app_line('add_products');
 	}
 }

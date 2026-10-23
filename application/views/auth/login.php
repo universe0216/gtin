@@ -1,11 +1,11 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?><!DOCTYPE html>
-<html lang="en" data-mdb-theme="dark">
+<html lang="<?php echo app_html_lang(); ?>" data-mdb-theme="dark">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo html_escape($title ?? 'Login'); ?> - GTIN</title>
+	<title><?php echo html_escape($title ?? app_line('auth_login')); ?> - GTIN</title>
 	<link href="<?php echo base_url('assets/vendor/font-awesome/css/all.min.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/vendor/roboto/css/roboto.css'); ?>" rel="stylesheet">
 	<link href="<?php echo base_url('assets/vendor/mdb/css/mdb.min.css'); ?>" rel="stylesheet">
@@ -16,7 +16,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div class="auth-card app-panel p-4 p-md-5">
 			<div class="text-center mb-4">
 				<h1 class="h4 mb-1">GTIN</h1>
-				<p class="text-muted mb-0">Sign in to your account</p>
+				<p class="text-muted mb-0"><?php echo html_escape(app_line('auth_sign_in')); ?></p>
+			</div>
+
+			<div class="d-flex justify-content-center gap-3 mb-4 small">
+				<?php foreach (app_languages() as $code => $label): ?>
+					<a
+						class="<?php echo $code === app_language() ? 'fw-semibold text-decoration-underline' : 'text-muted'; ?>"
+						href="<?php echo site_url('language/set/'.$code); ?>"
+					><?php echo html_escape($label); ?></a>
+				<?php endforeach; ?>
 			</div>
 
 			<?php if ( ! empty($error)): ?>
@@ -28,16 +37,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 				<div class="form-outline mb-4" data-mdb-input-init>
 					<input type="text" id="username" name="username" class="form-control" placeholder=" " required autofocus>
-					<label class="form-label" for="username">Username</label>
+					<label class="form-label" for="username"><?php echo html_escape(app_line('field_username')); ?></label>
 				</div>
 
 				<div class="form-outline mb-4" data-mdb-input-init>
 					<input type="password" id="password" name="password" class="form-control" placeholder=" " required>
-					<label class="form-label" for="password">Password</label>
+					<label class="form-label" for="password"><?php echo html_escape(app_line('field_password')); ?></label>
 				</div>
 
 				<button type="submit" class="btn btn-primary btn-block w-100" data-mdb-ripple-init>
-					<i class="fas fa-right-to-bracket me-1"></i> Login
+					<i class="fas fa-right-to-bracket me-1"></i> <?php echo html_escape(app_line('auth_login')); ?>
 				</button>
 			<?php echo form_close(); ?>
 		</div>

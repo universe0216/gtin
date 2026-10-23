@@ -6,23 +6,23 @@ $nav_active = $nav_active ?? '';
 $auth_user = $CI->auth->user();
 
 $admin_children = array(
-	'admin'     => array('label' => 'Accounts', 'url' => site_url('admin')),
-	'locations' => array('label' => 'Locations', 'url' => site_url('locations')),
+	'admin'     => array('label' => app_line('nav_accounts'), 'url' => site_url('admin')),
+	'locations' => array('label' => app_line('nav_locations'), 'url' => site_url('locations')),
 );
 
 $nav_items = array(
-	'product_registration' => array('label' => 'Product Registration', 'url' => site_url('product_registration'), 'permission' => NULL),
-	'organizations' => array('label' => 'Organizations', 'url' => site_url('organizations'), 'permission' => 'organization.view'),
-	'products'      => array('label' => 'Products', 'url' => site_url('products'), 'permission' => 'product.view'),
+	'product_registration' => array('label' => app_line('nav_product_registration'), 'url' => site_url('product_registration'), 'permission' => NULL),
+	'organizations' => array('label' => app_line('nav_organizations'), 'url' => site_url('organizations'), 'permission' => 'organization.view'),
+	'products'      => array('label' => app_line('nav_products'), 'url' => site_url('products'), 'permission' => 'product.view'),
 );
 
 $history_children = array(
-	'history_products'       => array('label' => 'Products', 'url' => site_url('history/products')),
-	'history_organizations'  => array('label' => 'Organizations', 'url' => site_url('history/organizations')),
+	'history_products'       => array('label' => app_line('nav_products'), 'url' => site_url('history/products')),
+	'history_organizations'  => array('label' => app_line('nav_organizations'), 'url' => site_url('history/organizations')),
 );
 
 $books_children = array(
-	'books_gtin_country_code' => array('label' => 'GTIN CountryCode', 'url' => site_url('books/gtin_country_code')),
+	'books_gtin_country_code' => array('label' => app_line('nav_gtin_country_code'), 'url' => site_url('books/gtin_country_code')),
 );
 
 $history_active = isset($history_children[$nav_active]);
@@ -40,7 +40,7 @@ $show_admin = $CI->auth->is_admin();
 			data-mdb-target="#mainNavbar"
 			aria-controls="mainNavbar"
 			aria-expanded="false"
-			aria-label="Toggle navigation"
+			aria-label="<?php echo html_escape(app_line('nav_toggle')); ?>"
 		>
 			<i class="fas fa-bars"></i>
 		</button>
@@ -65,7 +65,7 @@ $show_admin = $CI->auth->is_admin();
 						role="button"
 						data-mdb-dropdown-init
 						aria-expanded="false"
-					>History</a>
+					><?php echo html_escape(app_line('nav_history')); ?></a>
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="historyDropdown">
 						<?php foreach ($history_children as $key => $item): ?>
 							<li>
@@ -85,7 +85,7 @@ $show_admin = $CI->auth->is_admin();
 						role="button"
 						data-mdb-dropdown-init
 						aria-expanded="false"
-					>Books</a>
+					><?php echo html_escape(app_line('nav_books')); ?></a>
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="booksDropdown">
 						<?php foreach ($books_children as $key => $item): ?>
 							<li>
@@ -106,7 +106,7 @@ $show_admin = $CI->auth->is_admin();
 							role="button"
 							data-mdb-dropdown-init
 							aria-expanded="false"
-						>Admin</a>
+						><?php echo html_escape(app_line('nav_admin')); ?></a>
 						<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="adminDropdown">
 							<?php foreach ($admin_children as $key => $item): ?>
 								<li>
@@ -119,6 +119,7 @@ $show_admin = $CI->auth->is_admin();
 						</ul>
 					</li>
 				<?php endif; ?>
+				<?php $this->load->view('partials/language_switcher'); ?>
 				<li class="nav-item dropdown ms-lg-2">
 					<a
 						class="nav-link dropdown-toggle"
@@ -133,7 +134,7 @@ $show_admin = $CI->auth->is_admin();
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown dropdown-menu-end" aria-labelledby="userDropdown">
 						<li><span class="dropdown-item-text text-muted small"><?php echo html_escape($auth_user['username']); ?></span></li>
 						<li><hr class="dropdown-divider border-secondary"></li>
-						<li><a class="dropdown-item" href="<?php echo site_url('login/logout'); ?>"><i class="fas fa-right-from-bracket me-2"></i>Logout</a></li>
+						<li><a class="dropdown-item" href="<?php echo site_url('login/logout'); ?>"><i class="fas fa-right-from-bracket me-2"></i><?php echo html_escape(app_line('nav_logout')); ?></a></li>
 					</ul>
 				</li>
 			</ul>

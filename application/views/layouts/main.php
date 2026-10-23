@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?><!DOCTYPE html>
-<html lang="en" data-mdb-theme="dark">
+<html lang="<?php echo app_html_lang(); ?>" data-mdb-theme="dark">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,6 +28,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/vendor/jqwidgets/jqx-all.js'); ?>"></script>
 <script>
 	window.APP_BASE_URL = <?php echo json_encode(base_url()); ?>;
+	window.APP_I18N = <?php echo json_encode($this->lang->language, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="<?php echo base_url('assets/js/app.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/jqx_grid.js'); ?>"></script>

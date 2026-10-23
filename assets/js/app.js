@@ -1,6 +1,19 @@
 (function () {
 	'use strict';
 
+	window.t = function (key, replacements) {
+		const dict = window.APP_I18N || {};
+		let text = Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : key;
+
+		if (replacements) {
+			Object.keys(replacements).forEach(function (name) {
+				text = String(text).split('{' + name + '}').join(replacements[name]);
+			});
+		}
+
+		return text;
+	};
+
 	function escapeAttr(text) {
 		return String(text ?? '')
 			.replace(/&/g, '&amp;')
@@ -207,7 +220,9 @@
 		}
 
 		if (settings.metaEl) {
-			settings.metaEl.textContent = total > 0 ? 'Page ' + page + ' of ' + totalPages : '';
+			settings.metaEl.textContent = total > 0
+				? t('common_page_of', { page: page, pages: totalPages })
+				: '';
 		}
 
 		if (settings.listEl) {
@@ -250,10 +265,10 @@
 
 	function showConfirm(options) {
 		const settings = Object.assign({
-			title: 'Confirm',
-			message: 'Are you sure?',
-			confirmLabel: 'Confirm',
-			cancelLabel: 'Cancel',
+			title: t('common_confirm'),
+			message: t('common_are_you_sure'),
+			confirmLabel: t('common_confirm'),
+			cancelLabel: t('common_cancel'),
 			confirmClass: 'btn btn-danger',
 			size: '',
 			allowHtml: false,
@@ -263,7 +278,7 @@
 		const els = getConfirmElements();
 
 		if (!modal || !els.confirmBtn || !els.bodyEl) {
-			return Promise.reject(new Error('Confirmation modal is not available.'));
+			return Promise.reject(new Error(t('common_confirm_unavailable')));
 		}
 
 		return new Promise(function (resolve, reject) {

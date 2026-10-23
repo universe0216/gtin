@@ -18,7 +18,7 @@ class Login extends CI_Controller {
 		}
 
 		$this->load->view('auth/login', array(
-			'title'    => 'Login',
+			'title'    => app_line('auth_login'),
 			'redirect' => $this->input->get('redirect'),
 			'error'    => $this->session->flashdata('login_error'),
 		));
@@ -31,8 +31,8 @@ class Login extends CI_Controller {
 			redirect('product_registration');
 		}
 
-		$this->form_validation->set_rules('username', 'Username', 'required|trim');
-		$this->form_validation->set_rules('password', 'Password', 'required');
+		$this->form_validation->set_rules('username', app_line('field_username'), 'required|trim');
+		$this->form_validation->set_rules('password', app_line('field_password'), 'required');
 
 		if ( ! $this->form_validation->run())
 		{
@@ -46,7 +46,7 @@ class Login extends CI_Controller {
 
 		if ( ! $this->auth->login($username, $password))
 		{
-			$this->session->set_flashdata('login_error', 'Invalid username or password.');
+			$this->session->set_flashdata('login_error', app_line('auth_invalid'));
 			redirect('login?redirect='.urlencode($redirect));
 		}
 

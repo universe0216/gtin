@@ -16,7 +16,7 @@ $form_id = 'basicModalForm';
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title" id="<?php echo $modal_id; ?>Label"><?php echo html_escape($title); ?></h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
 			</div>
 			<form id="<?php echo $form_id; ?>">
 				<div class="modal-body">
@@ -51,9 +51,9 @@ $form_id = 'basicModalForm';
 					<?php endforeach; ?>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-secondary" data-mdb-dismiss="modal"><?php echo html_escape(app_line('common_cancel')); ?></button>
 					<button type="submit" class="btn btn-primary" id="basicModalSaveBtn">
-						<span class="save-label">Save</span>
+						<span class="save-label"><?php echo html_escape(app_line('common_save')); ?></span>
 						<span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
 					</button>
 				</div>

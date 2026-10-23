@@ -42,12 +42,12 @@ class Product_registration extends AuthenticatedController {
 	{
 		if ($this->input->method(TRUE) !== 'POST')
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
 		}
 
 		if (empty($_FILES['zip_files']))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Please select at least one zip file.'), 422);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_select_zip_server')), 422);
 		}
 
 		try
@@ -66,13 +66,13 @@ class Product_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Failed to process uploaded files.',
+				'message' => app_line('reg_upload_failed'),
 			), 500);
 		}
 
 		return $this->json_response(array(
 			'success'       => TRUE,
-			'message'       => count($result['registrations']).' registration file(s) uploaded successfully.',
+			'message'       => app_line('reg_upload_success', count($result['registrations'])),
 			'registrations' => $result['registrations'],
 			'tabs'          => $result['tabs'],
 			'items'         => $result['items'],
@@ -128,7 +128,7 @@ class Product_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Registration not found.',
+				'message' => app_line('reg_not_found'),
 			), 404);
 		}
 
@@ -142,7 +142,7 @@ class Product_registration extends AuthenticatedController {
 	{
 		if ($this->input->method(TRUE) !== 'POST')
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
 		}
 
 		$reason = trim((string) $this->input->post('reason'));
@@ -151,7 +151,7 @@ class Product_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Please enter a rejection reason.',
+				'message' => app_line('reg_reject_reason_required'),
 			), 422);
 		}
 
@@ -159,21 +159,21 @@ class Product_registration extends AuthenticatedController {
 
 		if ( ! $item)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Product item not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_item_not_found')), 404);
 		}
 
 		$registration = $this->product_registration_model->get($item['product_registration_id']);
 
 		if ( ! $registration)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Registration not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
 		}
 
 		if ($registration['status'] === 'completed')
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Completed procedures cannot be changed.',
+				'message' => app_line('reg_completed_locked'),
 			), 422);
 		}
 
@@ -181,7 +181,7 @@ class Product_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'This product has already been rejected.',
+				'message' => app_line('reg_already_rejected'),
 			), 422);
 		}
 
@@ -189,7 +189,7 @@ class Product_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'This product has already been accepted.',
+				'message' => app_line('reg_already_accepted'),
 			), 422);
 		}
 
@@ -200,7 +200,7 @@ class Product_registration extends AuthenticatedController {
 			'message' => $reason,
 		)))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to reject product.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_reject_failed')), 500);
 		}
 
 		if ($was_pending)
@@ -212,7 +212,7 @@ class Product_registration extends AuthenticatedController {
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Product rejected successfully.',
+			'message' => app_line('reg_reject_success'),
 			'data'    => array(
 				'id'                      => (int) $id,
 				'product_registration_id' => (int) $item['product_registration_id'],
@@ -226,28 +226,28 @@ class Product_registration extends AuthenticatedController {
 	{
 		if ($this->input->method(TRUE) !== 'POST')
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
 		}
 
 		$item = $this->product_registration_item_model->get($id);
 
 		if ( ! $item)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Product item not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_item_not_found')), 404);
 		}
 
 		$registration = $this->product_registration_model->get($item['product_registration_id']);
 
 		if ( ! $registration)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Registration not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
 		}
 
 		if ($registration['status'] === 'completed')
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Completed procedures cannot be changed.',
+				'message' => app_line('reg_completed_locked'),
 			), 422);
 		}
 
@@ -255,7 +255,7 @@ class Product_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'This product has already been accepted.',
+				'message' => app_line('reg_already_accepted'),
 			), 422);
 		}
 
@@ -263,7 +263,7 @@ class Product_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Rejected products cannot be accepted.',
+				'message' => app_line('reg_accept_blocked'),
 			), 422);
 		}
 
@@ -282,7 +282,7 @@ class Product_registration extends AuthenticatedController {
 
 		if ( ! $this->product_registration_item_model->update($id, $update_data))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to accept product.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_accept_save_failed')), 500);
 		}
 
 		if ($was_pending)
@@ -294,7 +294,7 @@ class Product_registration extends AuthenticatedController {
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Product accepted successfully.',
+			'message' => app_line('reg_accept_success'),
 			'data'    => array(
 				'id'                      => (int) $id,
 				'product_registration_id' => (int) $item['product_registration_id'],
@@ -308,14 +308,14 @@ class Product_registration extends AuthenticatedController {
 	{
 		if ($this->input->method(TRUE) !== 'POST')
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
 		}
 
 		$registration = $this->product_registration_model->get($id);
 
 		if ( ! $registration)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Registration not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
 		}
 
 		if ( ! empty($registration['storage_path']))
@@ -331,12 +331,12 @@ class Product_registration extends AuthenticatedController {
 
 		if ( ! $this->product_registration_model->delete($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete registration.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_delete_save_failed')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Registration stopped successfully.',
+			'message' => app_line('reg_stopped'),
 		));
 	}
 

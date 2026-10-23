@@ -54,7 +54,7 @@
 		},
 		onLoad: updateMeta,
 		onError: function () {
-			showToast('Failed to load records.', 'error');
+			showToast(t('common_failed_load_records'), 'error');
 		},
 	});
 

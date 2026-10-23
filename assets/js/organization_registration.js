@@ -61,7 +61,7 @@
 			pagesize: 25,
 			pagesizeoptions: ['25', '50', '100'],
 			height: Math.max(360, window.innerHeight - 320),
-			emptyMessage: 'No rows found.',
+			emptyMessage: t('reg_org_no_rows'),
 		});
 	}
 
@@ -176,9 +176,9 @@
 			return baseUrl + '/delete/' + registrationId;
 		},
 		deleteConfirm: {
-			message: 'This registration is not completed yet. Stop registration for this file?',
-			confirmLabel: 'Stop Registration',
-			errorMessage: 'Failed to delete registration.',
+			message: t('reg_org_stop_confirm'),
+			confirmLabel: t('reg_org_stop_label'),
+			errorMessage: t('reg_delete_save_failed'),
 		},
 		deleteBtnSelector: '.org-registration-tab-delete-btn',
 		onBeforePrepend: registerTabData,

@@ -72,13 +72,13 @@
 				],
 				columns: [
 					{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
-					{ text: 'File', datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
-					{ text: 'Procedure #', datafield: 'procedure_number', width: 130 },
-					{ text: 'Organization', datafield: 'organization_name' },
-					{ text: 'Processor', datafield: 'processor_name', width: 160 },
-					{ text: 'Items', datafield: 'total_items', width: 90, cellsalign: 'right' },
-					{ text: 'Status', datafield: 'status', width: 120 },
-					{ text: 'Uploaded', datafield: 'created_at', width: 170 },
+					{ text: t('reg_file'), datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
+					{ text: t('reg_procedure'), datafield: 'procedure_number', width: 130 },
+					{ text: t('reg_organization'), datafield: 'organization_name' },
+					{ text: t('reg_processor'), datafield: 'processor_name', width: 160 },
+					{ text: t('col_total_items'), datafield: 'total_items', width: 90, cellsalign: 'right' },
+					{ text: t('common_status'), datafield: 'status', width: 120 },
+					{ text: t('reg_uploaded'), datafield: 'created_at', width: 170 },
 				],
 			};
 		}
@@ -97,14 +97,14 @@
 			],
 			columns: [
 				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
-				{ text: 'File', datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
-				{ text: 'Procedure #', datafield: 'procedure_number', width: 130 },
-				{ text: 'Organization', datafield: 'organization_name' },
-				{ text: 'Processor', datafield: 'processor_name', width: 160 },
-				{ text: 'Products', datafield: 'total_products', width: 100, cellsalign: 'right' },
-				{ text: 'Approved', datafield: 'approved', width: 100, cellsalign: 'right' },
-				{ text: 'Rejected', datafield: 'rejected', width: 100, cellsalign: 'right' },
-				{ text: 'Completed', datafield: 'created_at', width: 170 },
+				{ text: t('reg_file'), datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
+				{ text: t('reg_procedure'), datafield: 'procedure_number', width: 130 },
+				{ text: t('reg_organization'), datafield: 'organization_name' },
+				{ text: t('reg_processor'), datafield: 'processor_name', width: 160 },
+				{ text: t('reg_products'), datafield: 'total_products', width: 100, cellsalign: 'right' },
+				{ text: t('reg_approved'), datafield: 'approved', width: 100, cellsalign: 'right' },
+				{ text: t('reg_rejected'), datafield: 'rejected', width: 100, cellsalign: 'right' },
+				{ text: t('reg_completed'), datafield: 'created_at', width: 170 },
 			],
 		};
 	}
@@ -128,8 +128,8 @@
 			pagesizeoptions: ['15', '30', '50', '100'],
 			selectionmode: 'singlerow',
 			emptyMessage: historyType === 'organizations'
-				? 'No organization registrations found.'
-				: 'No completed registrations found.',
+				? t('history_empty_organizations')
+				: t('history_empty_products'),
 		});
 
 		if (grid) {
@@ -200,9 +200,7 @@
 			datafields: datafields,
 			columns: gridColumns,
 			height: Math.max(320, window.innerHeight - 260),
-			emptyMessage: historyType === 'organizations'
-				? 'No registration items found.'
-				: 'No procedure items found.',
+			emptyMessage: t('history_empty_items'),
 		});
 	}
 
@@ -281,9 +279,9 @@
 
 	function renderProcedureTable(tab, elements) {
 		renderModalGrid(elements.tableWrapEl, tab.columns || [], tab.rows || [], [
-			{ text: 'Status', key: 'status', width: 120 },
-			{ text: 'Message', key: 'message', width: 220 },
-			{ text: 'Barcode', key: 'barcode', width: 160 },
+			{ text: t('col_status'), key: 'status', width: 120 },
+			{ text: t('col_message'), key: 'message', width: 220 },
+			{ text: t('col_barcode'), key: 'barcode', width: 160 },
 		]);
 	}
 
@@ -330,7 +328,7 @@
 
 				activeRequest = null;
 				modal.hide();
-				showToast(error.message || 'Failed to load history items.', 'error');
+				showToast(error.message || t('history_load_failed'), 'error');
 			});
 	}
 

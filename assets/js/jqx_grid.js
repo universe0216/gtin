@@ -33,7 +33,17 @@
 		pageable: false,
 		autoheight: true,
 		localization: {
-			emptydatastring: 'No records found.',
+			emptydatastring: window.t ? t('jqx_empty') : 'No records found.',
+			loadtext: window.t ? t('jqx_load') : 'Loading...',
+			pagergotopagestring: window.t ? t('jqx_go_to_page') : 'Go to page:',
+			pagershowrowsstring: window.t ? t('jqx_show_rows') : 'Show rows:',
+			pagerrangestring: window.t ? t('jqx_range') : 'of',
+			pagerfirstbuttonstring: window.t ? t('jqx_first') : 'First',
+			pagerlastbuttonstring: window.t ? t('jqx_last') : 'Last',
+			pagernextbuttonstring: window.t ? t('jqx_next') : 'Next',
+			pagerpreviousbuttonstring: window.t ? t('jqx_previous') : 'Previous',
+			sortascendingstring: window.t ? t('jqx_sort_asc') : 'Sort Ascending',
+			sortdescendingstring: window.t ? t('jqx_sort_desc') : 'Sort Descending',
 		},
 	};
 

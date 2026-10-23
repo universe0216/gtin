@@ -44,12 +44,12 @@ class Organization_registration extends AuthenticatedController {
 
 		if ($this->input->method(TRUE) !== 'POST')
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
 		}
 
 		if (empty($_FILES['zip_files']))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Please select at least one zip file.'), 422);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_select_zip_server')), 422);
 		}
 
 		try
@@ -68,13 +68,13 @@ class Organization_registration extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Failed to process uploaded files.',
+				'message' => app_line('reg_upload_failed'),
 			), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => count($result['registrations']).' registration file(s) uploaded successfully.',
+			'message' => app_line('reg_upload_success', count($result['registrations'])),
 			'tabs'    => $result['tabs'],
 		));
 	}
@@ -85,14 +85,14 @@ class Organization_registration extends AuthenticatedController {
 
 		if ($this->input->method(TRUE) !== 'POST')
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Invalid request method.'), 405);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
 		}
 
 		$registration = $this->organization_registration_model->get($id);
 
 		if ( ! $registration)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Registration not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
 		}
 
 		if ( ! empty($registration['storage_path']))
@@ -108,12 +108,12 @@ class Organization_registration extends AuthenticatedController {
 
 		if ( ! $this->organization_registration_model->delete($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete registration.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_delete_save_failed')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Registration stopped successfully.',
+			'message' => app_line('reg_stopped'),
 		));
 	}
 

@@ -137,7 +137,7 @@ class Auth {
 			return;
 		}
 
-		show_error('You do not have permission to access this page.', 403);
+		show_error(app_line('auth_permission_denied'), 403);
 	}
 
 	public function require_admin()
@@ -149,6 +149,6 @@ class Auth {
 			return;
 		}
 
-		show_error('Administrator access required.', 403);
+		show_error(app_line('auth_admin_required'), 403);
 	}
 }

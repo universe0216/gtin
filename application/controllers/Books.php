@@ -14,7 +14,7 @@ class Books extends AuthenticatedController {
 	public function gtin_country_code()
 	{
 		$data = array(
-			'title'         => 'GTIN Country Codes',
+			'title'         => app_line('title_gtin_country_codes'),
 			'nav_active'    => 'books_gtin_country_code',
 			'country_codes' => $this->get_country_codes(),
 		);
@@ -27,7 +27,7 @@ class Books extends AuthenticatedController {
 	{
 		if ( ! class_exists(Spreadsheet::class))
 		{
-			show_error('Spreadsheet library is not available. Run composer install.', 500);
+			show_error(app_line('books_spreadsheet_missing'), 500);
 		}
 
 		$country_codes = $this->get_country_codes();

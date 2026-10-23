@@ -19,14 +19,14 @@ class Organization_registration_processor {
 	{
 		if (empty($files))
 		{
-			throw new RuntimeException('No files were uploaded.');
+			throw new RuntimeException(app_line('upload_no_files'));
 		}
 
 		$normalized = $this->normalize_uploaded_files($files);
 
 		if (empty($normalized))
 		{
-			throw new RuntimeException('No valid zip files were uploaded.');
+			throw new RuntimeException(app_line('upload_no_valid_zip'));
 		}
 
 		$this->assign_procedure_numbers($normalized);
@@ -66,16 +66,14 @@ class Organization_registration_processor {
 
 			if (isset($seen[$key]))
 			{
-				throw new RuntimeException('Duplicate file in upload: '.$file['name'].'.');
+				throw new RuntimeException(app_line('upload_duplicate_file', $file['name']));
 			}
 
 			$seen[$key] = TRUE;
 
 			if ($this->CI->organization_registration_model->exists_by_file_and_procedure($file['name'], $file['procedure_number']))
 			{
-				throw new RuntimeException(
-					'Registration '.$file['procedure_number'].' with file '.$file['name'].' already exists.'
-				);
+				throw new RuntimeException(app_line('upload_already_exists', $file['procedure_number'], $file['name']));
 			}
 		}
 	}
@@ -95,7 +93,7 @@ class Organization_registration_processor {
 
 		if ( ! move_uploaded_file($file['tmp_name'], $zip_path))
 		{
-			throw new RuntimeException('Failed to store '.$original_name.'.');
+			throw new RuntimeException(app_line('upload_failed_store', $original_name));
 		}
 
 		$this->extract_zip($zip_path, $registration_dir);
@@ -104,7 +102,7 @@ class Organization_registration_processor {
 
 		if ( ! $xls_path)
 		{
-			throw new RuntimeException('No spreadsheet found in '.$original_name.'.');
+			throw new RuntimeException(app_line('upload_no_spreadsheet', $original_name));
 		}
 
 		$sheet = $this->parse_spreadsheet($xls_path);
@@ -126,7 +124,7 @@ class Organization_registration_processor {
 
 		if ( ! $organization_registration_id)
 		{
-			throw new RuntimeException('Failed to save registration record for '.$original_name.'.');
+			throw new RuntimeException(app_line('upload_failed_save_organization', $original_name));
 		}
 
 		$db_items = array();
@@ -216,20 +214,20 @@ class Organization_registration_processor {
 	{
 		if ( ! class_exists('ZipArchive'))
 		{
-			throw new RuntimeException('ZipArchive extension is not available.');
+			throw new RuntimeException(app_line('upload_zip_extension'));
 		}
 
 		$zip = new ZipArchive();
 
 		if ($zip->open($zip_path) !== TRUE)
 		{
-			throw new RuntimeException('Failed to open zip archive.');
+			throw new RuntimeException(app_line('upload_zip_open'));
 		}
 
 		if ( ! $zip->extractTo($destination))
 		{
 			$zip->close();
-			throw new RuntimeException('Failed to extract zip archive.');
+			throw new RuntimeException(app_line('upload_zip_extract'));
 		}
 
 		$zip->close();
@@ -263,7 +261,7 @@ class Organization_registration_processor {
 	{
 		if ( ! class_exists(IOFactory::class))
 		{
-			throw new RuntimeException('Spreadsheet reader is not available. Run composer install.');
+			throw new RuntimeException(app_line('upload_reader_missing'));
 		}
 
 		$this->CI->load->library('spreadsheet_value_binder');
@@ -276,7 +274,7 @@ class Organization_registration_processor {
 
 		if (empty($rows))
 		{
-			throw new RuntimeException('No rows found in spreadsheet.');
+			throw new RuntimeException(app_line('upload_no_rows'));
 		}
 
 		$column_count = 0;
@@ -333,7 +331,7 @@ class Organization_registration_processor {
 
 		if (empty($organizations))
 		{
-			throw new RuntimeException('No organization rows found in spreadsheet.');
+			throw new RuntimeException(app_line('upload_no_organization_rows'));
 		}
 
 		return array(
@@ -466,7 +464,7 @@ class Organization_registration_processor {
 
 		if ( ! mkdir($path, 0755, TRUE) && ! is_dir($path))
 		{
-			throw new RuntimeException('Failed to create storage directory.');
+			throw new RuntimeException(app_line('upload_storage_failed'));
 		}
 	}
 

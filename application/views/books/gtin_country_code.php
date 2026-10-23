@@ -4,12 +4,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <div class="books-gtin-page">
 	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
 		<div>
-			<h1 class="h4 mb-1">GTIN Country Codes</h1>
+			<h1 class="h4 mb-1"><?php echo html_escape(app_line('title_gtin_country_codes')); ?></h1>
 		</div>
 		<div class="d-flex flex-wrap align-items-center gap-2 books-gtin-actions">
 			
 			<a href="<?php echo site_url('books/gtin_country_code_export'); ?>" class="btn btn-sm btn-outline-primary" data-mdb-ripple-init>
-				<i class="fas fa-file-excel me-1"></i> Download Excel
+				<i class="fas fa-file-excel me-1"></i> <?php echo html_escape(app_line('books_download')); ?>
 			</a>
 		</div>
 	</div>
@@ -22,7 +22,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						type="search"
 						class="form-control"
 						id="gtinCountryCodeSearch"
-						placeholder="Search prefix or country..."
+						placeholder="<?php echo html_escape(app_line('books_search')); ?>"
 						autocomplete="off"
 					>
 				</div>
@@ -32,9 +32,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		</div>
 		<div class="books-gtin-footer d-flex justify-content-between align-items-center gap-3 px-3 py-3 border-top border-secondary border-opacity-25">
 			<p class="text-muted small mb-0">
-				<span id="gtinCountryCodeVisibleCount"><?php echo count($country_codes); ?></span> of <?php echo count($country_codes); ?> entries
+				<?php echo sprintf(app_line('books_visible_count'), '<span id="gtinCountryCodeVisibleCount">'.count($country_codes).'</span>', count($country_codes)); ?>
 			</p>
-			<p class="text-muted small mb-0">First 3 digits identify the GS1 Member Organisation.</p>
+			<p class="text-muted small mb-0"><?php echo html_escape(app_line('books_note')); ?></p>
 		</div>
 	</div>
 </div>
@@ -68,15 +68,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				pageable: true,
 				pagesize: 50,
 				pagesizeoptions: ['25', '50', '100', '200'],
-				emptyMessage: 'No matching country codes.',
+				emptyMessage: t('books_empty'),
 				datafields: [
 					{ name: 'prefix', type: 'string' },
 					{ name: 'country', type: 'string' },
 				],
 				columns: [
 					{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 70, cellsrenderer: JqxGrid.rowNumberRenderer },
-					{ text: 'Prefix', datafield: 'prefix', width: 140, cellsrenderer: prefixRenderer },
-					{ text: 'Country / Region', datafield: 'country' },
+				{ text: t('col_prefix'), datafield: 'prefix', width: 140, cellsrenderer: prefixRenderer },
+				{ text: t('col_country'), datafield: 'country' },
 				],
 			});
 

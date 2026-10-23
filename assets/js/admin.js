@@ -36,25 +36,25 @@
 
 	function roleRenderer(row, columnfield, value) {
 		const badge = Number(value) === 1
-			? '<span class="badge bg-primary">Admin</span>'
-			: '<span class="badge bg-secondary">User</span>';
+			? '<span class="badge bg-primary">' + t('common_admin') + '</span>'
+			: '<span class="badge bg-secondary">' + t('common_user') + '</span>';
 		return JqxGrid.htmlCellRenderer(badge);
 	}
 
 	function statusRenderer(row, columnfield, value) {
 		const label = Number(value) === 1
-			? '<span class="text-success">Active</span>'
-			: '<span class="text-muted">Inactive</span>';
+			? '<span class="text-success">' + t('common_active') + '</span>'
+			: '<span class="text-muted">' + t('common_inactive') + '</span>';
 		return JqxGrid.htmlCellRenderer(label);
 	}
 
 	function actionsRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
 		return JqxGrid.actionButtons([
-			{ cls: 'btn-outline-primary btn-edit', icon: 'fa-pen', title: 'Edit' },
+			{ cls: 'btn-outline-primary btn-edit', icon: 'fa-pen', title: t('common_edit') },
 			{
 				cls: 'btn-outline-danger btn-delete',
 				icon: 'fa-trash',
-				title: 'Delete',
+				title: t('common_delete'),
 				hidden: function (record) {
 					return parseInt(record.id, 10) === config.currentUserId;
 				},
@@ -66,15 +66,15 @@
 		grid = JqxGrid.local('#adminGrid', {
 			id: 'id',
 			data: accounts,
-			emptyMessage: 'No users found.',
+			emptyMessage: t('admin_no_users'),
 			columns: [
 				{ text: '#', datafield: 'id', width: 70, cellsalign: 'left' },
-				{ text: 'Username', datafield: 'username', width: 200 },
-				{ text: 'Full Name', datafield: 'full_name' },
-				{ text: 'Role', datafield: 'is_admin', width: 120, cellsrenderer: roleRenderer },
-				{ text: 'Status', datafield: 'is_active', width: 120, cellsrenderer: statusRenderer },
+				{ text: t('field_username'), datafield: 'username', width: 200 },
+				{ text: t('field_full_name'), datafield: 'full_name' },
+				{ text: t('common_role'), datafield: 'is_admin', width: 120, cellsrenderer: roleRenderer },
+				{ text: t('common_status'), datafield: 'is_active', width: 120, cellsrenderer: statusRenderer },
 				{
-					text: 'Actions', datafield: '__actions', width: 130, sortable: false,
+					text: t('common_actions'), datafield: '__actions', width: 130, sortable: false,
 					filterable: false, editable: false, align: 'right', cellsalign: 'right',
 					cellsrenderer: actionsRenderer,
 				},
@@ -161,7 +161,7 @@
 		recordIdInput.value = '';
 		document.getElementById('is_active').checked = true;
 		passwordInput.required = true;
-		passwordHint.textContent = 'Minimum 6 characters.';
+		passwordHint.textContent = t('admin_password_hint');
 		hideAlert();
 		togglePermissionsPanel();
 		syncFormOutlines();
@@ -172,7 +172,7 @@
 		document.getElementById('full_name').value = data.full_name ?? '';
 		passwordInput.value = '';
 		passwordInput.required = false;
-		passwordHint.textContent = 'Leave blank to keep current password.';
+		passwordHint.textContent = t('admin_password_keep');
 		document.getElementById('is_active').checked = !!data.is_active;
 		isAdminCheck.checked = !!data.is_admin;
 
@@ -186,13 +186,13 @@
 
 	function openCreateModal() {
 		resetForm();
-		modalTitle.textContent = 'Add User';
+		modalTitle.textContent = t('title_add_user');
 		accountModal.show();
 	}
 
 	function openEditModal(id) {
 		resetForm();
-		modalTitle.textContent = 'Edit User';
+		modalTitle.textContent = t('title_edit_user');
 		recordIdInput.value = id;
 
 		fetchApi(baseUrl + '/get/' + id)
@@ -201,7 +201,7 @@
 				accountModal.show();
 			})
 			.catch(function (error) {
-				showToast(error.message || 'Failed to load user.', 'error');
+				showToast(error.message || t('admin_load_failed'), 'error');
 			});
 	}
 
@@ -239,7 +239,7 @@
 
 	function confirmDeleteAccount(id) {
 		showConfirm({
-			title: 'Confirm Delete',
+			title: t('common_confirm_delete_title'),
 			message: 'Are you sure you want to delete this user?',
 			confirmLabel: 'Delete',
 			size: 'sm',
@@ -256,7 +256,7 @@
 					return;
 				}
 
-				showToast(error.message || 'Failed to delete user.', 'error');
+				showToast(error.message || t('admin_delete_failed'), 'error');
 			});
 	}
 

@@ -44,9 +44,9 @@ class BasicController extends AuthenticatedController {
 		}
 
 		$this->render('crud/index', array(
-			'title'      => $this->entity_label,
+			'title'      => $this->localized_title(),
 			'records'    => $records,
-			'fields'     => $this->fields,
+			'fields'     => $this->localize_labeled($this->fields),
 			'entity'     => $this->entity,
 			'nav_active' => $this->entity,
 			'can_edit'   => $this->auth->can($this->permission_edit),
@@ -66,7 +66,7 @@ class BasicController extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'List API not configured for this entity.',
+				'message' => app_line('common_list_unconfigured'),
 			), 404);
 		}
 
@@ -79,14 +79,14 @@ class BasicController extends AuthenticatedController {
 
 		if ( ! $this->model)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_model_missing')), 500);
 		}
 
 		$record = $this->model->get($id);
 
 		if ( ! $record)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Record not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_record_not_found')), 404);
 		}
 
 		return $this->json_response(array('success' => TRUE, 'data' => $record));
@@ -98,7 +98,7 @@ class BasicController extends AuthenticatedController {
 
 		if ( ! $this->model)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_model_missing')), 500);
 		}
 
 		if ( ! $this->validate_fields())
@@ -114,12 +114,12 @@ class BasicController extends AuthenticatedController {
 
 		if ( ! $id)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to create record.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_failed_create')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Record created successfully.',
+			'message' => app_line('common_record_created'),
 			'data'    => $this->model->get($id),
 		));
 	}
@@ -130,12 +130,12 @@ class BasicController extends AuthenticatedController {
 
 		if ( ! $this->model)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_model_missing')), 500);
 		}
 
 		if ( ! $this->model->get($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Record not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_record_not_found')), 404);
 		}
 
 		if ( ! $this->validate_fields())
@@ -150,12 +150,12 @@ class BasicController extends AuthenticatedController {
 
 		if ( ! $this->model->update($id, $data))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to update record.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_failed_update')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Record updated successfully.',
+			'message' => app_line('common_record_updated'),
 			'data'    => $this->model->get($id),
 		));
 	}
@@ -166,22 +166,22 @@ class BasicController extends AuthenticatedController {
 
 		if ( ! $this->model)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Model not configured.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_model_missing')), 500);
 		}
 
 		if ( ! $this->model->get($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Record not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_record_not_found')), 404);
 		}
 
 		if ( ! $this->model->delete($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete record.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_failed_delete')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'Record deleted successfully.',
+			'message' => app_line('common_record_deleted'),
 		));
 	}
 
@@ -194,17 +194,17 @@ class BasicController extends AuthenticatedController {
 	protected function render_entity_list()
 	{
 		$data = array(
-			'title'                     => $this->entity_label,
+			'title'                     => $this->localized_title(),
 			'nav_active'                => $this->entity,
 			'entity'                    => $this->entity,
 			'can_edit'                  => $this->auth->can($this->permission_edit),
 			'add_url'                   => $this->get_add_url(),
 			'add_label'                 => $this->get_add_label(),
-			'list_columns'              => $this->list_columns,
+			'list_columns'              => $this->localize_labeled($this->list_columns),
 			'list_api_url'              => site_url($this->entity.'/list'),
-			'list_search_placeholder'   => $this->list_search_placeholder,
-			'list_empty_message'        => $this->list_empty_message,
-			'list_empty_search_message' => $this->list_empty_search_message,
+			'list_search_placeholder'   => $this->localized_line('search_'.$this->entity, $this->list_search_placeholder),
+			'list_empty_message'        => $this->localized_line('empty_'.$this->entity, $this->list_empty_message),
+			'list_empty_search_message' => $this->localized_line('empty_search_'.$this->entity, $this->list_empty_search_message),
 			'list_per_page'             => $this->list_per_page,
 			'list_per_page_options'     => $this->list_per_page_options,
 			'detail_modal_partial'      => $this->get_detail_modal_partial(),
@@ -250,7 +250,7 @@ class BasicController extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Model not configured.',
+				'message' => app_line('common_model_missing'),
 			), 500);
 		}
 
@@ -269,7 +269,7 @@ class BasicController extends AuthenticatedController {
 		return $this->json_response(array_merge(array(
 			'success'  => TRUE,
 			'data'     => $records,
-			'columns'  => $this->list_columns,
+			'columns'  => $this->localize_labeled($this->list_columns),
 			'sort'     => $params['sort']['key'] ?? '',
 			'sort_dir' => $params['sort']['direction'] ?? '',
 		), $meta));
@@ -334,7 +334,52 @@ class BasicController extends AuthenticatedController {
 
 	protected function get_add_label()
 	{
-		return 'Add New';
+		return $this->localized_line('add_'.$this->entity, app_line('common_add_new'));
+	}
+
+	protected function localized_title()
+	{
+		return $this->localized_line('title_'.$this->entity, $this->entity_label);
+	}
+
+	protected function localized_line($key, $fallback)
+	{
+		$line = $this->lang->line($key);
+
+		return $line ? $line : $fallback;
+	}
+
+	protected function localize_labeled($items)
+	{
+		$copy = array();
+
+		foreach ($items as $item)
+		{
+			$id = '';
+
+			if (isset($item['key']))
+			{
+				$id = $item['key'];
+			}
+			elseif (isset($item['name']))
+			{
+				$id = $item['name'];
+			}
+
+			if ($id !== '')
+			{
+				$line = $this->lang->line('col_'.$id);
+
+				if ($line)
+				{
+					$item['label'] = $line;
+				}
+			}
+
+			$copy[] = $item;
+		}
+
+		return $copy;
 	}
 
 	protected function json_response($payload, $status = 200)
@@ -368,9 +413,11 @@ class BasicController extends AuthenticatedController {
 				continue;
 			}
 
+			$label = $this->lang->line('col_'.$field['name']);
+
 			$this->form_validation->set_rules(
 				$field['name'],
-				$field['label'],
+				$label ? $label : $field['label'],
 				implode('|', $rules)
 			);
 		}

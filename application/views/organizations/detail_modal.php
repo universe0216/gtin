@@ -21,7 +21,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							aria-controls="organizationInfoTab"
 							aria-selected="true"
 							data-mdb-ripple-init
-						>Info</button>
+						><?php echo html_escape(app_line('common_info')); ?></button>
 						<button
 							type="button"
 							class="btn btn-outline-secondary"
@@ -32,10 +32,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							aria-controls="organizationProductsTab"
 							aria-selected="false"
 							data-mdb-ripple-init
-						>Products</button>
+						><?php echo html_escape(app_line('nav_products')); ?></button>
 					</div>
 				</div>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
 			</div>
 			<div class="modal-body p-0 history-procedure-modal-body entity-detail-modal-body p-2">
 				<div class="entity-detail-panel border border-secondary border-opacity-25 rounded-4 app-panel">

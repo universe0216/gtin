@@ -4,14 +4,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <div class="procedure-page">
 	<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
 		<div>
-			<h1 class="h4 mb-0">Product Registration</h1>
+			<h1 class="h4 mb-0"><?php echo html_escape(app_line('title_product_registration')); ?></h1>
 		</div>
 		<div class="d-flex flex-wrap gap-2">
 			<button type="button" class="btn btn-sm btn-success" id="btnOpenImportModal" data-mdb-ripple-init>
-				<i class="fas fa-file-import me-1"></i> Import
+				<i class="fas fa-file-import me-1"></i> <?php echo html_escape(app_line('common_import')); ?>
 			</button>
 			<button type="button" class="btn btn-sm btn-primary <?php echo empty($tabs) ? 'd-none' : ''; ?>" id="btnOpenUploadModal" data-mdb-ripple-init>
-				<i class="fas fa-upload me-1"></i> Upload Files
+				<i class="fas fa-upload me-1"></i> <?php echo html_escape(app_line('common_upload_files')); ?>
 			</button>
 		</div>
 	</div>
@@ -41,7 +41,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								class="procedure-tab-nav-close product-registration-tab-delete-btn"
 								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
-								aria-label="Stop procedure"
+								aria-label="<?php echo html_escape(app_line('reg_stop_procedure')); ?>"
 								data-mdb-ripple-init
 							>
 								<i class="fas fa-times" aria-hidden="true"></i>
@@ -62,11 +62,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						data-available-barcodes="<?php echo htmlspecialchars(json_encode($tab['available_barcodes'] ?? array()), ENT_QUOTES, 'UTF-8'); ?>"
 					>
 						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
-							<span><strong>Procedure #:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
-							<span><strong>Organization:</strong> <?php echo html_escape($tab['organization_name']); ?></span>
-							<span><strong>Processor:</strong> <?php echo html_escape($tab['processor_name']); ?></span>
-							<span><strong>Status:</strong> <?php echo html_escape($tab['status']); ?></span>
-							<span><strong>Uploaded:</strong> <?php echo html_escape($tab['created_at']); ?></span>
+							<span><strong><?php echo html_escape(app_line('reg_procedure')); ?>:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
+							<span><strong><?php echo html_escape(app_line('reg_organization')); ?>:</strong> <?php echo html_escape($tab['organization_name']); ?></span>
+							<span><strong><?php echo html_escape(app_line('reg_processor')); ?>:</strong> <?php echo html_escape($tab['processor_name']); ?></span>
+							<span><strong><?php echo html_escape(app_line('reg_status')); ?>:</strong> <?php echo html_escape($tab['status']); ?></span>
+							<span><strong><?php echo html_escape(app_line('reg_uploaded')); ?>:</strong> <?php echo html_escape($tab['created_at']); ?></span>
 							<button
 								type="button"
 								class="btn btn-sm btn-outline-danger ms-auto product-registration-tab-delete-btn"
@@ -74,7 +74,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
 								data-mdb-ripple-init
 							>
-								<i class="fas fa-trash me-1"></i> Delete
+								<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('common_delete')); ?>
 							</button>
 						</div>
 
@@ -88,16 +88,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 			<form class="procedure-upload-form" enctype="multipart/form-data">
 				<div class="procedure-upload-form-body">
 					<p class="text-muted small mb-3">
-						Each zip filename must follow <code>[procedure_number]_[organization_name].zip</code>.
-						Inside each zip: one spreadsheet and design images named with <code>[product_procedure_number]</code>.
+						<?php echo html_escape(app_line('reg_zip_rule_product')); ?>
 					</p>
 
 					<div class="procedure-upload-zone mb-3">
 						<input type="file" name="zip_files[]" accept=".zip,application/zip" multiple class="procedure-upload-input">
 						<div class="procedure-upload-content">
 							<i class="fas fa-file-zipper fa-2x text-primary mb-3"></i>
-							<p class="mb-1 fw-semibold">Drop zip files here or click to browse</p>
-							<p class="text-muted small mb-0">You can upload multiple procedure packages at once.</p>
+							<p class="mb-1 fw-semibold"><?php echo html_escape(app_line('reg_drop_zip')); ?></p>
+							<p class="text-muted small mb-0"><?php echo html_escape(app_line('reg_multi_product')); ?></p>
 						</div>
 					</div>
 
@@ -105,10 +104,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				</div>
 
 				<div class="procedure-upload-actions">
-					<span class="text-muted small procedure-upload-hint d-block mb-2">Select one or more zip files to continue.</span>
+					<span class="text-muted small procedure-upload-hint d-block mb-2"><?php echo html_escape(app_line('reg_select_zip')); ?></span>
 					<div class="text-end">
 						<button type="submit" class="btn btn-primary procedure-upload-submit" data-mdb-ripple-init disabled>
-							<i class="fas fa-upload me-1"></i> Upload &amp; Process
+							<i class="fas fa-upload me-1"></i> <?php echo html_escape(app_line('reg_upload_process')); ?>
 						</button>
 					</div>
 				</div>
@@ -121,32 +120,31 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h5 class="modal-title" id="procedureUploadModalLabel">Upload Zip Files</h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<h5 class="modal-title" id="procedureUploadModalLabel"><?php echo html_escape(app_line('reg_upload_zip_title')); ?></h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
 			</div>
 			<form class="procedure-upload-form" enctype="multipart/form-data">
 				<div class="modal-body procedure-upload-form-body">
 					<p class="text-muted small mb-3">
-						Each zip filename must follow <code>[procedure_number]_[organization_name].zip</code>.
-						Inside each zip: one spreadsheet and design images named with <code>[product_procedure_number]</code>.
+						<?php echo html_escape(app_line('reg_zip_rule_product')); ?>
 					</p>
 
 					<div class="procedure-upload-zone mb-3">
 						<input type="file" name="zip_files[]" accept=".zip,application/zip" multiple class="procedure-upload-input">
 						<div class="procedure-upload-content">
 							<i class="fas fa-file-zipper fa-2x text-primary mb-3"></i>
-							<p class="mb-1 fw-semibold">Drop zip files here or click to browse</p>
-							<p class="text-muted small mb-0">You can upload multiple procedure packages at once.</p>
+							<p class="mb-1 fw-semibold"><?php echo html_escape(app_line('reg_drop_zip')); ?></p>
+							<p class="text-muted small mb-0"><?php echo html_escape(app_line('reg_multi_product')); ?></p>
 						</div>
 					</div>
 
 					<div class="procedure-selected-files d-none mb-0"></div>
 				</div>
 				<div class="modal-footer procedure-upload-actions">
-					<span class="text-muted small procedure-upload-hint me-auto">Select one or more zip files to continue.</span>
-					<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
+					<span class="text-muted small procedure-upload-hint me-auto"><?php echo html_escape(app_line('reg_select_zip')); ?></span>
+					<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_cancel')); ?></button>
 					<button type="submit" class="btn btn-primary procedure-upload-submit" data-mdb-ripple-init disabled>
-						<i class="fas fa-upload me-1"></i> Upload &amp; Process
+						<i class="fas fa-upload me-1"></i> <?php echo html_escape(app_line('reg_upload_process')); ?>
 					</button>
 				</div>
 			</form>
@@ -161,7 +159,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				<h6 class="modal-title mb-0 procedure-detail-header-title" id="procedureProductModalLabel">—</h6>
 				<span class="text-muted small me-auto px-4" id="procedureDetailFooterMeta"></span>
 
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
 			</div>
 			<div class="modal-body p-0 procedure-detail-body">
 				<div class="procedure-detail-layout">
@@ -172,13 +170,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					<div class="procedure-detail-side-panel">
 						<ul class="nav nav-tabs procedure-detail-tabs" id="procedureDetailTabs" role="tablist">
 							<li class="nav-item" role="presentation">
-								<button class="nav-link active" id="procedureDetailTabImageBtn" data-mdb-tab-init data-mdb-target="#procedureDetailTabImage" type="button" role="tab" aria-controls="procedureDetailTabImage" aria-selected="true">Image</button>
+								<button class="nav-link active" id="procedureDetailTabImageBtn" data-mdb-tab-init data-mdb-target="#procedureDetailTabImage" type="button" role="tab" aria-controls="procedureDetailTabImage" aria-selected="true"><?php echo html_escape(app_line('reg_image')); ?></button>
 							</li>
 							<li class="nav-item" role="presentation">
-								<button class="nav-link" id="procedureDetailTabSimilarBtn" data-mdb-tab-init data-mdb-target="#procedureDetailTabSimilar" type="button" role="tab" aria-controls="procedureDetailTabSimilar" aria-selected="false">Similar Products</button>
+								<button class="nav-link" id="procedureDetailTabSimilarBtn" data-mdb-tab-init data-mdb-target="#procedureDetailTabSimilar" type="button" role="tab" aria-controls="procedureDetailTabSimilar" aria-selected="false"><?php echo html_escape(app_line('reg_similar')); ?></button>
 							</li>
 							<li class="nav-item" role="presentation">
-								<button class="nav-link" id="procedureDetailTabBarcodesBtn" data-mdb-tab-init data-mdb-target="#procedureDetailTabBarcodes" type="button" role="tab" aria-controls="procedureDetailTabBarcodes" aria-selected="false">Barcodes</button>
+								<button class="nav-link" id="procedureDetailTabBarcodesBtn" data-mdb-tab-init data-mdb-target="#procedureDetailTabBarcodes" type="button" role="tab" aria-controls="procedureDetailTabBarcodes" aria-selected="false"><?php echo html_escape(app_line('reg_barcodes')); ?></button>
 							</li>
 						</ul>
 						<div class="tab-content procedure-detail-tab-content" id="procedureDetailTabContent">
@@ -190,23 +188,23 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabBarcodes" role="tabpanel" aria-labelledby="procedureDetailTabBarcodesBtn">
 								<div class="procedure-barcode-form mb-4">
-									<label class="form-label" for="procedureBarcodeInput">Barcode Value</label>
-									<input type="text" class="form-control" id="procedureBarcodeInput" placeholder="Enter up to 12 digits">
-									<p class="text-muted small mt-2 mb-0" id="procedureBarcodeFullValue">Full EAN-13 (with checksum): —</p>
+									<label class="form-label" for="procedureBarcodeInput"><?php echo html_escape(app_line('reg_barcode_value')); ?></label>
+									<input type="text" class="form-control" id="procedureBarcodeInput" placeholder="<?php echo html_escape(app_line('reg_barcode_placeholder')); ?>">
+									<p class="text-muted small mt-2 mb-0" id="procedureBarcodeFullValue"><?php echo html_escape(app_line('reg_barcode_full')); ?></p>
 								</div>
 								<div class="procedure-barcode-preview-grid">
 									<div class="procedure-barcode-preview-card">
-										<h6 class="procedure-barcode-preview-title">Barcode</h6>
+										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_barcode_title')); ?></h6>
 										<div class="procedure-barcode-preview-body">
 											<svg id="procedureBarcodeSvg" class="procedure-barcode-svg d-none"></svg>
-											<p class="text-muted small mb-0 procedure-barcode-empty" id="procedureBarcodeEmpty">Enter a barcode value above.</p>
+											<p class="text-muted small mb-0 procedure-barcode-empty" id="procedureBarcodeEmpty"><?php echo html_escape(app_line('reg_barcode_empty')); ?></p>
 										</div>
 									</div>
 									<div class="procedure-barcode-preview-card">
-										<h6 class="procedure-barcode-preview-title">QR Code</h6>
+										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_qr_title')); ?></h6>
 										<div class="procedure-barcode-preview-body">
 											<div id="procedureQrCode" class="procedure-qr-code"></div>
-											<p class="text-muted small mb-0 procedure-barcode-empty" id="procedureQrEmpty">Enter a barcode value above.</p>
+											<p class="text-muted small mb-0 procedure-barcode-empty" id="procedureQrEmpty"><?php echo html_escape(app_line('reg_barcode_empty')); ?></p>
 										</div>
 									</div>
 								</div>
@@ -218,17 +216,17 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 			<div class="modal-footer procedure-detail-footer">
 				<span class="procedure-assignable-barcode text-muted small me-auto" id="assignable_barcode"></span>
 				<div class="d-flex flex-wrap gap-2">
-					<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init>Accept</button>
-					<button type="button" class="btn btn-outline-danger" id="procedureDetailRejectBtn" data-mdb-ripple-init>Reject</button>
+					<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_accept')); ?></button>
+					<button type="button" class="btn btn-outline-danger" id="procedureDetailRejectBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_reject')); ?></button>
 				</div>
 				<button type="button" class="btn btn-outline-secondary" id="procedureDetailPrevBtn" data-mdb-ripple-init disabled>
-					<i class="fas fa-chevron-left me-1"></i> Previous
+					<i class="fas fa-chevron-left me-1"></i> <?php echo html_escape(app_line('common_previous')); ?>
 				</button>
 				<button type="button" class="btn btn-outline-secondary" id="procedureDetailNextBtn" data-mdb-ripple-init disabled>
-					Next <i class="fas fa-chevron-right ms-1"></i>
+					<?php echo html_escape(app_line('common_next')); ?> <i class="fas fa-chevron-right ms-1"></i>
 				</button>
 				
-				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Close</button>
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_close')); ?></button>
 			</div>
 		</div>
 	</div>
@@ -238,8 +236,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<div class="modal-dialog modal-fullscreen">
 		<div class="modal-content">
 			<div class="modal-header procedure-import-modal-header">
-				<h5 class="modal-title mb-0" id="procedureImportModalLabel">Import Completed Procedure</h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<h5 class="modal-title mb-0" id="procedureImportModalLabel"><?php echo html_escape(app_line('reg_import_title')); ?></h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
 			</div>
 			<div class="modal-body procedure-import-modal-body p-0">
 				<div class="procedure-import-toolbar px-3 py-3 border-bottom border-secondary border-opacity-25">
@@ -250,7 +248,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								type="search"
 								class="form-control"
 								id="procedureImportSearch"
-								placeholder="Search file, procedure #, organization, processor..."
+								placeholder="<?php echo html_escape(app_line('reg_import_search')); ?>"
 								autocomplete="off"
 							>
 						</div>
@@ -258,14 +256,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				</div>
 				<div id="procedureImportLoading" class="text-center text-muted py-5 d-none">
 					<div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
-					Loading completed procedures...
+					<?php echo html_escape(app_line('reg_import_loading')); ?>
 				</div>
 				<div id="procedureImportTableWrap" class="procedure-import-modal-table p-2">
 					<div id="procedureImportGrid"></div>
 				</div>
 			</div>
 			<div class="modal-footer procedure-import-modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_cancel')); ?></button>
 			</div>
 		</div>
 	</div>
@@ -275,24 +273,24 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h5 class="modal-title" id="procedureRejectModalLabel">Reject Product</h5>
-				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="Close"></button>
+				<h5 class="modal-title" id="procedureRejectModalLabel"><?php echo html_escape(app_line('reg_reject_title')); ?></h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
 			</div>
 			<div class="modal-body">
 				<p class="text-muted small mb-3" id="procedureRejectModalMeta">—</p>
-				<label class="form-label" for="procedureRejectReasonInput">Reason</label>
+				<label class="form-label" for="procedureRejectReasonInput"><?php echo html_escape(app_line('common_reason')); ?></label>
 				<textarea
 					class="form-control"
 					id="procedureRejectReasonInput"
 					rows="4"
-					placeholder="Enter rejection reason..."
+					placeholder="<?php echo html_escape(app_line('reg_reject_placeholder')); ?>"
 					autocomplete="off"
 				></textarea>
-				<div class="text-danger small mt-2 d-none" id="procedureRejectReasonError">Please enter a rejection reason.</div>
+				<div class="text-danger small mt-2 d-none" id="procedureRejectReasonError"><?php echo html_escape(app_line('reg_reject_required')); ?></div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Cancel</button>
-				<button type="button" class="btn btn-danger" id="procedureConfirmRejectBtn" data-mdb-ripple-init>Reject</button>
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_cancel')); ?></button>
+				<button type="button" class="btn btn-danger" id="procedureConfirmRejectBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_reject')); ?></button>
 			</div>
 		</div>
 	</div>

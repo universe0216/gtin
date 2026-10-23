@@ -11,11 +11,11 @@ $can_edit = $can_edit ?? TRUE;
 	<?php if ($can_edit): ?>
 		<?php if ( ! empty($add_url)): ?>
 			<a href="<?php echo html_escape($add_url); ?>" class="btn btn-primary" data-mdb-ripple-init>
-				<i class="fas fa-plus me-1"></i> Add New
+				<i class="fas fa-plus me-1"></i> <?php echo html_escape(app_line('common_add_new')); ?>
 			</a>
 		<?php else: ?>
 			<button type="button" class="btn btn-primary" id="btnAddRecord" data-mdb-ripple-init>
-				<i class="fas fa-plus me-1"></i> Add New
+				<i class="fas fa-plus me-1"></i> <?php echo html_escape(app_line('common_add_new')); ?>
 			</button>
 		<?php endif; ?>
 	<?php endif; ?>

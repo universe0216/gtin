@@ -18,7 +18,7 @@ class Admin extends AuthenticatedController {
 	public function index()
 	{
 		$this->render('admin/index', array(
-			'title'              => 'User Management',
+			'title'              => app_line('title_user_management'),
 			'nav_active'         => 'admin',
 			'accounts'           => $this->account_model->get_all(),
 			'permission_groups'  => $this->config->item('permission_groups', 'permissions'),
@@ -32,7 +32,7 @@ class Admin extends AuthenticatedController {
 
 		if ( ! $account)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'User not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_user_not_found')), 404);
 		}
 
 		return $this->json_response(array('success' => TRUE, 'data' => $account));
@@ -53,19 +53,19 @@ class Admin extends AuthenticatedController {
 
 		if ($this->account_model->username_exists($data['username']))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Username already exists.'), 422);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_username_exists')), 422);
 		}
 
 		$id = $this->account_model->insert($data, $permissions);
 
 		if ( ! $id)
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to create user.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_create_failed')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'User created successfully.',
+			'message' => app_line('admin_created'),
 			'data'    => $this->account_model->get($id),
 		));
 	}
@@ -74,7 +74,7 @@ class Admin extends AuthenticatedController {
 	{
 		if ( ! $this->account_model->get($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'User not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_user_not_found')), 404);
 		}
 
 		if ( ! $this->validate_account(FALSE))
@@ -90,17 +90,17 @@ class Admin extends AuthenticatedController {
 
 		if ($this->account_model->username_exists($data['username'], $id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Username already exists.'), 422);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_username_exists')), 422);
 		}
 
 		if ( ! $this->account_model->update($id, $data, $permissions))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to update user.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_update_failed')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'User updated successfully.',
+			'message' => app_line('admin_updated'),
 			'data'    => $this->account_model->get($id),
 		));
 	}
@@ -111,22 +111,22 @@ class Admin extends AuthenticatedController {
 
 		if ((int) $id === (int) $current['id'])
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'You cannot delete your own account.'), 422);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_delete_self')), 422);
 		}
 
 		if ( ! $this->account_model->get($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'User not found.'), 404);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_user_not_found')), 404);
 		}
 
 		if ( ! $this->account_model->delete($id))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => 'Failed to delete user.'), 500);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_delete_failed')), 500);
 		}
 
 		return $this->json_response(array(
 			'success' => TRUE,
-			'message' => 'User deleted successfully.',
+			'message' => app_line('admin_deleted'),
 		));
 	}
 
@@ -147,12 +147,12 @@ class Admin extends AuthenticatedController {
 	protected function validate_account($is_create)
 	{
 		$this->form_validation->set_data($this->input->post());
-		$this->form_validation->set_rules('username', 'Username', 'required|trim|min_length[3]|max_length[100]|alpha_dash');
-		$this->form_validation->set_rules('full_name', 'Full Name', 'required|trim|max_length[255]');
+		$this->form_validation->set_rules('username', app_line('field_username'), 'required|trim|min_length[3]|max_length[100]|alpha_dash');
+		$this->form_validation->set_rules('full_name', app_line('field_full_name'), 'required|trim|max_length[255]');
 
 		if ($is_create)
 		{
-			$this->form_validation->set_rules('password', 'Password', 'required|min_length[6]');
+			$this->form_validation->set_rules('password', app_line('field_password'), 'required|min_length[6]');
 		}
 		else
 		{
@@ -160,7 +160,7 @@ class Admin extends AuthenticatedController {
 
 			if ($password !== NULL && $password !== '')
 			{
-				$this->form_validation->set_rules('password', 'Password', 'min_length[6]');
+				$this->form_validation->set_rules('password', app_line('field_password'), 'min_length[6]');
 			}
 		}
 

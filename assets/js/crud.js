@@ -14,8 +14,8 @@
 
 	function actionsRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
 		return JqxGrid.actionButtons([
-			{ cls: 'btn-outline-primary btn-edit', icon: 'fa-pen', title: 'Edit' },
-			{ cls: 'btn-outline-danger btn-delete', icon: 'fa-trash', title: 'Delete' },
+			{ cls: 'btn-outline-primary btn-edit', icon: 'fa-pen', title: t('common_edit') },
+			{ cls: 'btn-outline-danger btn-delete', icon: 'fa-trash', title: t('common_delete') },
 		], rowdata);
 	}
 
@@ -30,7 +30,7 @@
 
 		if (canEdit) {
 			columns.push({
-				text: 'Actions', datafield: '__actions', width: 130, sortable: false,
+				text: t('common_actions'), datafield: '__actions', width: 130, sortable: false,
 				filterable: false, editable: false, align: 'right', cellsalign: 'right',
 				cellsrenderer: actionsRenderer,
 			});
@@ -56,8 +56,8 @@
 			datafields: buildDatafields(),
 			columns: buildColumns(),
 			emptyMessage: canEdit
-				? 'No records found. Click "Add New" to create one.'
-				: 'No records found.',
+				? t('common_no_records_add')
+				: t('common_no_records'),
 		});
 
 		if (grid && canEdit) {
@@ -186,7 +186,7 @@
 				basicModal.show();
 			})
 			.catch(function (error) {
-				showToast(error.message || 'Failed to load record.', 'error');
+				showToast(error.message || t('common_failed_load_record'), 'error');
 			});
 	}
 
@@ -228,7 +228,7 @@
 
 	function confirmDeleteRecord(id) {
 		showConfirm({
-			title: 'Confirm Delete',
+			title: t('common_confirm_delete_title'),
 			message: 'Are you sure you want to delete this record?',
 			confirmLabel: 'Delete',
 			size: 'sm',
@@ -245,7 +245,7 @@
 					return;
 				}
 
-				showToast(error.message || 'Failed to delete record.', 'error');
+				showToast(error.message || t('common_failed_delete_record'), 'error');
 			});
 	}
 

@@ -74,9 +74,9 @@
 		let icon = '';
 
 		if (status === 'rejected') {
-			icon = '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="Rejected"></i>';
+			icon = '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="' + t('reg_rejected') + '"></i>';
 		} else if (status === 'approved') {
-			icon = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="Accepted"></i>';
+			icon = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="' + t('reg_accepted') + '"></i>';
 		}
 
 		return '<div style="text-align:center;margin-top:6px;">' + icon + '</div>';
@@ -185,7 +185,7 @@
 			pagesize: 50,
 			pagesizeoptions: ['50', '100', '200'],
 			height: Math.max(360, window.innerHeight - 300),
-			emptyMessage: 'No products found.',
+			emptyMessage: t('reg_no_products'),
 		});
 
 		if (grid) {
@@ -354,7 +354,7 @@
 
 		if (productDetailFooterMeta) {
 			productDetailFooterMeta.textContent = currentIndex >= 0
-				? 'Row ' + (currentIndex + 1) + ' of ' + count
+				? t('reg_row_position', { current: currentIndex + 1, count: count })
 				: '';
 		}
 	}
@@ -383,7 +383,7 @@
 		const assignable = getAssignableBarcode(activeDetail.regId, activeDetail.rowIndex);
 
 		if (!assignable || !assignable.ean13) {
-			assignableBarcodeEl.innerHTML = '<span class="text-muted">No barcode available for this product.</span>';
+			assignableBarcodeEl.innerHTML = '<span class="text-muted">' + t('reg_barcode_none') + '</span>';
 			return;
 		}
 
@@ -526,7 +526,7 @@
 		const itemId = row ? row.id : null;
 
 		if (!itemId) {
-			showToast('Unable to accept this product.', 'error');
+			showToast(t('reg_unable_accept'), 'error');
 			return;
 		}
 
@@ -567,7 +567,7 @@
 				showToast(result.message, 'success');
 			})
 			.catch(function (error) {
-				showToast(error.message || 'Failed to accept product.', 'error');
+				showToast(error.message || t('reg_accept_failed'), 'error');
 			})
 			.finally(function () {
 				updateReviewButtonState();
@@ -587,7 +587,7 @@
 			: 'this product';
 
 		if (rejectModalMeta) {
-			rejectModalMeta.textContent = 'Provide a reason for rejecting ' + productLabel + '.';
+			rejectModalMeta.textContent = t('reg_reject_meta', { product: productLabel });
 		}
 
 		resetRejectModal();
@@ -627,7 +627,7 @@
 		const itemId = row ? row.id : null;
 
 		if (!itemId) {
-			showToast('Unable to reject this product.', 'error');
+			showToast(t('reg_unable_reject'), 'error');
 			return;
 		}
 
@@ -654,7 +654,7 @@
 				showToast(result.message, 'success');
 			})
 			.catch(function (error) {
-				showToast(error.message || 'Failed to reject product.', 'error');
+				showToast(error.message || t('reg_reject_failed'), 'error');
 			})
 			.finally(function () {
 				if (confirmRejectBtn) {
@@ -729,12 +729,12 @@
 			],
 			columns: [
 				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
-				{ text: 'Product #', datafield: 'product_procedure_number', width: 160 },
-				{ text: 'Product Name', datafield: 'product_name' },
-				{ text: 'Match', datafield: 'match', width: 120 },
+				{ text: t('reg_product_number'), datafield: 'product_procedure_number', width: 160 },
+				{ text: t('reg_product_name'), datafield: 'product_name' },
+				{ text: t('reg_match'), datafield: 'match', width: 120 },
 			],
 			height: Math.max(280, window.innerHeight - 320),
-			emptyMessage: 'No similar products found.',
+			emptyMessage: t('reg_no_similar'),
 		});
 	}
 
@@ -765,10 +765,10 @@
 		});
 
 		fields.push(
-			{ label: 'Procedure #', value: payload.procedure_number || '' },
-			{ label: 'Zip File', value: payload.file_name || '' },
-			{ label: 'Processor', value: payload.processor_name || '' },
-			{ label: 'Uploaded', value: payload.created_at || '' }
+			{ label: t('reg_procedure'), value: payload.procedure_number || '' },
+			{ label: t('reg_zip_file'), value: payload.file_name || '' },
+			{ label: t('reg_processor'), value: payload.processor_name || '' },
+			{ label: t('reg_uploaded'), value: payload.created_at || '' }
 		);
 
 		const fieldsHtml = fields.map(function (field) {
@@ -974,15 +974,15 @@
 
 		if (!barcodeValue) {
 			if (procedureBarcodeFullValue) {
-				procedureBarcodeFullValue.textContent = 'Full EAN-13 (with checksum): —';
+				procedureBarcodeFullValue.textContent = t('reg_barcode_full');
 			}
 			return;
 		}
 
 		if (procedureBarcodeFullValue) {
 			procedureBarcodeFullValue.textContent = ean13Full
-				? 'Full EAN-13 (with checksum): ' + ean13Full
-				: 'Full EAN-13 (with checksum): —';
+				? t('reg_barcode_full_value', { value: ean13Full })
+				: t('reg_barcode_full');
 		}
 
 		if (typeof JsBarcode !== 'undefined' && procedureBarcodeSvg && ean13Full) {
@@ -1010,7 +1010,7 @@
 				}
 			} catch (error) {
 				if (procedureBarcodeEmpty) {
-					procedureBarcodeEmpty.textContent = 'Unable to render barcode for this value.';
+					procedureBarcodeEmpty.textContent = t('reg_barcode_render_failed');
 					procedureBarcodeEmpty.classList.remove('d-none');
 				}
 			}
@@ -1064,7 +1064,7 @@
 			pagesize: 10,
 			pagesizeoptions: ['10', '20', '50'],
 			height: Math.max(320, window.innerHeight - 240),
-			emptyMessage: 'No completed procedures found.',
+			emptyMessage: t('reg_no_completed'),
 			datafields: [
 				{ name: 'id', type: 'number' },
 				{ name: 'file_name', type: 'string' },
@@ -1078,14 +1078,14 @@
 			],
 			columns: [
 				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
-				{ text: 'File', datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
-				{ text: 'Procedure #', datafield: 'procedure_number', width: 130 },
-				{ text: 'Organization', datafield: 'organization_name' },
-				{ text: 'Processor', datafield: 'processor_name', width: 150 },
-				{ text: 'Products', datafield: 'total_products', width: 100, cellsalign: 'right' },
-				{ text: 'Approved', datafield: 'approved', width: 100, cellsalign: 'right' },
-				{ text: 'Rejected', datafield: 'rejected', width: 100, cellsalign: 'right' },
-				{ text: 'Completed', datafield: 'created_at', width: 160 },
+				{ text: t('reg_file'), datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
+				{ text: t('reg_procedure'), datafield: 'procedure_number', width: 130 },
+				{ text: t('reg_organization'), datafield: 'organization_name' },
+				{ text: t('reg_processor'), datafield: 'processor_name', width: 150 },
+				{ text: t('reg_products'), datafield: 'total_products', width: 100, cellsalign: 'right' },
+				{ text: t('reg_approved'), datafield: 'approved', width: 100, cellsalign: 'right' },
+				{ text: t('reg_rejected'), datafield: 'rejected', width: 100, cellsalign: 'right' },
+				{ text: t('reg_completed'), datafield: 'created_at', width: 160 },
 			],
 			getParams: function () {
 				const search = importSearchInput ? importSearchInput.value.trim() : '';
@@ -1096,7 +1096,7 @@
 			},
 			onError: function () {
 				setImportLoading(false);
-				showToast('Failed to load completed procedures.', 'error');
+				showToast(t('reg_load_completed_failed'), 'error');
 			},
 		});
 
@@ -1151,7 +1151,7 @@
 			}
 
 			procedureTabs.activateTab(registrationId);
-			showToast('Procedure is already open.', 'success');
+			showToast(t('reg_already_open'), 'success');
 			return;
 		}
 
@@ -1165,10 +1165,10 @@
 					importModal.hide();
 				}
 
-				showToast(result.message || 'Procedure imported successfully.', 'success');
+				showToast(result.message || t('reg_imported'), 'success');
 			})
 			.catch(function (error) {
-				showToast(error.message || 'Failed to import procedure.', 'error');
+				showToast(error.message || t('reg_import_failed'), 'error');
 			})
 			.finally(function () {
 				setImportLoading(false);
@@ -1185,7 +1185,7 @@
 		if (isCompleted) {
 			return '<button type="button" class="procedure-tab-nav-close product-registration-tab-close-btn"' +
 				' data-product-registration-id="' + tab.product_registration_id + '"' +
-				' aria-label="Close tab"' +
+				' aria-label="' + t('reg_close_tab') + '"' +
 				' data-mdb-ripple-init>' +
 				'<i class="fas fa-times" aria-hidden="true"></i>' +
 			'</button>';
@@ -1194,7 +1194,7 @@
 		return '<button type="button" class="procedure-tab-nav-close product-registration-tab-delete-btn"' +
 			' data-product-registration-id="' + tab.product_registration_id + '"' +
 			' data-file-name="' + escapeAttr(tab.file_name) + '"' +
-			' aria-label="Stop procedure"' +
+			' aria-label="' + t('reg_stop_procedure') + '"' +
 			' data-mdb-ripple-init>' +
 			'<i class="fas fa-times" aria-hidden="true"></i>' +
 		'</button>';
@@ -1277,9 +1277,9 @@
 			return baseUrl + '/delete/' + registrationId;
 		},
 		deleteConfirm: {
-			message: 'This procedure is not completed yet, will you stop procedure for this factory?',
-			confirmLabel: 'Stop Procedure',
-			errorMessage: 'Failed to delete procedure.',
+			message: t('reg_stop_confirm'),
+			confirmLabel: t('reg_stop_label'),
+			errorMessage: t('reg_delete_failed'),
 		},
 		deleteBtnSelector: '.product-registration-tab-delete-btn',
 		closeBtnSelector: '.product-registration-tab-close-btn',
@@ -1296,13 +1296,13 @@
 		uploadUrl: baseUrl + '/upload',
 		fileItemStyle: 'span',
 		clearInputAfterSelect: true,
-		uploadErrorMessage: 'An unexpected error occurred during upload.',
+		uploadErrorMessage: t('reg_upload_error'),
 		hints: {
-			empty: 'Select one or more zip files to continue.',
+			empty: t('reg_select_zip'),
 			selected: function (count) {
 				return count + ' file(s) ready to upload.';
 			},
-			uploading: 'Uploading and processing files...',
+			uploading: t('reg_uploading'),
 		},
 		normalizeFiles: function (fileList) {
 			const files = Array.from(fileList || []).filter(function (file) {
@@ -1310,7 +1310,7 @@
 			});
 
 			if (!files.length && fileList && fileList.length) {
-				showToast('Please select valid .zip files.', 'error');
+				showToast(t('reg_zip_only'), 'error');
 				return null;
 			}
 

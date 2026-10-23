@@ -30,7 +30,7 @@ class History extends AuthenticatedController {
 		}
 
 		return $this->render_product_registration_history(
-			'Products History',
+			app_line('title_products_history'),
 			'history_products',
 			'history/products'
 		);
@@ -75,7 +75,7 @@ class History extends AuthenticatedController {
 		}
 
 		$data = array(
-			'title'         => 'Organizations History',
+			'title'         => app_line('title_organizations_history'),
 			'nav_active'    => 'history_organizations',
 			'registrations' => $registrations,
 			'total'         => count($registrations),
@@ -158,7 +158,7 @@ class History extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Registration not found.',
+				'message' => app_line('reg_not_found'),
 			), 404);
 		}
 
@@ -176,7 +176,7 @@ class History extends AuthenticatedController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Registration not found.',
+				'message' => app_line('reg_not_found'),
 			), 404);
 		}
 

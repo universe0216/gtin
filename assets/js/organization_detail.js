@@ -167,7 +167,7 @@
 		}
 
 		if (label) {
-			label.textContent = isLoading ? 'Updating...' : 'Update';
+			label.textContent = isLoading ? t('common_updating') : t('common_update');
 		}
 	}
 
@@ -247,7 +247,7 @@
 				}
 
 				renderInfoFields(record);
-				showInfoAlert(result.message || 'Organization updated successfully.', 'success');
+				showInfoAlert(result.message || t('org_updated'), 'success');
 				document.dispatchEvent(new CustomEvent('entityListRefresh'));
 
 				// Refresh products in case the rename affected them.
@@ -260,7 +260,7 @@
 					return;
 				}
 
-				showInfoAlert(error.message || 'Failed to update organization.', 'error');
+				showInfoAlert(error.message || t('org_update_failed'), 'error');
 			})
 			.finally(function () {
 				setInfoUpdateLoading(false);
@@ -342,13 +342,13 @@
 			pagesize: perPage,
 			pagesizeoptions: ['10', '20', '50'],
 			height: Math.max(320, window.innerHeight - 280),
-			emptyMessage: 'No products found for this organization.',
+			emptyMessage: t('org_products_empty'),
 			getParams: function () {
 				return productsState.search ? { q: productsState.search } : {};
 			},
 			onLoad: updateProductsMeta,
 			onError: function () {
-				showToast('Failed to load products.', 'error');
+				showToast(t('org_products_load_failed'), 'error');
 			},
 		});
 
@@ -402,7 +402,7 @@
 				}
 
 				if (infoWrap) {
-					infoWrap.innerHTML = '<p class="text-danger mb-0">' + escapeHtml(error.message || 'Failed to load organization.') + '</p>';
+					infoWrap.innerHTML = '<p class="text-danger mb-0">' + escapeHtml(error.message || t('org_load_failed')) + '</p>';
 					infoWrap.classList.remove('d-none');
 				}
 			})
@@ -478,7 +478,7 @@
 
 	function deleteProduct(productId) {
 		if (!canDeleteProduct || !productDeleteUrl || !productId) {
-			return Promise.reject(new Error('Unable to delete this product.'));
+			return Promise.reject(new Error(t('org_product_delete_unable')));
 		}
 
 		productDeleteRequest = createAbortableRequest(productDeleteRequest);
@@ -499,16 +499,16 @@
 		const label = escapeHtml(productName || 'this product');
 
 		showConfirm({
-			title: 'Delete product',
-			message: 'Are you sure you want to delete <strong>' + label + '</strong>?',
+			title: t('org_product_delete_title'),
+			message: t('org_product_delete_message', { name: '<strong>' + label + '</strong>' }),
 			allowHtml: true,
-			confirmLabel: 'Delete',
+			confirmLabel: t('common_delete'),
 		})
 			.then(function () {
 				return deleteProduct(productId);
 			})
 			.then(function (result) {
-				showToast(result.message || 'Product deleted successfully.', 'success');
+				showToast(result.message || t('org_product_deleted'), 'success');
 
 				if (productsGrid) {
 					productsGrid.reload();
@@ -519,7 +519,7 @@
 					return;
 				}
 
-				showToast(error.message || 'Failed to delete product.', 'error');
+				showToast(error.message || t('org_product_delete_failed'), 'error');
 			});
 	}
 

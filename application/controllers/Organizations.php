@@ -135,7 +135,7 @@ class Organizations extends BasicController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Organization not found.',
+				'message' => app_line('org_not_found'),
 			), 404);
 		}
 
@@ -161,7 +161,7 @@ class Organizations extends BasicController {
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
-				'message' => 'Organization not found.',
+				'message' => app_line('org_not_found'),
 			), 404);
 		}
 
@@ -187,7 +187,7 @@ class Organizations extends BasicController {
 		return $this->json_response(array_merge(array(
 			'success'  => TRUE,
 			'data'     => $records,
-			'columns'  => $this->detail_product_columns,
+			'columns'  => $this->localize_labeled($this->detail_product_columns),
 			'sort'     => $sort['key'] ?? '',
 			'sort_dir' => $sort['direction'] ?? '',
 		), $meta));
@@ -195,7 +195,7 @@ class Organizations extends BasicController {
 
 	protected function get_add_label()
 	{
-		return 'Register Organizations';
+		return app_line('add_organizations');
 	}
 
 	protected function get_detail_modal_partial()
@@ -211,14 +211,14 @@ class Organizations extends BasicController {
 			'productsUrl'     => site_url('organizations/products'),
 			'updateUrl'       => site_url('organizations/update'),
 			'canEdit'         => $this->auth->can($this->permission_edit),
-			'infoFields'      => $this->detail_info_fields,
-			'editableFields'  => $this->fields,
-			'readOnlyFields'  => array(
+			'infoFields'      => $this->localize_labeled($this->detail_info_fields),
+			'editableFields'  => $this->localize_labeled($this->fields),
+			'readOnlyFields'  => $this->localize_labeled(array(
 				array('key' => 'id', 'label' => 'ID'),
 				array('key' => 'created_at', 'label' => 'Created At'),
 				array('key' => 'updated_at', 'label' => 'Updated At'),
-			),
-			'productColumns'    => $this->detail_product_columns,
+			)),
+			'productColumns'    => $this->localize_labeled($this->detail_product_columns),
 			'productDeleteUrl'  => site_url('products/delete'),
 			'canDeleteProduct'  => $this->auth->can('product.edit'),
 			'perPage'           => $this->list_per_page,

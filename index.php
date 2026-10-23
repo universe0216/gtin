@@ -314,6 +314,24 @@ switch (ENVIRONMENT)
 
 /*
  * --------------------------------------------------------------------
+ * INTERFACE LANGUAGE
+ * --------------------------------------------------------------------
+ *
+ * Read the language cookie before CodeIgniter boots so libraries loaded
+ * in controllers (including form validation) use the selected language.
+ */
+	$supported_languages = array('english', 'chinese');
+	$requested_language = isset($_COOKIE['site_lang']) ? $_COOKIE['site_lang'] : 'english';
+
+	if ( ! in_array($requested_language, $supported_languages, TRUE))
+	{
+		$requested_language = 'english';
+	}
+
+	$assign_to_config['language'] = $requested_language;
+
+/*
+ * --------------------------------------------------------------------
  * LOAD THE BOOTSTRAP FILE
  * --------------------------------------------------------------------
  *
