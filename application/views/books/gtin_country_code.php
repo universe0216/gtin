@@ -49,61 +49,69 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 </script>
 <script>
 	(function () {
-		const searchInput = document.getElementById('gtinCountryCodeSearch');
-		const visibleCount = document.getElementById('gtinCountryCodeVisibleCount');
-		const allEntries = window.GTIN_COUNTRY_CODES || [];
+		function initCountryCodeGrid() {
+			const searchInput = document.getElementById('gtinCountryCodeSearch');
+			const visibleCount = document.getElementById('gtinCountryCodeVisibleCount');
+			const allEntries = window.GTIN_COUNTRY_CODES || [];
 
-		if (typeof JqxGrid === 'undefined' || !document.getElementById('gtinCountryCodeGrid')) {
-			return;
-		}
-
-		function prefixRenderer(row, columnfield, value) {
-			return JqxGrid.htmlCellRenderer('<code>' + JqxGrid.escapeAttr(value) + '</code>');
-		}
-
-		const grid = JqxGrid.local('#gtinCountryCodeGrid', {
-			data: allEntries.slice(),
-			height: 600,
-			pageable: true,
-			pagesize: 50,
-			pagesizeoptions: ['25', '50', '100', '200'],
-			emptyMessage: 'No matching country codes.',
-			datafields: [
-				{ name: 'prefix', type: 'string' },
-				{ name: 'country', type: 'string' },
-			],
-			columns: [
-				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 70, cellsrenderer: JqxGrid.rowNumberRenderer },
-				{ text: 'Prefix', datafield: 'prefix', width: 140, cellsrenderer: prefixRenderer },
-				{ text: 'Country / Region', datafield: 'country' },
-			],
-		});
-
-		function updateCount(count) {
-			if (visibleCount) {
-				visibleCount.textContent = String(count);
-			}
-		}
-
-		function filterEntries() {
-			const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
-
-			if (!query) {
-				grid.setData(allEntries.slice());
-				updateCount(allEntries.length);
+			if (typeof JqxGrid === 'undefined' || !document.getElementById('gtinCountryCodeGrid')) {
 				return;
 			}
 
-			const filtered = allEntries.filter(function (entry) {
-				return (entry.prefix + ' ' + entry.country).toLowerCase().indexOf(query) !== -1;
+			function prefixRenderer(row, columnfield, value) {
+				return JqxGrid.htmlCellRenderer('<code>' + JqxGrid.escapeAttr(value) + '</code>');
+			}
+
+			const grid = JqxGrid.local('#gtinCountryCodeGrid', {
+				data: allEntries.slice(),
+				height: 600,
+				pageable: true,
+				pagesize: 50,
+				pagesizeoptions: ['25', '50', '100', '200'],
+				emptyMessage: 'No matching country codes.',
+				datafields: [
+					{ name: 'prefix', type: 'string' },
+					{ name: 'country', type: 'string' },
+				],
+				columns: [
+					{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 70, cellsrenderer: JqxGrid.rowNumberRenderer },
+					{ text: 'Prefix', datafield: 'prefix', width: 140, cellsrenderer: prefixRenderer },
+					{ text: 'Country / Region', datafield: 'country' },
+				],
 			});
 
-			grid.setData(filtered);
-			updateCount(filtered.length);
+			function updateCount(count) {
+				if (visibleCount) {
+					visibleCount.textContent = String(count);
+				}
+			}
+
+			function filterEntries() {
+				const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+				if (!query) {
+					grid.setData(allEntries.slice());
+					updateCount(allEntries.length);
+					return;
+				}
+
+				const filtered = allEntries.filter(function (entry) {
+					return (entry.prefix + ' ' + entry.country).toLowerCase().indexOf(query) !== -1;
+				});
+
+				grid.setData(filtered);
+				updateCount(filtered.length);
+			}
+
+			if (searchInput) {
+				searchInput.addEventListener('input', filterEntries);
+			}
 		}
 
-		if (searchInput) {
-			searchInput.addEventListener('input', filterEntries);
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initCountryCodeGrid);
+		} else {
+			initCountryCodeGrid();
 		}
 	})();
 </script>
