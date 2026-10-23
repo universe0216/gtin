@@ -13,7 +13,7 @@ class Welcome extends CI_Controller {
 	{
 		if ($this->auth->is_logged_in())
 		{
-			redirect('primary');
+			redirect('product_registration');
 		}
 
 		redirect('login');

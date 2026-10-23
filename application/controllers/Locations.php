@@ -24,8 +24,8 @@ class Locations extends BasicController {
 		),
 	);
 
-	protected $permission_view = 'primary';
-	protected $permission_edit = 'primary';
+	protected $permission_view = 'locations';
+	protected $permission_edit = 'locations';
 
 	public function __construct()
 	{

@@ -14,7 +14,7 @@ class Login extends CI_Controller {
 	{
 		if ($this->auth->is_logged_in())
 		{
-			redirect('primary');
+			redirect('product_registration');
 		}
 
 		$this->load->view('auth/login', array(
@@ -28,7 +28,7 @@ class Login extends CI_Controller {
 	{
 		if ($this->auth->is_logged_in())
 		{
-			redirect('primary');
+			redirect('product_registration');
 		}
 
 		$this->form_validation->set_rules('username', 'Username', 'required|trim');
@@ -55,7 +55,7 @@ class Login extends CI_Controller {
 			redirect($redirect);
 		}
 
-		redirect('primary');
+		redirect('product_registration');
 	}
 
 	public function logout()

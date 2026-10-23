@@ -16,12 +16,6 @@ $config['permission_groups'] = array(
 			'product.edit' => 'Edit',
 		),
 	),
-	'primary' => array(
-		'label'       => 'Primary',
-		'permissions' => array(
-			'primary' => 'Access',
-		),
-	),
 );
 
 $config['all_permissions'] = array(
@@ -29,5 +23,4 @@ $config['all_permissions'] = array(
 	'organization.edit',
 	'product.view',
 	'product.edit',
-	'primary',
 );

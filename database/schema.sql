@@ -3,6 +3,21 @@
 CREATE DATABASE IF NOT EXISTS `national_gs1_registry` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
 USE `national_gs1_registry`;
 
+CREATE TABLE IF NOT EXISTS `organizations` (
+	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(255) NOT NULL,
+	`registration_number` VARCHAR(100) NULL,
+	`gs1_prefix` VARCHAR(50) NULL,
+	`registration_date` DATE NULL,
+	`reregistration_date` DATE NULL,
+	`expiry_date` DATE NULL,
+	`address` TEXT NULL,
+	`procedure_number` VARCHAR(50) NULL,
+	`description` TEXT NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NOT NULL,
+	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 CREATE TABLE IF NOT EXISTS `products` (
@@ -27,21 +42,6 @@ CREATE TABLE IF NOT EXISTS `products` (
 		FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-CREATE TABLE IF NOT EXISTS `organizations` (
-	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-	`name` VARCHAR(255) NOT NULL,
-	`registration_number` VARCHAR(100) NULL,
-	`gs1_prefix` VARCHAR(50) NULL,
-	`registration_date` DATE NULL,
-	`reregistration_date` DATE NULL,
-	`expiry_date` DATE NULL,
-	`address` TEXT NULL,
-	`procedure_number` VARCHAR(50) NULL,
-	`description` TEXT NULL,
-	`created_at` DATETIME NOT NULL,
-	`updated_at` DATETIME NOT NULL,
-	PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE IF NOT EXISTS `organization_archive` (
 	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -82,6 +82,21 @@ CREATE TABLE IF NOT EXISTS `product_archive` (
 	KEY `idx_product_archive_organization` (`organization_id`),
 	KEY `idx_product_archive_archived` (`archived_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+CREATE TABLE IF NOT EXISTS `accounts` (
+	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	`username` VARCHAR(100) NOT NULL,
+	`password` VARCHAR(255) NOT NULL,
+	`full_name` VARCHAR(255) NOT NULL,
+	`is_admin` TINYINT(1) NOT NULL DEFAULT 0,
+	`is_active` TINYINT(1) NOT NULL DEFAULT 1,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NOT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 CREATE TABLE IF NOT EXISTS `organization_registrations` (
 	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -129,19 +144,6 @@ CREATE TABLE IF NOT EXISTS `locations` (
 	`created_at` DATETIME NOT NULL,
 	`updated_at` DATETIME NOT NULL,
 	PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE IF NOT EXISTS `accounts` (
-	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-	`username` VARCHAR(100) NOT NULL,
-	`password` VARCHAR(255) NOT NULL,
-	`full_name` VARCHAR(255) NOT NULL,
-	`is_admin` TINYINT(1) NOT NULL DEFAULT 0,
-	`is_active` TINYINT(1) NOT NULL DEFAULT 1,
-	`created_at` DATETIME NOT NULL,
-	`updated_at` DATETIME NOT NULL,
-	PRIMARY KEY (`id`),
-	UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE IF NOT EXISTS `account_permissions` (
