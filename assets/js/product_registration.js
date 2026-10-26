@@ -1214,7 +1214,7 @@
 					'aria-selected="' + (isActive ? 'true' : 'false') + '" ' +
 					'data-product-registration-id="' + tab.product_registration_id + '"' +
 					(isCompleted ? ' data-completed="true"' : '') + '>' +
-					'<i class="fas fa-file-zipper me-1"></i>' + escapeHtml(tab.file_name) +
+					'<i class="fas ' + (/\.(xls|xlsx)$/i.test(tab.file_name || '') ? 'fa-file-excel' : 'fa-file-zipper') + ' me-1"></i>' + escapeHtml(tab.file_name) +
 					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
 					(isCompleted
 						? '<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>'
@@ -1298,19 +1298,19 @@
 		clearInputAfterSelect: true,
 		uploadErrorMessage: t('reg_upload_error'),
 		hints: {
-			empty: t('reg_select_zip'),
+			empty: t('reg_select_files'),
 			selected: function (count) {
-				return count + ' file(s) ready to upload.';
+				return t('reg_files_ready', { count: count });
 			},
 			uploading: t('reg_uploading'),
 		},
 		normalizeFiles: function (fileList) {
 			const files = Array.from(fileList || []).filter(function (file) {
-				return /\.zip$/i.test(file.name);
+				return /\.(zip|xls|xlsx)$/i.test(file.name);
 			});
 
 			if (!files.length && fileList && fileList.length) {
-				showToast(t('reg_zip_only'), 'error');
+				showToast(t('reg_files_only'), 'error');
 				return null;
 			}
 

@@ -33,7 +33,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								aria-selected="<?php echo $index === 0 ? 'true' : 'false'; ?>"
 								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 							>
-								<i class="fas fa-file-zipper me-1"></i><?php echo html_escape($tab['file_name']); ?>
+								<i class="fas <?php echo preg_match('/\.(xls|xlsx)$/i', $tab['file_name']) ? 'fa-file-excel' : 'fa-file-zipper'; ?> me-1"></i><?php echo html_escape($tab['file_name']); ?>
 								<span class="badge bg-secondary ms-2"><?php echo count($tab['rows']); ?></span>
 							</button>
 							<button
@@ -92,10 +92,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					</p>
 
 					<div class="procedure-upload-zone mb-3">
-						<input type="file" name="zip_files[]" accept=".zip,application/zip" multiple class="procedure-upload-input">
+						<input type="file" name="zip_files[]" accept=".zip,.xls,.xlsx,application/zip,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple class="procedure-upload-input">
 						<div class="procedure-upload-content">
-							<i class="fas fa-file-zipper fa-2x text-primary mb-3"></i>
-							<p class="mb-1 fw-semibold"><?php echo html_escape(app_line('reg_drop_zip')); ?></p>
+							<i class="fas fa-file-arrow-up fa-2x text-primary mb-3"></i>
+							<p class="mb-1 fw-semibold"><?php echo html_escape(app_line('reg_drop_files')); ?></p>
 							<p class="text-muted small mb-0"><?php echo html_escape(app_line('reg_multi_product')); ?></p>
 						</div>
 					</div>
@@ -104,7 +104,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				</div>
 
 				<div class="procedure-upload-actions">
-					<span class="text-muted small procedure-upload-hint d-block mb-2"><?php echo html_escape(app_line('reg_select_zip')); ?></span>
+					<span class="text-muted small procedure-upload-hint d-block mb-2"><?php echo html_escape(app_line('reg_select_files')); ?></span>
 					<div class="text-end">
 						<button type="submit" class="btn btn-primary procedure-upload-submit" data-mdb-ripple-init disabled>
 							<i class="fas fa-upload me-1"></i> <?php echo html_escape(app_line('reg_upload_process')); ?>
@@ -120,7 +120,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h5 class="modal-title" id="procedureUploadModalLabel"><?php echo html_escape(app_line('reg_upload_zip_title')); ?></h5>
+				<h5 class="modal-title" id="procedureUploadModalLabel"><?php echo html_escape(app_line('reg_upload_files_title')); ?></h5>
 				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
 			</div>
 			<form class="procedure-upload-form" enctype="multipart/form-data">
@@ -130,10 +130,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					</p>
 
 					<div class="procedure-upload-zone mb-3">
-						<input type="file" name="zip_files[]" accept=".zip,application/zip" multiple class="procedure-upload-input">
+						<input type="file" name="zip_files[]" accept=".zip,.xls,.xlsx,application/zip,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple class="procedure-upload-input">
 						<div class="procedure-upload-content">
-							<i class="fas fa-file-zipper fa-2x text-primary mb-3"></i>
-							<p class="mb-1 fw-semibold"><?php echo html_escape(app_line('reg_drop_zip')); ?></p>
+							<i class="fas fa-file-arrow-up fa-2x text-primary mb-3"></i>
+							<p class="mb-1 fw-semibold"><?php echo html_escape(app_line('reg_drop_files')); ?></p>
 							<p class="text-muted small mb-0"><?php echo html_escape(app_line('reg_multi_product')); ?></p>
 						</div>
 					</div>
@@ -141,7 +141,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					<div class="procedure-selected-files d-none mb-0"></div>
 				</div>
 				<div class="modal-footer procedure-upload-actions">
-					<span class="text-muted small procedure-upload-hint me-auto"><?php echo html_escape(app_line('reg_select_zip')); ?></span>
+					<span class="text-muted small procedure-upload-hint me-auto"><?php echo html_escape(app_line('reg_select_files')); ?></span>
 					<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_cancel')); ?></button>
 					<button type="submit" class="btn btn-primary procedure-upload-submit" data-mdb-ripple-init disabled>
 						<i class="fas fa-upload me-1"></i> <?php echo html_escape(app_line('reg_upload_process')); ?>

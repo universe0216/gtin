@@ -22,11 +22,11 @@ class Product_registration_processor {
 			throw new RuntimeException(app_line('upload_no_files'));
 		}
 
-		$normalized = $this->normalize_uploaded_files($files);
+		$normalized = $this->filter_product_uploads($this->normalize_uploaded_files($files));
 
 		if (empty($normalized))
 		{
-			throw new RuntimeException(app_line('upload_no_valid_zip'));
+			throw new RuntimeException(app_line('upload_no_valid_product_file'));
 		}
 
 		$this->assign_procedure_numbers($normalized);
@@ -85,7 +85,9 @@ class Product_registration_processor {
 		$original_name = $file['name'];
 		$parsed = array(
 			'procedure_number'  => $file['procedure_number'],
-			'organization_name' => $this->parse_organization_name($original_name),
+			'organization_name' => ! empty($file['organization_name'])
+				? $file['organization_name']
+				: $this->parse_organization_name($original_name),
 		);
 		$folder_name = $parsed['procedure_number'].'_'.$parsed['organization_name'];
 		$registration_dir = $month_dir.$folder_name.DIRECTORY_SEPARATOR;
@@ -98,9 +100,21 @@ class Product_registration_processor {
 			throw new RuntimeException(app_line('upload_failed_store', $original_name));
 		}
 
-		$this->extract_zip($zip_path, $registration_dir);
+		$extension = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
 
-		$xls_path = $this->find_spreadsheet($registration_dir);
+		if ($extension === 'zip')
+		{
+			$this->extract_zip($zip_path, $registration_dir);
+			$xls_path = $this->find_spreadsheet($registration_dir);
+		}
+		elseif (in_array($extension, array('xls', 'xlsx'), TRUE))
+		{
+			$xls_path = $zip_path;
+		}
+		else
+		{
+			throw new RuntimeException(app_line('upload_unsupported_file', $original_name));
+		}
 
 		if ( ! $xls_path)
 		{
@@ -213,33 +227,90 @@ class Product_registration_processor {
 		return $normalized;
 	}
 
+	protected function filter_product_uploads($files)
+	{
+		$allowed = array();
+
+		foreach ($files as $file)
+		{
+			$extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+			if (in_array($extension, array('zip', 'xls', 'xlsx'), TRUE))
+			{
+				$allowed[] = $file;
+			}
+		}
+
+		return $allowed;
+	}
+
 	protected function assign_procedure_numbers(&$files)
 	{
 		$timestamp = date('YmdHis');
-		$single = count($files) === 1;
+		$unnumbered = 0;
 
-		foreach ($files as $index => &$file)
+		foreach ($files as $file)
 		{
+			if ($this->filename_process_parts($file['name']) === NULL)
+			{
+				$unnumbered++;
+			}
+		}
+
+		$single = $unnumbered === 1;
+		$generated = 0;
+
+		foreach ($files as &$file)
+		{
+			$parts = $this->filename_process_parts($file['name']);
+
+			if ($parts !== NULL)
+			{
+				$file['procedure_number'] = $parts['procedure_number'];
+				$file['organization_name'] = $parts['organization_name'];
+				continue;
+			}
+
+			$generated++;
 			$file['procedure_number'] = $single
 				? $timestamp
-				: $timestamp.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT);
+				: $timestamp.str_pad((string) $generated, 3, '0', STR_PAD_LEFT);
+			$file['organization_name'] = trim(pathinfo($file['name'], PATHINFO_FILENAME));
 		}
 
 		unset($file);
 	}
 
-	protected function parse_organization_name($filename)
+	protected function filename_process_parts($filename)
 	{
 		$basename = pathinfo($filename, PATHINFO_FILENAME);
 
-		// Keep backwards compatibility with the old [number]_[name] convention
-		// without requiring it; fall back to the full file name otherwise.
-		if (preg_match('/^\d+_(.+)$/u', $basename, $matches))
+		if (preg_match('/^(\d+)_(.+)$/u', $basename, $matches))
 		{
-			return trim($matches[1]);
+			$organization_name = trim($matches[2]);
+
+			if ($organization_name !== '')
+			{
+				return array(
+					'procedure_number'  => $matches[1],
+					'organization_name' => $organization_name,
+				);
+			}
 		}
 
-		return trim($basename);
+		return NULL;
+	}
+
+	protected function parse_organization_name($filename)
+	{
+		$parts = $this->filename_process_parts($filename);
+
+		if ($parts !== NULL)
+		{
+			return $parts['organization_name'];
+		}
+
+		return trim(pathinfo($filename, PATHINFO_FILENAME));
 	}
 
 	protected function extract_zip($zip_path, $destination)

@@ -47,7 +47,7 @@ class Product_registration extends AuthenticatedController {
 
 		if (empty($_FILES['zip_files']))
 		{
-			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_select_zip_server')), 422);
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_select_files_server')), 422);
 		}
 
 		try
