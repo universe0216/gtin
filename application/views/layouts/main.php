@@ -33,7 +33,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/js/app.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/jqx_grid.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/entity_list.js'); ?>"></script>
-<script src="<?php echo base_url('assets/js/organization_detail.js'); ?>"></script>
+<?php foreach (($page_scripts ?? array()) as $page_script): ?>
+<script src="<?php echo base_url($page_script); ?>"></script>
+<?php endforeach; ?>
 <script src="<?php echo base_url('assets/js/crud.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/admin.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/image-viewer.js'); ?>"></script>

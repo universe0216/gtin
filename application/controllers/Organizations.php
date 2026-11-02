@@ -7,6 +7,11 @@ class Organizations extends BasicController {
 
 	protected $entity = 'organizations';
 	protected $entity_label = 'Organizations';
+	protected $list_view = 'organizations/index';
+	protected $list_scripts = array(
+		'assets/js/organizations.js',
+		'assets/js/organization_detail.js',
+	);
 	protected $add_url_route = 'organization_registration';
 	protected $list_search_placeholder = 'Search name, registration number, GS1 prefix, parent, phone...';
 	protected $list_empty_message = 'No organizations found.';

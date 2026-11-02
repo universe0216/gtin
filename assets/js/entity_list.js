@@ -10,7 +10,6 @@
 	const columns = config.columns || [];
 	const perPage = config.perPage || 10;
 	const perPageOptions = (config.perPageOptions || [5, 10, 20, 50]).map(String);
-	const detailEnabled = !!(config.detail && config.detail.enabled);
 
 	const searchForm = document.getElementById('entityListSearchForm');
 	const searchInput = document.getElementById('entityListSearchInput');
@@ -47,7 +46,7 @@
 		}),
 		pagesize: perPage,
 		pagesizeoptions: perPageOptions,
-		selectionmode: detailEnabled ? 'singlerow' : 'none',
+		selectionmode: 'none',
 		emptyMessage: config.emptyMessage,
 		getParams: function () {
 			return currentSearch ? { q: currentSearch } : {};
@@ -60,22 +59,6 @@
 
 	if (!grid) {
 		return;
-	}
-
-	if (detailEnabled) {
-		grid.$el.addClass('entity-list-grid-clickable');
-		grid.$el.on('rowclick', function (event) {
-			const args = event.args;
-			const rowdata = args.row && args.row.bounddata
-				? args.row.bounddata
-				: grid.$el.jqxGrid('getrowdata', args.rowindex);
-
-			if (rowdata && rowdata.id) {
-				document.dispatchEvent(new CustomEvent('entityListRowSelected', {
-					detail: { id: rowdata.id },
-				}));
-			}
-		});
 	}
 
 	function applySearch() {

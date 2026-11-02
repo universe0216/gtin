@@ -14,6 +14,7 @@ class BasicController extends AuthenticatedController {
 	protected $list_per_page = 10;
 	protected $list_per_page_options = array(5, 10, 20, 50);
 	protected $list_view = 'entity_list/index';
+	protected $list_scripts = array();
 	protected $list_columns = array();
 	protected $list_search_placeholder = 'Search...';
 	protected $list_empty_message = 'No records found.';
@@ -209,6 +210,7 @@ class BasicController extends AuthenticatedController {
 			'list_per_page_options'     => $this->list_per_page_options,
 			'detail_modal_partial'      => $this->get_detail_modal_partial(),
 			'detail_config'             => $this->get_detail_config(),
+			'page_scripts'              => $this->list_scripts,
 		);
 
 		$this->render($this->list_view, $data);

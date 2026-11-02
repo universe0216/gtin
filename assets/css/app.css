@@ -585,7 +585,8 @@ html[data-mdb-theme="dark"] body {
 	min-width: 4.5rem;
 }
 
-.entity-list-row-clickable {
+.entity-list-row-clickable,
+.entity-list-grid-clickable .jqx-grid-cell {
 	cursor: pointer;
 }
 

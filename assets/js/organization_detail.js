@@ -1,7 +1,7 @@
 (function () {
 	'use strict';
 
-	const listConfig = window.ENTITY_LIST_CONFIG || {};
+	const listConfig = window.ORGANIZATIONS_CONFIG || {};
 	const detailConfig = listConfig.detail;
 
 	if (!detailConfig || !detailConfig.enabled) {
@@ -248,7 +248,7 @@
 
 				renderInfoFields(record);
 				showInfoAlert(result.message || t('org_updated'), 'success');
-				document.dispatchEvent(new CustomEvent('entityListRefresh'));
+				document.dispatchEvent(new CustomEvent('organizationsListRefresh'));
 
 				// Refresh products in case the rename affected them.
 				if (productsGrid) {
@@ -533,7 +533,7 @@
 		productsGrid.reload();
 	}, 300);
 
-	document.addEventListener('entityListRowSelected', function (event) {
+	document.addEventListener('organizationRowSelected', function (event) {
 		if (event.detail && event.detail.id) {
 			openDetail(String(event.detail.id));
 		}
