@@ -807,8 +807,18 @@ body.modal-open .modal-backdrop.app-alert-backdrop {
 }
 
 #procedureTabContent > .tab-pane > .procedure-tab-meta,
-#orgRegistrationTabContent > .tab-pane > .procedure-tab-meta {
+#orgRegistrationTabContent > .tab-pane > .procedure-tab-meta,
+#procedureTabContent > .tab-pane > .procedure-factory-alert {
 	flex-shrink: 0;
+}
+
+.procedure-factory-alert {
+	margin-bottom: 0.75rem;
+	padding: 0.65rem 0.9rem;
+	border-radius: 0.5rem;
+	border: 1px solid rgba(245, 158, 11, 0.45);
+	background: rgba(245, 158, 11, 0.12);
+	color: #fde68a;
 }
 
 .procedure-table-scroll {
@@ -1358,6 +1368,22 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	border: 1px solid var(--app-border-subtle);
 	border-radius: 0.375rem;
 	background-color: var(--app-surface-raised);
+}
+
+.procedure-barcode-1d-control {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.procedure-barcode-1d-control .procedure-detail-info-input {
+	flex: 1 1 auto;
+}
+
+.procedure-barcode-auto-assign {
+	flex: 0 0 auto;
+	white-space: nowrap;
 }
 
 .procedure-detail-info-input {

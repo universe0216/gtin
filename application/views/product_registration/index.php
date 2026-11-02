@@ -20,6 +20,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div id="procedureTabsWrapper" class="<?php echo empty($tabs) ? 'd-none' : ''; ?>">
 			<ul class="nav nav-tabs procedure-tabs mb-3" id="procedureTabs" role="tablist">
 				<?php foreach ($tabs as $index => $tab): ?>
+					<?php $tab_completed = strcasecmp((string) $tab['status'], 'completed') === 0; ?>
 					<li class="nav-item procedure-tab-nav-item" role="presentation">
 						<div class="procedure-tab-nav-wrap">
 							<button
@@ -32,16 +33,22 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								aria-controls="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>"
 								aria-selected="<?php echo $index === 0 ? 'true' : 'false'; ?>"
 								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+								<?php echo $tab_completed ? 'data-completed="true"' : ''; ?>
 							>
 								<i class="fas <?php echo preg_match('/\.(xls|xlsx)$/i', $tab['file_name']) ? 'fa-file-excel' : 'fa-file-zipper'; ?> me-1"></i><?php echo html_escape($tab['file_name']); ?>
 								<span class="badge bg-secondary ms-2"><?php echo count($tab['rows']); ?></span>
+								<?php if (strcasecmp((string) $tab['status'], 'Saved') === 0 || strcasecmp((string) $tab['status'], 'completed') === 0): ?>
+									<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>
+								<?php endif; ?>
 							</button>
 							<button
 								type="button"
-								class="procedure-tab-nav-close product-registration-tab-delete-btn"
+								class="procedure-tab-nav-close <?php echo $tab_completed ? 'product-registration-tab-close-btn' : 'product-registration-tab-delete-btn'; ?>"
 								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
-								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
-								aria-label="<?php echo html_escape(app_line('reg_stop_procedure')); ?>"
+								<?php if ( ! $tab_completed): ?>
+									data-file-name="<?php echo html_escape($tab['file_name']); ?>"
+								<?php endif; ?>
+								aria-label="<?php echo html_escape(app_line($tab_completed ? 'reg_close_tab' : 'reg_stop_procedure')); ?>"
 								data-mdb-ripple-init
 							>
 								<i class="fas fa-times" aria-hidden="true"></i>
@@ -53,6 +60,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 			<div class="tab-content" id="procedureTabContent">
 				<?php foreach ($tabs as $index => $tab): ?>
+					<?php $tab_completed = strcasecmp((string) $tab['status'], 'completed') === 0; ?>
 					<div
 						class="tab-pane fade<?php echo $index === 0 ? ' show active' : ''; ?>"
 						id="product-registration-tab-<?php echo (int) $tab['product_registration_id']; ?>"
@@ -65,18 +73,45 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							<span><strong><?php echo html_escape(app_line('reg_procedure')); ?>:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
 							<span><strong><?php echo html_escape(app_line('reg_organization')); ?>:</strong> <?php echo html_escape($tab['organization_name']); ?></span>
 							<span><strong><?php echo html_escape(app_line('reg_processor')); ?>:</strong> <?php echo html_escape($tab['processor_name']); ?></span>
-							<span><strong><?php echo html_escape(app_line('reg_status')); ?>:</strong> <?php echo html_escape($tab['status']); ?></span>
+							<span><strong><?php echo html_escape(app_line('reg_status')); ?>:</strong> <span class="procedure-tab-status-value"><?php echo html_escape($tab['status']); ?></span></span>
 							<span><strong><?php echo html_escape(app_line('reg_uploaded')); ?>:</strong> <?php echo html_escape($tab['created_at']); ?></span>
-							<button
-								type="button"
-								class="btn btn-sm btn-outline-danger ms-auto product-registration-tab-delete-btn"
-								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
-								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
-								data-mdb-ripple-init
-							>
-								<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('common_delete')); ?>
-							</button>
+							<?php if ($tab_completed): ?>
+								<button
+									type="button"
+									class="btn btn-sm btn-outline-secondary ms-auto product-registration-tab-close-btn"
+									data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+									data-mdb-ripple-init
+								>
+									<i class="fas fa-times me-1"></i> <?php echo html_escape(app_line('common_close')); ?>
+								</button>
+							<?php else: ?>
+								<div class="ms-auto d-flex gap-2">
+									<button
+										type="button"
+										class="btn btn-sm btn-outline-primary product-registration-tab-save-btn"
+										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+										data-mdb-ripple-init
+									>
+										<i class="fas fa-save me-1"></i> <?php echo html_escape(app_line('common_save')); ?>
+									</button>
+									<button
+										type="button"
+										class="btn btn-sm btn-outline-danger product-registration-tab-delete-btn"
+										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+										data-file-name="<?php echo html_escape($tab['file_name']); ?>"
+										data-mdb-ripple-init
+									>
+										<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('common_delete')); ?>
+									</button>
+								</div>
+							<?php endif; ?>
 						</div>
+
+						<?php if ( ! empty($tab['unregistered_factories'])): ?>
+							<div class="procedure-factory-alert" role="alert">
+								<i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i><?php echo html_escape(app_line('reg_factory_not_registered')); ?>
+							</div>
+						<?php endif; ?>
 
 						<div class="product-registration-grid"></div>
 					</div>

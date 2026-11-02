@@ -42,4 +42,39 @@ class Organization_model extends Basic_model {
 			->get($this->table)
 			->row_array();
 	}
+
+	public function missing_names(array $names)
+	{
+		$wanted = array();
+
+		foreach ($names as $name)
+		{
+			$name = trim((string) $name);
+
+			if ($name === '')
+			{
+				continue;
+			}
+
+			$wanted[strtolower($name)] = $name;
+		}
+
+		if (empty($wanted))
+		{
+			return array();
+		}
+
+		$rows = $this->db
+			->select('name')
+			->where_in('name', array_values($wanted))
+			->get($this->table)
+			->result_array();
+
+		foreach ($rows as $row)
+		{
+			unset($wanted[strtolower(trim((string) $row['name']))]);
+		}
+
+		return array_values($wanted);
+	}
 }

@@ -95,6 +95,29 @@ class Product_model extends Basic_model {
 		$this->db->group_end();
 	}
 
+	public function find_catalog_match($organization_id, $barcode, $name)
+	{
+		$this->db
+			->from($this->table)
+			->where('org_id', (int) $organization_id);
+
+		$barcode = trim((string) $barcode);
+
+		if ($barcode !== '')
+		{
+			$this->db->where('barcode_1d', $barcode);
+		}
+		else
+		{
+			$this->db->where('name', trim((string) $name));
+		}
+
+		return $this->db
+			->limit(1)
+			->get()
+			->row_array();
+	}
+
 	public function get_barcodes_by_organization($organization_id)
 	{
 		return $this->db

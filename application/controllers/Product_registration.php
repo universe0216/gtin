@@ -444,6 +444,222 @@ class Product_registration extends AuthenticatedController {
 		));
 	}
 
+	public function auto_assign_barcode($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$item = $this->product_registration_item_model->get($id);
+
+		if ( ! $item)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_item_not_found')), 404);
+		}
+
+		$registration = $this->product_registration_model->get($item['product_registration_id']);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
+		}
+
+		if ($registration['status'] === 'completed')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_completed_locked'),
+			), 422);
+		}
+
+		$barcode_type = trim((string) $this->input->post('barcode_1d_type', FALSE));
+
+		if ($barcode_type === '')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_barcode_1d_type_required'),
+			), 422);
+		}
+
+		$info = json_decode((string) $item['info'], TRUE);
+
+		if ( ! is_array($info))
+		{
+			$info = array();
+		}
+
+		$cells = $info['cells'] ?? array();
+		$factory_name = isset($cells[22]) ? trim((string) $cells[22]) : '';
+		$reserved = $this->input->post('reserved');
+
+		if ( ! is_array($reserved))
+		{
+			$reserved = array();
+		}
+
+		$barcode_index = $this->barcode_cell_index($info['columns'] ?? array());
+		$siblings = $this->product_registration_item_model->get_by_product_registration($item['product_registration_id']);
+
+		foreach ($siblings as $sibling)
+		{
+			if ((int) $sibling['id'] === (int) $item['id'])
+			{
+				continue;
+			}
+
+			$sibling_info = json_decode((string) $sibling['info'], TRUE);
+
+			if ( ! is_array($sibling_info) || $barcode_index === NULL)
+			{
+				continue;
+			}
+
+			$sibling_cells = $sibling_info['cells'] ?? array();
+
+			if (isset($sibling_cells[$barcode_index]) && trim((string) $sibling_cells[$barcode_index]) !== '')
+			{
+				$reserved[] = $sibling_cells[$barcode_index];
+			}
+		}
+
+		$result = $this->product_registration_processor->assign_factory_barcode($factory_name, $barcode_type, $reserved);
+		$messages = array(
+			'factory' => app_line('reg_factory_not_registered'),
+			'prefix'  => app_line('reg_auto_assign_no_prefix'),
+			'full'    => app_line('reg_auto_assign_full'),
+			'type'    => app_line('reg_auto_assign_unsupported'),
+		);
+
+		if ( ! empty($result['error']))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => $messages[$result['error']] ?? app_line('reg_auto_assign_unsupported'),
+			), 422);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => array(
+				'barcode' => $result['barcode'],
+			),
+		));
+	}
+
+	public function save_products($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$registration = $this->product_registration_model->get($id);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
+		}
+
+		if ($registration['status'] === 'completed')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_completed_locked'),
+			), 422);
+		}
+
+		$this->load->model('product_model');
+		$this->load->model('organization_model');
+
+		$items = $this->product_registration_item_model->get_by_product_registration($registration['id']);
+		$approved = array();
+
+		foreach ($items as $item)
+		{
+			if (($item['status'] ?? '') === 'approved')
+			{
+				$approved[] = $item;
+			}
+		}
+
+		if (empty($approved))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_save_none'),
+			), 422);
+		}
+
+		$rows = array();
+
+		foreach ($approved as $item)
+		{
+			$built = $this->product_row_from_registration_item($item, $registration);
+
+			if (isset($built['error']))
+			{
+				return $this->json_response(array(
+					'success' => FALSE,
+					'message' => $built['error'],
+				), 422);
+			}
+
+			$rows[] = $built;
+		}
+
+		$this->db->trans_begin();
+		$saved = 0;
+
+		foreach ($rows as $row)
+		{
+			$existing = $this->product_model->find_catalog_match($row['org_id'], $row['barcode_1d'], $row['name']);
+
+			if ($existing)
+			{
+				$ok = $this->product_model->update($existing['id'], $row);
+			}
+			else
+			{
+				$ok = $this->product_model->insert($row);
+			}
+
+			if ( ! $ok)
+			{
+				$this->db->trans_rollback();
+
+				return $this->json_response(array(
+					'success' => FALSE,
+					'message' => app_line('reg_save_failed'),
+				), 500);
+			}
+
+			$saved++;
+		}
+
+		if ( ! $this->product_registration_model->update($registration['id'], array('status' => 'completed')))
+		{
+			$this->db->trans_rollback();
+
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_save_failed'),
+			), 500);
+		}
+
+		$this->db->trans_commit();
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('reg_save_success', $saved),
+			'data'    => array(
+				'saved'  => $saved,
+				'status' => 'completed',
+			),
+		));
+	}
+
 	public function delete($id = NULL)
 	{
 		if ($this->input->method(TRUE) !== 'POST')
@@ -456,6 +672,11 @@ class Product_registration extends AuthenticatedController {
 		if ( ! $registration)
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
+		}
+
+		if ($registration['status'] === 'completed')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_completed_locked')), 422);
 		}
 
 		if ( ! empty($registration['storage_path']))
@@ -593,6 +814,112 @@ class Product_registration extends AuthenticatedController {
 		$info['cells'] = array_values($cells);
 
 		return json_encode($info);
+	}
+
+	protected function product_row_from_registration_item($item, $registration)
+	{
+		$info = json_decode((string) $item['info'], TRUE);
+
+		if ( ! is_array($info))
+		{
+			$info = array();
+		}
+
+		$columns = $info['columns'] ?? array();
+		$cells = $info['cells'] ?? array();
+		$factory_name = $this->registration_cell($columns, $cells, array('factory name'));
+
+		if ($factory_name === '' && isset($cells[22]))
+		{
+			$factory_name = trim((string) $cells[22]);
+		}
+
+		$organization = $factory_name === '' ? NULL : $this->organization_model->get_by_name($factory_name);
+
+		if ( ! $organization)
+		{
+			return array('error' => app_line('reg_factory_not_registered'));
+		}
+
+		$name = $this->registration_cell($columns, $cells, array('product name'));
+
+		if ($name === '')
+		{
+			$name = trim((string) ($item['name'] ?? ''));
+		}
+
+		if ($name === '')
+		{
+			return array('error' => app_line('reg_save_failed'));
+		}
+
+		return array(
+			'name'              => $this->limit_text($name, 255, ''),
+			'standard_number'   => $this->limit_text($this->registration_cell($columns, $cells, array('standard')), 100),
+			'brand'             => $this->limit_text($this->registration_cell($columns, $cells, array('brand', 'size of brand')), 255),
+			'package_type'      => $this->limit_text($this->registration_cell($columns, $cells, array('package type')), 100),
+			'org_id'            => (int) $organization['id'],
+			'effect'            => $this->limit_text($this->registration_cell($columns, $cells, array('effect')), 65535),
+			'usage'             => $this->limit_text($this->registration_cell($columns, $cells, array('usage')), 65535),
+			'price'             => $this->limit_text($this->registration_cell($columns, $cells, array('price')), 255),
+			'effective_period'  => $this->limit_text($this->registration_cell($columns, $cells, array('perios before expired', 'period before expired')), 255),
+			'description'       => $this->limit_text($this->registration_cell($columns, $cells, array('notes', 'description')), 65535),
+			'barcode_1d'        => $this->limit_text($this->registration_cell($columns, $cells, array('1d barcode', 'barcode')), 255),
+			'barcode_1d_type'   => $this->limit_text($this->registration_cell($columns, $cells, array('type of 1d barcode')), 50),
+			'barcode_2d'        => $this->limit_text($this->registration_cell($columns, $cells, array('2d barcode')), 255),
+			'barcode_2d_type'   => $this->limit_text($this->registration_cell($columns, $cells, array('type of 2d barcode')), 50),
+			'reg_date'          => $this->registration_date($this->registration_cell($columns, $cells, array('receivedate', 'receive date'))),
+			'processor_name'    => $this->limit_text($registration['processor_name'] ?? '', 255),
+			'c_code'            => $this->limit_text($this->registration_cell($columns, $cells, array('c_code', 'c code')), 255),
+		);
+	}
+
+	protected function registration_cell($columns, $cells, $names)
+	{
+		$index = $this->find_column_index($columns, $names);
+
+		if ($index === NULL || ! isset($cells[$index]))
+		{
+			return '';
+		}
+
+		return trim((string) $cells[$index]);
+	}
+
+	protected function registration_date($value)
+	{
+		$value = trim((string) $value);
+
+		if ($value === '')
+		{
+			return NULL;
+		}
+
+		$time = strtotime($value);
+
+		if ($time === FALSE)
+		{
+			return NULL;
+		}
+
+		return date('Y-m-d', $time);
+	}
+
+	protected function limit_text($value, $max, $empty = NULL)
+	{
+		$value = trim((string) $value);
+
+		if ($value === '')
+		{
+			return $empty;
+		}
+
+		if (function_exists('mb_substr'))
+		{
+			return mb_substr($value, 0, $max);
+		}
+
+		return substr($value, 0, $max);
 	}
 
 	protected function barcode_cell_index($columns)

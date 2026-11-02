@@ -573,6 +573,7 @@ class Product_registration_processor {
 	{
 		$columns = $fallback_headers;
 		$rows = array();
+		$factory_names = array();
 
 		foreach ($saved_items as $item)
 		{
@@ -589,6 +590,12 @@ class Product_registration_processor {
 			}
 
 			$cells = $info['cells'] ?? array($item['product_procedure_number'], $item['name']);
+			$factory_name = isset($cells[22]) ? trim((string) $cells[22]) : '';
+
+			if ($factory_name !== '')
+			{
+				$factory_names[$factory_name] = $factory_name;
+			}
 
 			if (empty($columns))
 			{
@@ -630,8 +637,71 @@ class Product_registration_processor {
 			$registration['organization_name'],
 			count($saved_items)
 		);
+		$this->CI->load->model('organization_model');
+		$tab['unregistered_factories'] = $this->CI->organization_model->missing_names(array_values($factory_names));
 
 		return $tab;
+	}
+
+	public function assign_factory_barcode($factory_name, $barcode_type, array $reserved_barcodes = array())
+	{
+		$this->CI->load->helper('barcode');
+		$this->CI->load->model('organization_model');
+		$this->CI->load->model('product_model');
+
+		$factory_name = trim((string) $factory_name);
+		$organization = $factory_name === '' ? NULL : $this->CI->organization_model->get_by_name($factory_name);
+
+		if ( ! $organization)
+		{
+			return array('error' => 'factory');
+		}
+
+		$prefix = $this->normalize_gs1_prefix($organization['gs1_prefix'] ?? '');
+
+		if ($prefix === '')
+		{
+			return array('error' => 'prefix');
+		}
+
+		$used = array();
+		$barcodes = $reserved_barcodes;
+
+		foreach ($this->CI->product_model->get_barcodes_by_organization((int) $organization['id']) as $product)
+		{
+			$barcodes[] = $product['barcode_1d'];
+		}
+
+		foreach ($barcodes as $barcode)
+		{
+			$item_reference = barcode_item_reference($barcode, $prefix);
+
+			if ($item_reference !== NULL)
+			{
+				$used[$item_reference] = TRUE;
+			}
+		}
+
+		$next_reference = barcode_next_item_reference($used);
+
+		if ($next_reference === NULL)
+		{
+			return array('error' => 'full');
+		}
+
+		$body = $prefix.str_pad((string) $next_reference, 3, '0', STR_PAD_LEFT);
+		$barcode = barcode_format_assigned(barcode_normalize_1d_type($barcode_type), $body);
+
+		if ($barcode === NULL)
+		{
+			return array('error' => 'type');
+		}
+
+		return array(
+			'error'   => NULL,
+			'barcode' => $barcode,
+			'body'    => $body,
+		);
 	}
 
 	protected function calculate_available_barcodes($organization_name, $count)

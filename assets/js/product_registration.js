@@ -1062,8 +1062,19 @@
 			disabled;
 
 		if (field === 'barcode_1d' || field === 'barcode_2d') {
-			return '<input type="text" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
+			const input = '<input type="text" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
 				dataAttrs + ' value="' + saved + '">';
+
+			if (field === 'barcode_1d' && editable) {
+				return '<div class="procedure-barcode-1d-control">' +
+					input +
+					'<button type="button" class="btn btn-sm btn-outline-primary procedure-barcode-auto-assign">' +
+						escapeHtml(t('reg_auto_assign')) +
+					'</button>' +
+				'</div>';
+			}
+
+			return input;
 		}
 
 		const options = barcodeTypeOptions(field, value).map(function (option) {
@@ -1143,6 +1154,88 @@
 			}
 		}).catch(function (error) {
 			showToast(error.message || t('reg_barcode_save_failed'), 'error');
+		});
+	}
+
+	function reservedBarcodes(exceptItemId) {
+		const tab = getActiveTab();
+		const values = [];
+
+		if (!tab) {
+			return values;
+		}
+
+		const cellIndex = findColumnIndex(tab.columns || [], ['1d barcode', 'barcode']);
+
+		if (cellIndex < 0) {
+			return values;
+		}
+
+		(tab.rows || []).forEach(function (row) {
+			if (String(row.id) === String(exceptItemId)) {
+				return;
+			}
+
+			const value = String((row.cells || [])[cellIndex] || '').trim();
+
+			if (value) {
+				values.push(value);
+			}
+		});
+
+		return values;
+	}
+
+	function autoAssignBarcode(button) {
+		const typeInput = barcodeFieldInput('barcode_1d_type');
+		const valueInput = barcodeFieldInput('barcode_1d');
+		const barcodeType = typeInput ? typeInput.value.trim() : '';
+
+		if (!valueInput || !activeDetail) {
+			return;
+		}
+
+		if (!barcodeType) {
+			showAlert({
+				message: t('reg_barcode_1d_type_required'),
+				variant: 'danger',
+			});
+			return;
+		}
+
+		const itemId = valueInput.getAttribute('data-item-id');
+		const saveKey = (itemId || '') + ':barcode_1d';
+		const formData = new FormData();
+
+		formData.append('barcode_1d_type', barcodeType);
+		reservedBarcodes(itemId).forEach(function (barcode) {
+			formData.append('reserved[]', barcode);
+		});
+
+		button.disabled = true;
+		clearTimeout(barcodeSaveTimers.get(saveKey));
+		barcodeSaveTimers.delete(saveKey);
+
+		fetchApi(baseUrl + '/auto_assign_barcode/' + itemId, {
+			method: 'POST',
+			body: formData,
+		}).then(function (result) {
+			const barcode = result.data && result.data.barcode ? result.data.barcode : '';
+
+			if (!barcode || valueInput.getAttribute('data-item-id') !== itemId) {
+				return;
+			}
+
+			valueInput.value = barcode;
+			valueInput.classList.remove('is-invalid');
+			saveBarcodeField(valueInput);
+		}).catch(function (error) {
+			showAlert({
+				message: error.message || t('reg_barcode_save_failed'),
+				variant: 'danger',
+			});
+		}).finally(function () {
+			button.disabled = false;
 		});
 	}
 
@@ -1616,6 +1709,17 @@
 		return '<div class="product-registration-grid"></div>';
 	}
 
+	function buildFactoryAlert(tab) {
+		if (!tab || !Array.isArray(tab.unregistered_factories) || !tab.unregistered_factories.length) {
+			return '';
+		}
+
+		return '<div class="procedure-factory-alert" role="alert">' +
+			'<i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>' +
+			escapeHtml(t('reg_factory_not_registered')) +
+		'</div>';
+	}
+
 	function buildTabNavCloseButton(tab, isCompleted) {
 		if (isCompleted) {
 			return '<button type="button" class="procedure-tab-nav-close product-registration-tab-close-btn"' +
@@ -1637,6 +1741,7 @@
 
 	function buildTabButton(tab, isActive, isImported) {
 		const isCompleted = isImported || tab.status === 'completed';
+		const showSavedCheck = isCompleted || String(tab.status || '').toLowerCase() === 'saved';
 
 		return '<li class="nav-item procedure-tab-nav-item" role="presentation">' +
 			'<div class="procedure-tab-nav-wrap">' +
@@ -1651,7 +1756,7 @@
 					(isCompleted ? ' data-completed="true"' : '') + '>' +
 					'<i class="fas ' + (/\.(xls|xlsx)$/i.test(tab.file_name || '') ? 'fa-file-excel' : 'fa-file-zipper') + ' me-1"></i>' + escapeHtml(tab.file_name) +
 					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
-					(isCompleted
+					(showSavedCheck
 						? '<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>'
 						: '') +
 				'</button>' +
@@ -1660,21 +1765,107 @@
 		'</li>';
 	}
 
+	function markRegistrationSaved(registrationId, status) {
+		const key = String(registrationId);
+		const savedStatus = status || 'completed';
+		const tab = tabData.get(key);
+
+		if (tab) {
+			tab.status = savedStatus;
+		}
+
+		const pane = paneFor(key);
+		const statusEl = pane ? pane.querySelector('.procedure-tab-status-value') : null;
+
+		if (statusEl) {
+			statusEl.textContent = savedStatus;
+		}
+
+		const tabButton = document.getElementById('product-registration-tab-' + key + '-tab');
+
+		if (tabButton) {
+			tabButton.setAttribute('data-completed', 'true');
+
+			if (!tabButton.querySelector('.procedure-tab-completed-icon')) {
+				const icon = document.createElement('i');
+				icon.className = 'fas fa-check ms-2 procedure-tab-completed-icon';
+				icon.setAttribute('aria-hidden', 'true');
+				tabButton.appendChild(icon);
+			}
+		}
+
+		document.querySelectorAll('.product-registration-tab-delete-btn[' + ID_ATTR + '="' + key + '"]').forEach(function (button) {
+			button.classList.remove('product-registration-tab-delete-btn', 'btn-outline-danger');
+			button.classList.add('product-registration-tab-close-btn');
+			button.removeAttribute('data-file-name');
+
+			if (button.classList.contains('procedure-tab-nav-close')) {
+				button.setAttribute('aria-label', t('reg_close_tab'));
+				return;
+			}
+
+			button.classList.add('btn-outline-secondary');
+			button.innerHTML = '<i class="fas fa-times me-1"></i> ' + escapeHtml(t('common_close'));
+		});
+
+		if (activeDetail && String(activeDetail.regId) === key && productModalTitle) {
+			const badge = productModalTitle.querySelector('.badge');
+
+			if (badge) {
+				badge.textContent = savedStatus;
+			}
+
+			updateReviewButtonState();
+		}
+	}
+
+	function saveRegistrationProducts(button) {
+		const registrationId = button.getAttribute(ID_ATTR);
+
+		if (!registrationId) {
+			return;
+		}
+
+		button.disabled = true;
+
+		fetchApi(baseUrl + '/save_products/' + registrationId, {
+			method: 'POST',
+		}).then(function (result) {
+			markRegistrationSaved(registrationId, result.data && result.data.status);
+			showToast(result.message || t('reg_save_success', { count: result.data && result.data.saved }), 'success');
+		}).catch(function (error) {
+			button.disabled = false;
+			showAlert({
+				message: error.message || t('reg_save_failed'),
+				variant: 'danger',
+			});
+		});
+	}
+
 	function buildTabActionButton(tab, isImported) {
-		if (isImported) {
+		const isCompleted = isImported || String(tab.status || '').toLowerCase() === 'completed';
+
+		if (isCompleted) {
 			return '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto product-registration-tab-close-btn"' +
-				'data-product-registration-id="' + tab.product_registration_id + '" ' +
-				'data-mdb-ripple-init>' +
-				'<i class="fas fa-times me-1"></i> Close' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-times me-1"></i> ' + escapeHtml(t('common_close')) +
 			'</button>';
 		}
 
-		return '<button type="button" class="btn btn-sm btn-outline-danger ms-auto product-registration-tab-delete-btn"' +
-			'data-product-registration-id="' + tab.product_registration_id + '" ' +
-			'data-file-name="' + escapeAttr(tab.file_name) + '" ' +
-			'data-mdb-ripple-init>' +
-			'<i class="fas fa-trash me-1"></i> Delete' +
-		'</button>';
+		return '<div class="ms-auto d-flex gap-2">' +
+			'<button type="button" class="btn btn-sm btn-outline-primary product-registration-tab-save-btn"' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-save me-1"></i> ' + escapeHtml(t('common_save')) +
+			'</button>' +
+			'<button type="button" class="btn btn-sm btn-outline-danger product-registration-tab-delete-btn"' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-file-name="' + escapeAttr(tab.file_name) + '"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-trash me-1"></i> ' + escapeHtml(t('common_delete')) +
+			'</button>' +
+		'</div>';
 	}
 
 	function buildTabPane(tab, isActive, isImported) {
@@ -1687,10 +1878,11 @@
 				'<span><strong>Procedure #:</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
 				'<span><strong>Organization:</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
 				'<span><strong>Processor:</strong> ' + escapeHtml(tab.processor_name || '') + '</span>' +
-				'<span><strong>Status:</strong> ' + escapeHtml(tab.status || 'uploaded') + '</span>' +
+				'<span><strong>Status:</strong> <span class="procedure-tab-status-value">' + escapeHtml(tab.status || 'uploaded') + '</span></span>' +
 				'<span><strong>Uploaded:</strong> ' + escapeHtml(tab.created_at || '') + '</span>' +
 				buildTabActionButton(tab, isImported) +
 			'</div>' +
+			buildFactoryAlert(tab) +
 			buildTableHtml(tab) +
 		'</div>';
 	}
@@ -1756,8 +1948,41 @@
 		},
 	});
 
+	if (tabsContent) {
+		tabsContent.addEventListener('click', function (event) {
+			const button = event.target.closest('.product-registration-tab-save-btn');
+
+			if (!button || button.disabled) {
+				return;
+			}
+
+			saveRegistrationProducts(button);
+		});
+	}
+
 	procedureUpload.init();
 	procedureTabs.init();
+
+	// A finished registration stays in the catalog. Its tab control only closes the tab.
+	document.addEventListener('click', function (event) {
+		const deleteBtn = event.target.closest('.product-registration-tab-delete-btn');
+
+		if (!deleteBtn) {
+			return;
+		}
+
+		const registrationId = deleteBtn.getAttribute(ID_ATTR);
+		const tab = tabData.get(String(registrationId));
+
+		if (!tab || String(tab.status || '').toLowerCase() !== 'completed') {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		procedureTabs.closeTab(registrationId);
+	}, true);
+
 	initImportModal();
 	initProductModal();
 	ensureRejectModal();
@@ -1853,6 +2078,16 @@
 
 			input.classList.remove('is-invalid');
 			scheduleBarcodeFieldSave(input);
+		});
+
+		productDetailInfo.addEventListener('click', function (event) {
+			const button = event.target.closest('.procedure-barcode-auto-assign');
+
+			if (!button || button.disabled) {
+				return;
+			}
+
+			autoAssignBarcode(button);
 		});
 
 		productDetailInfo.addEventListener('change', function (event) {
