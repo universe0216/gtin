@@ -160,7 +160,7 @@ class Product_registration_processor {
 			{
 				$relative_image = $this->relative_public_path($image_path);
 				$image_paths[] = $relative_image;
-				$image_urls[] = base_url($relative_image);
+				$image_urls[] = base_url($this->encode_public_path($relative_image));
 			}
 
 			$info = array(
@@ -520,6 +520,13 @@ class Product_registration_processor {
 		{
 			throw new RuntimeException(app_line('upload_storage_failed'));
 		}
+	}
+
+	protected function encode_public_path($path)
+	{
+		$segments = explode('/', str_replace('\\', '/', (string) $path));
+
+		return implode('/', array_map('rawurlencode', $segments));
 	}
 
 	protected function relative_public_path($absolute_path)

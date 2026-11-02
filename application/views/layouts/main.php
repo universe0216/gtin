@@ -46,6 +46,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/js/history.js'); ?>"></script>
 
 <?php $this->load->view('partials/confirm_modal'); ?>
+<?php $this->load->view('partials/alert_modal'); ?>
 
 <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
 

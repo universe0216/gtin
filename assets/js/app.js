@@ -354,8 +354,169 @@
 	window.fetchJson = fetchJson;
 	window.fetchApi = fetchApi;
 	window.createAbortableRequest = createAbortableRequest;
+	let alertModalInstance = null;
+	let alertQueue = Promise.resolve();
+
+	const ALERT_VARIANTS = {
+		warning: { icon: 'fa-triangle-exclamation', iconClass: 'text-warning', button: 'btn btn-warning' },
+		danger: { icon: 'fa-circle-exclamation', iconClass: 'text-danger', button: 'btn btn-danger' },
+		info: { icon: 'fa-circle-info', iconClass: 'text-info', button: 'btn btn-info' },
+		success: { icon: 'fa-circle-check', iconClass: 'text-success', button: 'btn btn-success' },
+	};
+
+	function getAlertElements() {
+		return {
+			modalEl: document.getElementById('appAlertModal'),
+			titleEl: document.getElementById('appAlertModalTitleText'),
+			iconEl: document.getElementById('appAlertModalIcon'),
+			bodyEl: document.getElementById('appAlertModalBody'),
+			okBtn: document.getElementById('appAlertModalOkBtn'),
+		};
+	}
+
+	function initAlertModal() {
+		const els = getAlertElements();
+
+		if (!els.modalEl || typeof mdb === 'undefined') {
+			return null;
+		}
+
+		if (!alertModalInstance) {
+			alertModalInstance = mdb.Modal.getOrCreateInstance(els.modalEl);
+		}
+
+		return alertModalInstance;
+	}
+
+	function normalizeAlertOptions(options) {
+		if (typeof options === 'string') {
+			options = { message: options };
+		}
+
+		return Object.assign({
+			title: t('common_alert'),
+			message: '',
+			okLabel: t('common_ok'),
+			variant: 'warning',
+			allowHtml: false,
+		}, options || {});
+	}
+
+	function liftAlertLayer(modalEl) {
+		const backdrops = document.querySelectorAll('.modal-backdrop');
+		const backdrop = backdrops[backdrops.length - 1];
+
+		if (!backdrop || backdrop.dataset.appAlert === '1') {
+			return;
+		}
+
+		backdrop.dataset.appAlert = '1';
+		backdrop.classList.add('app-alert-backdrop');
+		backdrop.style.zIndex = '1990';
+		modalEl.style.zIndex = '2000';
+	}
+
+	function keepParentModalOpen() {
+		if (!document.querySelector('.modal.show')) {
+			return;
+		}
+
+		document.body.classList.add('modal-open');
+	}
+
+	function presentAlert(settings) {
+		const modal = initAlertModal();
+		const els = getAlertElements();
+
+		if (!modal || !els.okBtn || !els.bodyEl || !els.titleEl) {
+			return Promise.reject(new Error(t('common_alert')));
+		}
+
+		const variant = ALERT_VARIANTS[settings.variant] || ALERT_VARIANTS.warning;
+
+		return new Promise(function (resolve) {
+			let settled = false;
+
+			function finish() {
+				if (settled) {
+					return;
+				}
+
+				settled = true;
+				els.okBtn.removeEventListener('click', onOk);
+				els.modalEl.removeEventListener('shown.mdb.modal', onShown);
+				els.modalEl.removeEventListener('hidden.mdb.modal', onHidden);
+				document.removeEventListener('keydown', onKeyDown, true);
+				keepParentModalOpen();
+				resolve();
+			}
+
+			function onOk() {
+				modal.hide();
+			}
+
+			function onShown() {
+				liftAlertLayer(els.modalEl);
+				els.okBtn.focus();
+			}
+
+			function onHidden() {
+				finish();
+			}
+
+			function onKeyDown(event) {
+				if (event.key !== 'Escape' || !els.modalEl.classList.contains('show')) {
+					return;
+				}
+
+				event.preventDefault();
+				event.stopPropagation();
+				event.stopImmediatePropagation();
+				modal.hide();
+			}
+
+			els.titleEl.textContent = settings.title;
+			els.iconEl.className = 'fas ' + variant.icon + ' ' + variant.iconClass;
+			els.okBtn.textContent = settings.okLabel;
+			els.okBtn.className = variant.button;
+
+			if (settings.allowHtml) {
+				els.bodyEl.innerHTML = settings.message;
+			} else {
+				els.bodyEl.textContent = settings.message;
+			}
+
+			els.okBtn.addEventListener('click', onOk);
+			els.modalEl.addEventListener('shown.mdb.modal', onShown);
+			els.modalEl.addEventListener('hidden.mdb.modal', onHidden);
+			document.addEventListener('keydown', onKeyDown, true);
+			modal.show();
+		});
+	}
+
+	// showAlert('Message') or showAlert({ title, message, okLabel, variant, allowHtml })
+	// variant is warning, danger, info, or success. Resolves when the dialog closes.
+	function showAlert(options) {
+		const settings = normalizeAlertOptions(options);
+		const task = function () {
+			return presentAlert(settings).catch(function () {
+				window.alert(settings.message);
+			});
+		};
+		const result = alertQueue.then(task, task);
+
+		alertQueue = result.then(function () {
+			return null;
+		}, function () {
+			return null;
+		});
+
+		return result;
+	}
+
 	window.showToast = showToast;
 	window.showConfirm = showConfirm;
+	window.showAlert = showAlert;
 	window.Pagination = {
 		render: renderPagination,
 		update: updatePaginationView,

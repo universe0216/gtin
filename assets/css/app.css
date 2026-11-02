@@ -177,6 +177,24 @@ html[data-mdb-theme="dark"] body {
 	color: var(--app-text-muted);
 }
 
+#appAlertModal {
+	z-index: 2000;
+}
+
+#appAlertModal .modal-title {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.app-alert-message {
+	white-space: pre-wrap;
+}
+
+body.modal-open .modal-backdrop.app-alert-backdrop {
+	z-index: 1990;
+}
+
 .modal-content {
 	background-color: var(--app-surface);
 	border: 1px solid var(--app-border);
@@ -1340,6 +1358,34 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	border: 1px solid var(--app-border-subtle);
 	border-radius: 0.375rem;
 	background-color: var(--app-surface-raised);
+}
+
+.procedure-detail-info-input {
+	width: 100%;
+	min-width: 0;
+	background-color: rgba(15, 23, 42, 0.6);
+	border-color: rgba(148, 163, 184, 0.25);
+	color: #e2e8f0;
+}
+
+.procedure-detail-info-input:focus {
+	background-color: rgba(15, 23, 42, 0.85);
+	border-color: var(--mdb-primary);
+	color: #e2e8f0;
+	box-shadow: 0 0 0 0.2rem rgba(var(--mdb-primary-rgb), 0.2);
+}
+
+.procedure-detail-info-input:disabled {
+	opacity: 0.75;
+}
+
+.procedure-detail-info-input.is-invalid {
+	border-color: #dc3545;
+}
+
+select.procedure-detail-info-input option {
+	color: #0f172a;
+	background-color: #ffffff;
 }
 
 .procedure-detail-meta-block {

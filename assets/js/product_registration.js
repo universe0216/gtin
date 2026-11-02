@@ -8,7 +8,14 @@
 	const config = window.PRODUCT_REGISTRATION_CONFIG;
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 	const ID_ATTR = 'data-product-registration-id';
-	const BARCODE_CELL_INDEX = 7;
+	const BARCODE_FIELD_COLUMNS = {
+		barcode_1d_type: ['type of 1d barcode'],
+		barcode_1d: ['1d barcode'],
+		barcode_2d_type: ['type of 2d barcode'],
+		barcode_2d: ['2d barcode'],
+	};
+	const BARCODE_1D_TYPES = ['EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ITF-14', 'GS1-128', 'Code 128', 'Code 39'];
+	const BARCODE_2D_TYPES = ['QR', 'Data Matrix', 'GS1 DataMatrix', 'PDF417', 'Aztec'];
 
 	const uploadForms = document.querySelectorAll('.procedure-upload-form');
 	const uploadModalEl = document.getElementById('procedureUploadModal');
@@ -96,16 +103,47 @@
 		return '';
 	}
 
-	function getBarcodeCellIndex(columns) {
-		if (Array.isArray(columns)) {
+	function normalizeColumnName(column) {
+		return String(column || '').trim().toLowerCase().replace(/\s+/g, ' ');
+	}
+
+	function findColumnIndex(columns, names) {
+		if (!Array.isArray(columns) || !Array.isArray(names)) {
+			return -1;
+		}
+
+		const wanted = names.map(normalizeColumnName);
+
+		for (let nameIndex = 0; nameIndex < wanted.length; nameIndex++) {
 			for (let i = 0; i < columns.length; i++) {
-				if (String(columns[i] || '').trim().toLowerCase() === 'barcode') {
+				if (normalizeColumnName(columns[i]) === wanted[nameIndex]) {
 					return i;
 				}
 			}
 		}
 
-		return BARCODE_CELL_INDEX;
+		return -1;
+	}
+
+	function barcodeFieldForColumn(column) {
+		const name = normalizeColumnName(column);
+		const fields = Object.keys(BARCODE_FIELD_COLUMNS);
+
+		for (let i = 0; i < fields.length; i++) {
+			const aliases = BARCODE_FIELD_COLUMNS[fields[i]];
+
+			for (let aliasIndex = 0; aliasIndex < aliases.length; aliasIndex++) {
+				if (name === aliases[aliasIndex]) {
+					return fields[i];
+				}
+			}
+		}
+
+		return '';
+	}
+
+	function getBarcodeCellIndex(columns) {
+		return findColumnIndex(columns, ['1d barcode', 'barcode']);
 	}
 
 	// --------------------------------------------------------------- tab grids
@@ -158,16 +196,41 @@
 			{ name: 'product_procedure_number', type: 'string' },
 		];
 
-		(tab.columns || []).forEach(function (column, index) {
-			const field = 'c' + index;
-			datafields.push({ name: field, type: 'string' });
+		const spreadsheetColumns = tab.columns || [];
+		const fixedNames = ['product name', 'standard'];
+		const fixedIndexes = [];
+		const scrollingIndexes = [];
+
+		spreadsheetColumns.forEach(function (column, index) {
+			datafields.push({ name: 'c' + index, type: 'string' });
+
+			if (fixedNames.indexOf(normalizeColumnName(column)) !== -1) {
+				fixedIndexes.push(index);
+			} else {
+				scrollingIndexes.push(index);
+			}
+		});
+
+		fixedIndexes.sort(function (left, right) {
+			return fixedNames.indexOf(normalizeColumnName(spreadsheetColumns[left]))
+				- fixedNames.indexOf(normalizeColumnName(spreadsheetColumns[right]));
+		});
+
+		function pushSpreadsheetColumn(index, pinned) {
 			columns.push({
-				text: column,
-				datafield: field,
-				pinned: index < 3,
-				width: index < 3 ? 180 : 160,
+				text: spreadsheetColumns[index],
+				datafield: 'c' + index,
+				pinned: pinned,
+				width: pinned ? 200 : 160,
 				cellclassname: rowStateClass,
 			});
+		}
+
+		fixedIndexes.forEach(function (index) {
+			pushSpreadsheetColumn(index, true);
+		});
+		scrollingIndexes.forEach(function (index) {
+			pushSpreadsheetColumn(index, false);
 		});
 
 		const data = (tab.rows || []).map(function (row, index) {
@@ -295,9 +358,24 @@
 		return tab ? (tab.rows || []).length : 0;
 	}
 
-	function isActiveRowPending() {
+	function activeItemStatus() {
 		const row = getActiveRow();
-		return !!row && normalizeItemStatus(row.item_status || row.status) === 'pending';
+		return row ? normalizeItemStatus(row.item_status || row.status) : '';
+	}
+
+	function isActiveRowPending() {
+		return activeItemStatus() === 'pending';
+	}
+
+	function canReviewActiveRow() {
+		const tab = getActiveTab();
+
+		if (!tab || tab.status === 'completed') {
+			return false;
+		}
+
+		const status = activeItemStatus();
+		return status === 'pending' || status === 'approved';
 	}
 
 	function selectGridRow(regId, rowIndex) {
@@ -325,16 +403,16 @@
 	}
 
 	function updateReviewButtonState() {
-		const pending = isActiveRowPending();
+		const reviewable = canReviewActiveRow();
 
 		if (productDetailRejectBtn) {
-			productDetailRejectBtn.disabled = !pending;
-			productDetailRejectBtn.classList.toggle('d-none', !pending);
+			productDetailRejectBtn.disabled = !reviewable;
+			productDetailRejectBtn.classList.toggle('d-none', !reviewable);
 		}
 
 		if (productDetailAcceptBtn) {
-			productDetailAcceptBtn.disabled = !pending;
-			productDetailAcceptBtn.classList.toggle('d-none', !pending);
+			productDetailAcceptBtn.disabled = !reviewable;
+			productDetailAcceptBtn.classList.toggle('d-none', !reviewable);
 		}
 	}
 
@@ -406,6 +484,7 @@
 			return;
 		}
 
+		flushBarcodeFieldSaves();
 		cancelBarcodeTyping();
 
 		activeDetail = { regId: String(regId), rowIndex: rowIndex };
@@ -504,6 +583,11 @@
 		}
 
 		const cellIndex = getBarcodeCellIndex(tab.columns || []);
+
+		if (cellIndex < 0) {
+			return;
+		}
+
 		const cells = (tab.rows[rowIndex].cells || []).slice();
 
 		while (cells.length <= cellIndex) {
@@ -513,10 +597,176 @@
 		cells[cellIndex] = barcodeValue;
 		tab.rows[rowIndex].cells = cells;
 		refreshGridRow(regId, rowIndex);
+
+		if (productDetailInfo) {
+			const input = productDetailInfo.querySelector('[data-barcode-field="barcode_1d"]');
+
+			if (input && String(input.getAttribute('data-item-id')) === String(tab.rows[rowIndex].id)) {
+				input.value = barcodeValue;
+				input.setAttribute('data-saved-value', barcodeValue);
+			}
+		}
+	}
+
+	function normalizeBarcodeType(type) {
+		return String(type || '').toLowerCase().replace(/[\s-]+/g, '');
+	}
+
+	function gs1CheckDigit(dataDigits) {
+		const digits = String(dataDigits);
+		let sum = 0;
+
+		for (let i = 0; i < digits.length; i++) {
+			const digit = parseInt(digits.charAt(digits.length - 1 - i), 10);
+			sum += digit * (i % 2 === 0 ? 3 : 1);
+		}
+
+		return String((10 - (sum % 10)) % 10);
+	}
+
+	function gs1CheckValid(value) {
+		if (!/^\d{2,}$/.test(value)) {
+			return false;
+		}
+
+		return gs1CheckDigit(value.slice(0, -1)) === value.charAt(value.length - 1);
+	}
+
+	function upcEValid(value) {
+		if (!/^[01]\d{7}$/.test(value)) {
+			return false;
+		}
+
+		const numberSystem = value.charAt(0);
+		const body = value.slice(1, 7);
+		const check = value.charAt(7);
+		const last = body.charAt(5);
+		let manufacturer;
+		let product;
+
+		if (last === '0' || last === '1' || last === '2') {
+			manufacturer = body.slice(0, 2) + last + '00';
+			product = '00' + body.slice(2, 5);
+		} else if (last === '3') {
+			manufacturer = body.slice(0, 3) + '00';
+			product = '000' + body.slice(3, 5);
+		} else if (last === '4') {
+			manufacturer = body.slice(0, 4) + '0';
+			product = '0000' + body.charAt(4);
+		} else {
+			manufacturer = body.slice(0, 5);
+			product = '0000' + last;
+		}
+
+		return gs1CheckDigit(numberSystem + manufacturer + product) === check;
+	}
+
+	function barcode1dMatches(typeKey, value) {
+		switch (typeKey) {
+			case 'ean13':
+				return /^\d{13}$/.test(value) && gs1CheckValid(value);
+			case 'ean8':
+				return /^\d{8}$/.test(value) && gs1CheckValid(value);
+			case 'upca':
+				return /^\d{12}$/.test(value) && gs1CheckValid(value);
+			case 'upce':
+				return upcEValid(value);
+			case 'itf14':
+				return /^\d{14}$/.test(value) && gs1CheckValid(value);
+			case 'gs1128':
+				return /^(\(\d{2,4}\)[^\s()]{1,90})+$/.test(value) || /^\d{4,48}$/.test(value);
+			case 'code128':
+				return /^[\x20-\x7E]{1,80}$/.test(value) && value.trim() !== '';
+			case 'code39':
+				return /^[0-9A-Z\-. $\/+%]{1,80}$/.test(value) && value.trim() !== '';
+			default:
+				return false;
+		}
+	}
+
+	function barcode1dProblem(type, value) {
+		if (!value) {
+			return { code: 'empty' };
+		}
+
+		const typeKey = normalizeBarcodeType(type);
+
+		if (!typeKey) {
+			return { code: 'type' };
+		}
+
+		if (!barcode1dMatches(typeKey, value)) {
+			return { code: 'format', type: type, typeKey: typeKey };
+		}
+
+		return null;
+	}
+
+	function barcodeFieldInput(field) {
+		return productDetailInfo
+			? productDetailInfo.querySelector('[data-barcode-field="' + field + '"]')
+			: null;
+	}
+
+	function barcodeAcceptMessage(problem) {
+		if (!problem || problem.code === 'empty') {
+			return t('reg_barcode_1d_required');
+		}
+
+		if (problem.code === 'type') {
+			return t('reg_barcode_1d_type_required');
+		}
+
+		const hintKeys = {
+			ean13: 'reg_barcode_hint_ean13',
+			ean8: 'reg_barcode_hint_ean8',
+			upca: 'reg_barcode_hint_upca',
+			upce: 'reg_barcode_hint_upce',
+			itf14: 'reg_barcode_hint_itf14',
+			gs1128: 'reg_barcode_hint_gs1128',
+			code128: 'reg_barcode_hint_code128',
+			code39: 'reg_barcode_hint_code39',
+		};
+
+		return t('reg_barcode_1d_format', {
+			type: problem.type,
+			hint: t(hintKeys[problem.typeKey] || 'reg_barcode_hint_unknown'),
+		});
+	}
+
+	function clearBarcodeFieldInvalid() {
+		if (!productDetailInfo) {
+			return;
+		}
+
+		productDetailInfo.querySelectorAll('.is-invalid').forEach(function (input) {
+			input.classList.remove('is-invalid');
+		});
+	}
+
+	function rejectAcceptBarcode(problem) {
+		clearBarcodeFieldInvalid();
+
+		const field = problem && problem.code === 'type' ? 'barcode_1d_type' : 'barcode_1d';
+		const input = barcodeFieldInput(field);
+
+		if (input) {
+			input.classList.add('is-invalid');
+		}
+
+		const notify = window.showAlert
+			? showAlert({ message: barcodeAcceptMessage(problem), variant: 'danger' })
+			: Promise.resolve(window.alert(barcodeAcceptMessage(problem)));
+
+		notify.then(function () {
+			if (input) {
+				input.focus();
+			}
+		});
 	}
 
 	function acceptProduct() {
-		if (!activeDetail || !isActiveRowPending()) {
+		if (!activeDetail || !canReviewActiveRow()) {
 			return;
 		}
 
@@ -530,44 +780,76 @@
 			return;
 		}
 
+		const barcodeType = (barcodeFieldInput('barcode_1d_type') || { value: '' }).value.trim();
+		const barcodeValue = (barcodeFieldInput('barcode_1d') || { value: '' }).value.trim();
+		const problem = barcode1dProblem(barcodeType, barcodeValue);
+
+		if (problem) {
+			rejectAcceptBarcode(problem);
+			return;
+		}
+
+		clearBarcodeFieldInvalid();
+
 		if (productDetailAcceptBtn) {
 			productDetailAcceptBtn.disabled = true;
 		}
 
 		const assignable = getAssignableBarcode(regId, rowIndex);
 		const formData = new FormData();
+		formData.append('barcode_1d_type', barcodeType);
+		formData.append('barcode_1d', barcodeValue);
 
 		if (assignable && assignable.ean13) {
 			formData.append('barcode', assignable.ean13);
 		}
 
-		fetchApi(baseUrl + '/accept_item/' + itemId, {
-			method: 'POST',
-			body: formData,
+		['barcode_1d_type', 'barcode_1d'].forEach(function (field) {
+			const key = String(itemId) + ':' + field;
+			clearTimeout(barcodeSaveTimers.get(key));
+			barcodeSaveTimers.delete(key);
+			applyBarcodeFieldLocally(
+				regId,
+				itemId,
+				field,
+				field === 'barcode_1d' ? barcodeValue : barcodeType
+			);
+		});
+
+		barcodeSaveQueue = barcodeSaveQueue.then(function () {
+			return fetchApi(baseUrl + '/accept_item/' + itemId, {
+				method: 'POST',
+				body: formData,
+			});
 		})
 			.then(function (result) {
-				const savedBarcode = result.data && result.data.barcode
-					? result.data.barcode
-					: (assignable && assignable.ean13 ? assignable.ean13 : '');
+				['barcode_1d_type', 'barcode_1d'].forEach(function (field) {
+					const input = barcodeFieldInput(field);
+
+					if (input && String(input.getAttribute('data-item-id')) === String(itemId)) {
+						input.setAttribute('data-saved-value', input.value.trim());
+					}
+				});
 
 				markRowAccepted(regId, rowIndex);
-
-				if (savedBarcode) {
-					updateRowBarcodeCell(regId, rowIndex, savedBarcode);
-				}
-
 				showBarcodesTab();
 
-				const barcodeValue = assignable && assignable.barcode ? assignable.barcode : '';
+				const previewValue = assignable && assignable.barcode ? assignable.barcode : '';
 
-				typeBarcodeIntoInput(barcodeValue, function () {
+				typeBarcodeIntoInput(previewValue, function () {
 					setTimeout(advanceToNextRowAfterReview, 2000);
 				});
 
 				showToast(result.message, 'success');
 			})
 			.catch(function (error) {
-				showToast(error.message || t('reg_accept_failed'), 'error');
+				const message = error.message || t('reg_accept_failed');
+
+				if (error.response && error.response.status === 422) {
+					showAlert({ message: message, variant: 'danger' });
+				} else {
+					showToast(message, 'error');
+				}
 			})
 			.finally(function () {
 				updateReviewButtonState();
@@ -577,7 +859,7 @@
 	function openRejectModal() {
 		const modal = ensureRejectModal();
 
-		if (!modal || !activeDetail || !isActiveRowPending()) {
+		if (!modal || !activeDetail || !canReviewActiveRow()) {
 			return;
 		}
 
@@ -672,6 +954,7 @@
 
 		productModal = mdb.Modal.getOrCreateInstance(productModalEl);
 		productModalEl.addEventListener('hidden.mdb.modal', function () {
+			flushBarcodeFieldSaves();
 			cancelBarcodeTyping();
 			clearActiveDetail();
 		});
@@ -755,26 +1038,178 @@
 			'<span class="badge bg-info text-dark">' + status + '</span>';
 	}
 
+	function barcodeTypeOptions(field, currentValue) {
+		const options = (field === 'barcode_2d_type' ? BARCODE_2D_TYPES : BARCODE_1D_TYPES).slice();
+		const value = String(currentValue || '');
+
+		if (value && options.indexOf(value) === -1) {
+			options.unshift(value);
+		}
+
+		return options;
+	}
+
+	function renderBarcodeFieldControl(field, value, editable, itemId, regId) {
+		const inputId = 'procedureBarcodeField_' + field;
+		const saved = escapeAttr(value);
+		const disabled = editable ? '' : ' disabled';
+		const dataAttrs =
+			' id="' + inputId + '"' +
+			' data-barcode-field="' + field + '"' +
+			' data-item-id="' + escapeAttr(itemId) + '"' +
+			' data-reg-id="' + escapeAttr(regId) + '"' +
+			' data-saved-value="' + saved + '"' +
+			disabled;
+
+		if (field === 'barcode_1d' || field === 'barcode_2d') {
+			return '<input type="text" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
+				dataAttrs + ' value="' + saved + '">';
+		}
+
+		const options = barcodeTypeOptions(field, value).map(function (option) {
+			const selected = option === String(value || '') ? ' selected' : '';
+			return '<option value="' + escapeAttr(option) + '"' + selected + '>' + escapeHtml(option) + '</option>';
+		}).join('');
+
+		return '<select class="form-select form-select-sm procedure-detail-info-input"' + dataAttrs + '>' +
+			'<option value=""></option>' +
+			options +
+		'</select>';
+	}
+
+	const barcodeSaveTimers = new Map();
+	let barcodeSaveQueue = Promise.resolve();
+
+	function applyBarcodeFieldLocally(regId, itemId, field, value) {
+		const tab = tabData.get(String(regId));
+
+		if (!tab) {
+			return;
+		}
+
+		const rowIndex = (tab.rows || []).findIndex(function (row) {
+			return String(row.id) === String(itemId);
+		});
+
+		if (rowIndex < 0) {
+			return;
+		}
+
+		const cellIndex = findColumnIndex(tab.columns || [], BARCODE_FIELD_COLUMNS[field] || []);
+
+		if (cellIndex < 0) {
+			return;
+		}
+
+		const cells = (tab.rows[rowIndex].cells || []).slice();
+
+		while (cells.length <= cellIndex) {
+			cells.push('');
+		}
+
+		cells[cellIndex] = value;
+		tab.rows[rowIndex].cells = cells;
+		refreshGridRow(regId, rowIndex);
+	}
+
+	function saveBarcodeField(input) {
+		const field = input.getAttribute('data-barcode-field');
+		const itemId = input.getAttribute('data-item-id');
+		const regId = input.getAttribute('data-reg-id');
+		const value = input.value;
+
+		if (!field || !itemId || value === (input.getAttribute('data-saved-value') || '')) {
+			return;
+		}
+
+		applyBarcodeFieldLocally(regId, itemId, field, value);
+
+		if (field === 'barcode_1d' && procedureBarcodeInput && !procedureBarcodeInput.classList.contains('is-typing-barcode')) {
+			procedureBarcodeInput.value = value;
+			renderBarcodePreview(value);
+		}
+
+		const formData = new FormData();
+		formData.append(field, value);
+
+		barcodeSaveQueue = barcodeSaveQueue.then(function () {
+			return fetchApi(baseUrl + '/update_item_barcodes/' + itemId, {
+				method: 'POST',
+				body: formData,
+			});
+		}).then(function () {
+			if (input.getAttribute('data-saved-value') !== null && input.value === value) {
+				input.setAttribute('data-saved-value', value);
+			}
+		}).catch(function (error) {
+			showToast(error.message || t('reg_barcode_save_failed'), 'error');
+		});
+	}
+
+	function scheduleBarcodeFieldSave(input) {
+		const key = (input.getAttribute('data-item-id') || '') + ':' + (input.getAttribute('data-barcode-field') || '');
+		const delay = input.tagName === 'SELECT' ? 0 : 400;
+
+		clearTimeout(barcodeSaveTimers.get(key));
+		barcodeSaveTimers.set(key, setTimeout(function () {
+			barcodeSaveTimers.delete(key);
+			saveBarcodeField(input);
+		}, delay));
+	}
+
+	function flushBarcodeFieldSaves() {
+		const pendingKeys = [];
+
+		barcodeSaveTimers.forEach(function (timer, key) {
+			clearTimeout(timer);
+			pendingKeys.push(key);
+		});
+		barcodeSaveTimers.clear();
+
+		if (!productDetailInfo) {
+			return;
+		}
+
+		productDetailInfo.querySelectorAll('[data-barcode-field]').forEach(function (input) {
+			const key = (input.getAttribute('data-item-id') || '') + ':' + (input.getAttribute('data-barcode-field') || '');
+
+			if (pendingKeys.indexOf(key) !== -1) {
+				saveBarcodeField(input);
+			}
+		});
+	}
+
 	function renderDetailInfo(payload) {
-		const fields = [];
 		const columns = payload.columns || [];
 		const cells = payload.cells || [];
+		const editable = payload.status !== 'completed';
+		const fields = [];
 
 		columns.forEach(function (column, index) {
-			fields.push({ label: column, value: cells[index] ?? '' });
+			fields.push({
+				label: column,
+				value: cells[index] ?? '',
+				field: barcodeFieldForColumn(column),
+			});
 		});
 
 		fields.push(
-			{ label: t('reg_procedure'), value: payload.procedure_number || '' },
-			{ label: t('reg_zip_file'), value: payload.file_name || '' },
-			{ label: t('reg_processor'), value: payload.processor_name || '' },
-			{ label: t('reg_uploaded'), value: payload.created_at || '' }
+			{ label: t('reg_procedure'), value: payload.procedure_number || '', field: '' },
+			{ label: t('reg_zip_file'), value: payload.file_name || '', field: '' },
+			{ label: t('reg_processor'), value: payload.processor_name || '', field: '' },
+			{ label: t('reg_uploaded'), value: payload.created_at || '', field: '' }
 		);
 
 		const fieldsHtml = fields.map(function (field) {
+			const control = field.field
+				? renderBarcodeFieldControl(field.field, field.value, editable, payload.id, activeDetail ? activeDetail.regId : '')
+				: '<span class="procedure-detail-info-value">' + escapeHtml(field.value) + '</span>';
+			const labelTag = field.field ? 'label' : 'span';
+			const labelFor = field.field ? ' for="procedureBarcodeField_' + field.field + '"' : '';
+
 			return '<div class="procedure-detail-info-item">' +
-				'<span class="procedure-detail-info-label">' + escapeHtml(field.label) + '</span>' +
-				'<span class="procedure-detail-info-value">' + escapeHtml(field.value) + '</span>' +
+				'<' + labelTag + ' class="procedure-detail-info-label"' + labelFor + '>' + escapeHtml(field.label) + '</' + labelTag + '>' +
+				control +
 			'</div>';
 		}).join('');
 
@@ -1405,6 +1840,30 @@
 	if (procedureBarcodeInput) {
 		procedureBarcodeInput.addEventListener('input', function () {
 			renderBarcodePreview(procedureBarcodeInput.value);
+		});
+	}
+
+	if (productDetailInfo) {
+		productDetailInfo.addEventListener('input', function (event) {
+			const input = event.target.closest('[data-barcode-field]');
+
+			if (!input || input.disabled || input.tagName === 'SELECT') {
+				return;
+			}
+
+			input.classList.remove('is-invalid');
+			scheduleBarcodeFieldSave(input);
+		});
+
+		productDetailInfo.addEventListener('change', function (event) {
+			const input = event.target.closest('[data-barcode-field]');
+
+			if (!input || input.disabled || input.tagName !== 'SELECT') {
+				return;
+			}
+
+			input.classList.remove('is-invalid');
+			scheduleBarcodeFieldSave(input);
 		});
 	}
 

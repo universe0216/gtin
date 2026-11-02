@@ -10,7 +10,7 @@ class Product_registration extends AuthenticatedController {
 	public function __construct()
 	{
 		parent::__construct();
-		$this->load->helper(array('url', 'file'));
+		$this->load->helper(array('url', 'file', 'barcode'));
 		$this->load->model('product_registration_model');
 		$this->load->model('product_registration_item_model');
 		$this->load->library('product_registration_processor');
@@ -185,15 +185,8 @@ class Product_registration extends AuthenticatedController {
 			), 422);
 		}
 
-		if ($item['status'] === 'approved')
-		{
-			return $this->json_response(array(
-				'success' => FALSE,
-				'message' => app_line('reg_already_accepted'),
-			), 422);
-		}
-
 		$was_pending = $item['status'] === 'pending';
+		$was_approved = $item['status'] === 'approved';
 
 		if ( ! $this->product_registration_item_model->update($id, array(
 			'status'  => 'rejected',
@@ -203,11 +196,18 @@ class Product_registration extends AuthenticatedController {
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_reject_failed')), 500);
 		}
 
-		if ($was_pending)
+		if ($was_pending || $was_approved)
 		{
-			$this->product_registration_model->update($registration['id'], array(
+			$counts = array(
 				'rejected' => (int) $registration['rejected'] + 1,
-			));
+			);
+
+			if ($was_approved)
+			{
+				$counts['approved'] = max(0, (int) $registration['approved'] - 1);
+			}
+
+			$this->product_registration_model->update($registration['id'], $counts);
 		}
 
 		return $this->json_response(array(
@@ -251,14 +251,6 @@ class Product_registration extends AuthenticatedController {
 			), 422);
 		}
 
-		if ($item['status'] === 'approved')
-		{
-			return $this->json_response(array(
-				'success' => FALSE,
-				'message' => app_line('reg_already_accepted'),
-			), 422);
-		}
-
 		if ($item['status'] === 'rejected')
 		{
 			return $this->json_response(array(
@@ -268,16 +260,41 @@ class Product_registration extends AuthenticatedController {
 		}
 
 		$was_pending = $item['status'] === 'pending';
+		$barcode_1d_type = trim((string) $this->input->post('barcode_1d_type', FALSE));
+		$barcode_1d = trim((string) $this->input->post('barcode_1d', FALSE));
+		$problem = barcode_1d_problem($barcode_1d_type, $barcode_1d);
+
+		if ($problem !== NULL)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => $this->barcode_1d_problem_message($problem, $barcode_1d_type),
+			), 422);
+		}
+
+		$info_json = $this->apply_posted_barcode_fields($item['info'], array(
+			'barcode_1d_type' => $barcode_1d_type,
+			'barcode_1d'      => $barcode_1d,
+		));
+
+		if ($info_json === NULL)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_barcode_field_missing'),
+			), 422);
+		}
+
 		$barcode = $this->normalize_item_barcode($this->input->post('barcode'));
 		$update_data = array(
 			'status'  => 'approved',
 			'message' => NULL,
+			'info'    => $info_json,
 		);
 
 		if ($barcode !== NULL)
 		{
 			$update_data['barcode'] = $barcode;
-			$update_data['info'] = $this->apply_barcode_to_item_info($item['info'], $barcode);
 		}
 
 		if ( ! $this->product_registration_item_model->update($id, $update_data))
@@ -300,6 +317,129 @@ class Product_registration extends AuthenticatedController {
 				'product_registration_id' => (int) $item['product_registration_id'],
 				'status'                  => 'approved',
 				'barcode'                 => $barcode,
+			),
+		));
+	}
+
+	public function update_item_barcodes($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$item = $this->product_registration_item_model->get($id);
+
+		if ( ! $item)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_item_not_found')), 404);
+		}
+
+		$registration = $this->product_registration_model->get($item['product_registration_id']);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
+		}
+
+		if ($registration['status'] === 'completed')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_completed_locked'),
+			), 422);
+		}
+
+		$field_columns = array(
+			'barcode_1d_type' => array('type of 1d barcode'),
+			'barcode_1d'      => array('1d barcode', 'barcode'),
+			'barcode_2d_type' => array('type of 2d barcode'),
+			'barcode_2d'      => array('2d barcode'),
+		);
+		$field_limits = array(
+			'barcode_1d_type' => 50,
+			'barcode_2d_type' => 50,
+			'barcode_1d'      => 255,
+			'barcode_2d'      => 255,
+		);
+		$posted = array();
+
+		foreach ($field_columns as $key => $names)
+		{
+			if ( ! array_key_exists($key, $_POST))
+			{
+				continue;
+			}
+
+			$value = trim((string) $this->input->post($key, FALSE));
+			$length = function_exists('mb_strlen') ? mb_strlen($value) : strlen($value);
+
+			if ($length > $field_limits[$key])
+			{
+				return $this->json_response(array(
+					'success' => FALSE,
+					'message' => app_line('reg_barcode_too_long'),
+				), 422);
+			}
+
+			$posted[$key] = $value;
+		}
+
+		if (empty($posted))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_barcode_save_failed'),
+			), 422);
+		}
+
+		$info = json_decode((string) $item['info'], TRUE);
+
+		if ( ! is_array($info))
+		{
+			$info = array();
+		}
+
+		$columns = $info['columns'] ?? array();
+		$cells = $info['cells'] ?? array();
+
+		foreach ($posted as $key => $value)
+		{
+			$cell_index = $this->find_column_index($columns, $field_columns[$key]);
+
+			if ($cell_index === NULL)
+			{
+				return $this->json_response(array(
+					'success' => FALSE,
+					'message' => app_line('reg_barcode_field_missing'),
+				), 422);
+			}
+
+			while (count($cells) <= $cell_index)
+			{
+				$cells[] = '';
+			}
+
+			$cells[$cell_index] = $value;
+		}
+
+		$info['cells'] = array_values($cells);
+
+		if ( ! $this->product_registration_item_model->update($id, array(
+			'info' => json_encode($info),
+		)))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_barcode_save_failed'),
+			), 500);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => array(
+				'id'     => (int) $id,
+				'fields' => $posted,
 			),
 		));
 	}
@@ -380,17 +520,117 @@ class Product_registration extends AuthenticatedController {
 		return substr($barcode, 0, 13);
 	}
 
+	protected function barcode_1d_problem_message($problem, $type)
+	{
+		if ($problem === 'empty')
+		{
+			return app_line('reg_barcode_1d_required');
+		}
+
+		if ($problem === 'type')
+		{
+			return app_line('reg_barcode_1d_type_required');
+		}
+
+		$hints = array(
+			'ean13'   => 'reg_barcode_hint_ean13',
+			'ean8'    => 'reg_barcode_hint_ean8',
+			'upca'    => 'reg_barcode_hint_upca',
+			'upce'    => 'reg_barcode_hint_upce',
+			'itf14'   => 'reg_barcode_hint_itf14',
+			'gs1128'  => 'reg_barcode_hint_gs1128',
+			'code128' => 'reg_barcode_hint_code128',
+			'code39'  => 'reg_barcode_hint_code39',
+		);
+		$key = barcode_normalize_1d_type($type);
+		$hint_key = isset($hints[$key]) ? $hints[$key] : 'reg_barcode_hint_unknown';
+
+		return str_replace(
+			array('{type}', '{hint}'),
+			array($type, app_line($hint_key)),
+			app_line('reg_barcode_1d_format')
+		);
+	}
+
+	protected function apply_posted_barcode_fields($info_json, $fields)
+	{
+		$info = json_decode((string) $info_json, TRUE);
+
+		if ( ! is_array($info))
+		{
+			$info = array();
+		}
+
+		$columns = $info['columns'] ?? array();
+		$cells = $info['cells'] ?? array();
+		$field_columns = array(
+			'barcode_1d_type' => array('type of 1d barcode'),
+			'barcode_1d'      => array('1d barcode', 'barcode'),
+		);
+
+		foreach ($fields as $key => $value)
+		{
+			if ( ! isset($field_columns[$key]))
+			{
+				continue;
+			}
+
+			$cell_index = $this->find_column_index($columns, $field_columns[$key]);
+
+			if ($cell_index === NULL)
+			{
+				return NULL;
+			}
+
+			while (count($cells) <= $cell_index)
+			{
+				$cells[] = '';
+			}
+
+			$cells[$cell_index] = $value;
+		}
+
+		$info['cells'] = array_values($cells);
+
+		return json_encode($info);
+	}
+
 	protected function barcode_cell_index($columns)
 	{
-		foreach ((array) $columns as $index => $column)
+		return $this->find_column_index($columns, array('1d barcode', 'barcode'));
+	}
+
+	protected function find_column_index($columns, $names)
+	{
+		$normalized = array();
+
+		foreach (array_values((array) $columns) as $index => $column)
 		{
-			if (strtolower(trim((string) $column)) === 'barcode')
+			$normalized[$index] = $this->normalize_column_name($column);
+		}
+
+		foreach ((array) $names as $name)
+		{
+			$target = $this->normalize_column_name($name);
+
+			foreach ($normalized as $index => $column)
 			{
-				return (int) $index;
+				if ($column === $target)
+				{
+					return (int) $index;
+				}
 			}
 		}
 
-		return 7;
+		return NULL;
+	}
+
+	protected function normalize_column_name($column)
+	{
+		$name = strtolower(trim((string) $column));
+		$name = preg_replace('/\s+/', ' ', $name);
+
+		return $name;
 	}
 
 	protected function apply_barcode_to_item_info($info_json, $barcode)
@@ -403,6 +643,12 @@ class Product_registration extends AuthenticatedController {
 		}
 
 		$cell_index = $this->barcode_cell_index($info['columns'] ?? array());
+
+		if ($cell_index === NULL)
+		{
+			return json_encode($info);
+		}
+
 		$cells = $info['cells'] ?? array();
 
 		while (count($cells) <= $cell_index)
@@ -411,7 +657,7 @@ class Product_registration extends AuthenticatedController {
 		}
 
 		$cells[$cell_index] = $barcode;
-		$info['cells'] = $cells;
+		$info['cells'] = array_values($cells);
 
 		return json_encode($info);
 	}
