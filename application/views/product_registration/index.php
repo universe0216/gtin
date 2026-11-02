@@ -88,6 +88,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								<div class="ms-auto d-flex gap-2">
 									<button
 										type="button"
+										class="btn btn-sm btn-outline-secondary product-registration-tab-auto-process-btn"
+										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+										data-mdb-ripple-init
+									>
+										<i class="fas fa-barcode me-1"></i> <?php echo html_escape(app_line('reg_auto_process')); ?>
+									</button>
+									<button
+										type="button"
 										class="btn btn-sm btn-outline-primary product-registration-tab-save-btn"
 										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 										data-mdb-ripple-init

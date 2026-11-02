@@ -497,8 +497,9 @@
 		renderDetailInfo(payload);
 
 		if (procedureBarcodeInput) {
-			procedureBarcodeInput.value = '';
-			renderBarcodePreview('');
+			const barcodeValue = (barcodeFieldInput('barcode_1d') || { value: '' }).value;
+			procedureBarcodeInput.value = barcodeValue;
+			renderBarcodePreview(barcodeValue);
 		}
 
 		updateAssignableBarcodeDisplay();
@@ -1138,6 +1139,7 @@
 		if (field === 'barcode_1d' && procedureBarcodeInput && !procedureBarcodeInput.classList.contains('is-typing-barcode')) {
 			procedureBarcodeInput.value = value;
 			renderBarcodePreview(value);
+			showBarcodesTab();
 		}
 
 		const formData = new FormData();
@@ -1379,6 +1381,7 @@
 		}
 
 		if (procedureBarcodeEmpty) {
+			procedureBarcodeEmpty.textContent = t('reg_barcode_empty');
 			procedureBarcodeEmpty.classList.remove('d-none');
 		}
 
@@ -1391,29 +1394,6 @@
 		}
 
 		productQrCodeInstance = null;
-	}
-
-	function calculateEan13Checksum(twelveDigits) {
-		let sum = 0;
-
-		for (let i = 0; i < 12; i++) {
-			const digit = parseInt(twelveDigits.charAt(i), 10);
-			sum += (i % 2 === 0) ? digit : digit * 3;
-		}
-
-		return String((10 - (sum % 10)) % 10);
-	}
-
-	function toEan13Full(value) {
-		const digits = String(value || '').replace(/\D/g, '');
-
-		if (!digits) {
-			return null;
-		}
-
-		const dataDigits = digits.slice(0, 12).padStart(12, '0');
-
-		return dataDigits + calculateEan13Checksum(dataDigits);
 	}
 
 	function applyBarcodeTextSpacing(svgEl) {
@@ -1495,28 +1475,90 @@
 		}
 	}
 
+	function currentBarcode1dType() {
+		const input = barcodeFieldInput('barcode_1d_type');
+
+		return input ? input.value.trim() : '';
+	}
+
+	function barcodePreviewSpec(type, value) {
+		const typeKey = normalizeBarcodeType(type);
+		const text = String(value || '').trim();
+		const formats = {
+			ean13: 'EAN13',
+			ean8: 'EAN8',
+			upca: 'UPC',
+			upce: 'UPCE',
+			itf14: 'ITF14',
+			code128: 'CODE128',
+			code39: 'CODE39',
+			gs1128: 'CODE128',
+		};
+		const bodyLengths = { ean13: 12, ean8: 7, upca: 11, itf14: 13 };
+		const format = formats[typeKey];
+
+		if (!format || !text) {
+			return null;
+		}
+
+		const valid = barcode1dMatches(typeKey, text);
+		const bodyReady = !!bodyLengths[typeKey] && new RegExp('^\\d{' + bodyLengths[typeKey] + '}$').test(text);
+
+		if (!valid && !bodyReady) {
+			return null;
+		}
+
+		if (typeKey === 'gs1128') {
+			return {
+				format: format,
+				value: text.replace(/[()]/g, ''),
+				text: text,
+				ean128: true,
+			};
+		}
+
+		return {
+			format: format,
+			value: text,
+			wideText: typeKey === 'ean13' || typeKey === 'ean8' || typeKey === 'upca' || typeKey === 'upce' || typeKey === 'itf14',
+		};
+	}
+
+	function barcodeValueStillShort(type, value) {
+		const fullLengths = { ean13: 13, ean8: 8, upca: 12, upce: 8, itf14: 14 };
+		const fullLength = fullLengths[normalizeBarcodeType(type)];
+
+		return !!fullLength && String(value || '').length < fullLength;
+	}
+
 	function renderBarcodePreview(value) {
 		const barcodeValue = (value || '').trim();
-		const ean13Full = toEan13Full(barcodeValue);
+		const barcodeType = currentBarcode1dType();
+		const spec = barcodePreviewSpec(barcodeType, barcodeValue);
+
 		resetBarcodePreview();
 
-		if (!barcodeValue) {
-			if (procedureBarcodeFullValue) {
+		if (procedureBarcodeFullValue) {
+			if (barcodeType && barcodeValue) {
+				procedureBarcodeFullValue.textContent = t('reg_barcode_typed', {
+					type: barcodeType,
+					value: barcodeValue,
+				});
+			} else if (barcodeType) {
+				procedureBarcodeFullValue.textContent = t('reg_barcode_typed_empty', { type: barcodeType });
+			} else {
 				procedureBarcodeFullValue.textContent = t('reg_barcode_full');
 			}
+		}
+
+		if (!barcodeValue) {
 			return;
 		}
 
-		if (procedureBarcodeFullValue) {
-			procedureBarcodeFullValue.textContent = ean13Full
-				? t('reg_barcode_full_value', { value: ean13Full })
-				: t('reg_barcode_full');
-		}
-
-		if (typeof JsBarcode !== 'undefined' && procedureBarcodeSvg && ean13Full) {
+		if (typeof JsBarcode !== 'undefined' && procedureBarcodeSvg && spec) {
 			try {
-				JsBarcode(procedureBarcodeSvg, ean13Full.slice(0, 12), {
-					format: 'EAN13',
+				const options = {
+					format: spec.format,
 					lineColor: '#000000',
 					background: '#ffffff',
 					width: 2,
@@ -1525,12 +1567,23 @@
 					font: 'Courier New, monospace',
 					fontSize: 16,
 					textMargin: 6,
-					marginRight: 10,
-					marginLeft: 3,
-					marginTop: 3,
-					marginBottom: 3,
-				});
-				applyBarcodeTextSpacing(procedureBarcodeSvg);
+					margin: 8,
+				};
+
+				if (spec.text) {
+					options.text = spec.text;
+				}
+
+				if (spec.ean128) {
+					options.ean128 = true;
+				}
+
+				JsBarcode(procedureBarcodeSvg, spec.value, options);
+
+				if (spec.wideText) {
+					applyBarcodeTextSpacing(procedureBarcodeSvg);
+				}
+
 				procedureBarcodeSvg.classList.remove('d-none');
 
 				if (procedureBarcodeEmpty) {
@@ -1542,12 +1595,17 @@
 					procedureBarcodeEmpty.classList.remove('d-none');
 				}
 			}
+		} else if (procedureBarcodeEmpty && barcodeType && !barcodeValueStillShort(barcodeType, barcodeValue)) {
+			procedureBarcodeEmpty.textContent = t('reg_barcode_render_failed');
+			procedureBarcodeEmpty.classList.remove('d-none');
 		}
 
-		if (typeof QRCode !== 'undefined' && procedureQrCode && ean13Full) {
+		const qrText = spec ? (spec.text || spec.value) : '';
+
+		if (typeof QRCode !== 'undefined' && procedureQrCode && qrText) {
 			procedureQrCode.innerHTML = '';
 			productQrCodeInstance = new QRCode(procedureQrCode, {
-				text: ean13Full,
+				text: qrText,
 				width: 180,
 				height: 180,
 				colorDark: '#000000',
@@ -1819,6 +1877,198 @@
 		}
 	}
 
+	function rowIndexForItem(registrationId, itemId) {
+		const tab = tabData.get(String(registrationId));
+
+		if (!tab) {
+			return -1;
+		}
+
+		return (tab.rows || []).findIndex(function (row) {
+			return String(row.id) === String(itemId);
+		});
+	}
+
+	function syncOpenBarcodeInputs(itemId, typeValue, barcodeValue) {
+		const typeInput = barcodeFieldInput('barcode_1d_type');
+		const valueInput = barcodeFieldInput('barcode_1d');
+
+		if (typeInput && typeInput.getAttribute('data-item-id') === String(itemId)) {
+			typeInput.value = typeValue;
+			typeInput.setAttribute('data-saved-value', typeValue);
+		}
+
+		if (valueInput && valueInput.getAttribute('data-item-id') === String(itemId)) {
+			valueInput.value = barcodeValue;
+			valueInput.setAttribute('data-saved-value', barcodeValue);
+
+			if (procedureBarcodeInput) {
+				procedureBarcodeInput.value = barcodeValue;
+				renderBarcodePreview(barcodeValue);
+			}
+
+			showBarcodesTab();
+		}
+	}
+
+	function applyAutoProcessResult(registrationId, data) {
+		const payload = data || {};
+
+		(payload.assigned || []).forEach(function (item) {
+			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_1d_type', 'EAN-13');
+			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_1d', item.barcode);
+			syncOpenBarcodeInputs(item.id, 'EAN-13', item.barcode);
+
+			const rowIndex = rowIndexForItem(registrationId, item.id);
+
+			if (rowIndex >= 0) {
+				markRowAccepted(registrationId, rowIndex);
+			}
+		});
+
+		(payload.cleared || []).forEach(function (item) {
+			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_1d_type', '');
+			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_1d', '');
+			syncOpenBarcodeInputs(item.id, '', '');
+		});
+
+		if (activeDetail && String(activeDetail.regId) === String(registrationId) && productModalTitle) {
+			const badge = productModalTitle.querySelector('.badge');
+			const row = getActiveRow();
+
+			if (badge && row) {
+				badge.textContent = normalizeItemStatus(row.item_status || row.status || '');
+			}
+
+			updateReviewButtonState();
+		}
+	}
+
+	function autoProcessPayload(errorOrResult) {
+		const body = errorOrResult && errorOrResult.response && errorOrResult.response.data;
+
+		if (body && body.data) {
+			return body.data;
+		}
+
+		return errorOrResult && errorOrResult.data ? errorOrResult.data : {};
+	}
+
+	const AUTO_PROCESS_STEP_MS = 100;
+
+	function wait(ms) {
+		return new Promise(function (resolve) {
+			setTimeout(resolve, ms);
+		});
+	}
+
+	function focusAutoProcessRow(registrationId, data) {
+		const payload = data || {};
+		const changed = (payload.assigned && payload.assigned[0]) || (payload.cleared && payload.cleared[0]);
+
+		if (!changed) {
+			return;
+		}
+
+		const rowIndex = rowIndexForItem(registrationId, changed.id);
+
+		if (rowIndex >= 0) {
+			selectGridRow(registrationId, rowIndex);
+		}
+	}
+
+	function runAutoProcess(button) {
+		const registrationId = button.getAttribute(ID_ATTR);
+		const tab = tabData.get(String(registrationId));
+
+		if (!registrationId) {
+			return Promise.resolve();
+		}
+
+		const maxSteps = ((tab && tab.rows) ? tab.rows.length : 0) + 1;
+		let assignedCount = 0;
+		let clearedCount = 0;
+		let step = 0;
+
+		button.disabled = true;
+
+		function finish() {
+			if (assignedCount) {
+				showToast(t('reg_auto_process_done').replace('%d', String(assignedCount)), 'success');
+				return;
+			}
+
+			if (clearedCount) {
+				showToast(t('reg_auto_process_cleared'), 'success');
+				return;
+			}
+
+			showToast(t('reg_auto_process_none'), 'success');
+		}
+
+		function next() {
+			if (step >= maxSteps) {
+				finish();
+				return Promise.resolve();
+			}
+
+			step += 1;
+
+			return fetchApi(baseUrl + '/auto_process/' + registrationId, {
+				method: 'POST',
+			}).then(function (result) {
+				const data = result.data || {};
+
+				if (data.done) {
+					finish();
+					return;
+				}
+
+				focusAutoProcessRow(registrationId, data);
+
+				return wait(160).then(function () {
+					applyAutoProcessResult(registrationId, data);
+					assignedCount += (data.assigned || []).length;
+					clearedCount += (data.cleared || []).length;
+					return wait(AUTO_PROCESS_STEP_MS).then(next);
+				});
+			});
+		}
+
+		return next().catch(function (error) {
+			applyAutoProcessResult(registrationId, autoProcessPayload(error));
+			showAlert({
+				message: error.message || t('reg_barcode_save_failed'),
+				variant: 'danger',
+			});
+		}).finally(function () {
+			button.disabled = false;
+		});
+	}
+
+	function confirmAutoProcess(button) {
+		const registrationId = button.getAttribute(ID_ATTR);
+		const tab = tabData.get(String(registrationId));
+
+		showConfirm({
+			title: (tab && tab.file_name) || t('reg_auto_process'),
+			message: t('reg_auto_process_confirm'),
+			confirmLabel: t('reg_auto_process'),
+			confirmClass: 'btn btn-primary',
+		}).then(function () {
+			return runAutoProcess(button);
+		}).catch(function (error) {
+			if (window.isConfirmCancelled(error)) {
+				return;
+			}
+
+			showAlert({
+				message: error.message || t('reg_barcode_save_failed'),
+				variant: 'danger',
+			});
+		});
+	}
+
 	function saveRegistrationProducts(button) {
 		const registrationId = button.getAttribute(ID_ATTR);
 
@@ -1854,6 +2104,11 @@
 		}
 
 		return '<div class="ms-auto d-flex gap-2">' +
+			'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-auto-process-btn"' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-barcode me-1"></i> ' + escapeHtml(t('reg_auto_process')) +
+			'</button>' +
 			'<button type="button" class="btn btn-sm btn-outline-primary product-registration-tab-save-btn"' +
 				' data-product-registration-id="' + tab.product_registration_id + '"' +
 				' data-mdb-ripple-init>' +
@@ -1950,6 +2205,16 @@
 
 	if (tabsContent) {
 		tabsContent.addEventListener('click', function (event) {
+			const autoButton = event.target.closest('.product-registration-tab-auto-process-btn');
+
+			if (autoButton) {
+				if (!autoButton.disabled) {
+					confirmAutoProcess(autoButton);
+				}
+
+				return;
+			}
+
 			const button = event.target.closest('.product-registration-tab-save-btn');
 
 			if (!button || button.disabled) {
@@ -2077,6 +2342,11 @@
 			}
 
 			input.classList.remove('is-invalid');
+
+			if (input.getAttribute('data-barcode-field') === 'barcode_1d') {
+				showBarcodesTab();
+			}
+
 			scheduleBarcodeFieldSave(input);
 		});
 
@@ -2099,6 +2369,17 @@
 
 			input.classList.remove('is-invalid');
 			scheduleBarcodeFieldSave(input);
+
+			if (input.getAttribute('data-barcode-field') === 'barcode_1d_type') {
+				const valueInput = barcodeFieldInput('barcode_1d');
+				const barcodeValue = valueInput ? valueInput.value : '';
+
+				if (procedureBarcodeInput && !procedureBarcodeInput.classList.contains('is-typing-barcode')) {
+					procedureBarcodeInput.value = barcodeValue;
+				}
+
+				renderBarcodePreview(barcodeValue);
+			}
 		});
 	}
 
