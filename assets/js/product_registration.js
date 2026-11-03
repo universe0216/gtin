@@ -1880,6 +1880,12 @@
 			}
 		}
 
+		const actions = pane ? pane.querySelector('.procedure-tab-meta .ms-auto') : null;
+
+		if (actions && tab) {
+			actions.outerHTML = buildCompletedTabActions(tab);
+		}
+
 		document.querySelectorAll('.product-registration-tab-delete-btn[' + ID_ATTR + '="' + key + '"]').forEach(function (button) {
 			button.classList.remove('product-registration-tab-delete-btn', 'btn-outline-danger');
 			button.classList.add('product-registration-tab-close-btn');
@@ -2132,18 +2138,96 @@
 		'</button>';
 	}
 
+	function buildDownloadButton(tab) {
+		return '<button type="button" class="btn btn-sm btn-outline-primary product-registration-tab-download-btn"' +
+			' data-product-registration-id="' + tab.product_registration_id + '"' +
+			' data-mdb-ripple-init>' +
+			'<i class="fas fa-download me-1"></i> ' + escapeHtml(t('common_download')) +
+		'</button>';
+	}
+
+	function buildCompletedTabActions(tab) {
+		return '<div class="ms-auto d-flex gap-2">' +
+			buildDownloadButton(tab) +
+			'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-close-btn"' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-times me-1"></i> ' + escapeHtml(t('common_close')) +
+			'</button>' +
+		'</div>';
+	}
+
+	function downloadFileName(disposition, fallback) {
+		const header = String(disposition || '');
+		const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
+		const plain = /filename="([^"]+)"/i.exec(header);
+
+		if (encoded) {
+			try {
+				return decodeURIComponent(encoded[1]);
+			} catch (error) {
+				return encoded[1];
+			}
+		}
+
+		if (plain) {
+			return plain[1];
+		}
+
+		return fallback;
+	}
+
+	function downloadRegistration(button) {
+		const registrationId = button.getAttribute(ID_ATTR);
+
+		if (!registrationId || button.disabled) {
+			return;
+		}
+
+		button.disabled = true;
+
+		fetch(baseUrl + '/download/' + registrationId, {
+			credentials: 'same-origin',
+		}).then(function (response) {
+			const type = response.headers.get('content-type') || '';
+
+			if (type.indexOf('application/json') !== -1) {
+				return response.json().then(function (data) {
+					throw new Error((data && data.message) || t('reg_download_failed'));
+				});
+			}
+
+			if (!response.ok) {
+				throw new Error(t('reg_download_failed'));
+			}
+
+			return response.blob().then(function (blob) {
+				return {
+					blob: blob,
+					filename: downloadFileName(response.headers.get('content-disposition'), 'DONE_registration.zip'),
+				};
+			});
+		}).then(function (file) {
+			const url = URL.createObjectURL(file.blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = file.filename;
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			URL.revokeObjectURL(url);
+		}).catch(function (error) {
+			showToast(error.message || t('reg_download_failed'), 'error');
+		}).finally(function () {
+			button.disabled = false;
+		});
+	}
+
 	function buildTabActionButton(tab, isImported) {
 		const isCompleted = isImported || String(tab.status || '').toLowerCase() === 'completed';
 
 		if (isCompleted) {
-			return '<div class="ms-auto d-flex gap-2">' +
-				buildSendButton(tab) +
-				'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-close-btn"' +
-					' data-product-registration-id="' + tab.product_registration_id + '"' +
-					' data-mdb-ripple-init>' +
-					'<i class="fas fa-times me-1"></i> ' + escapeHtml(t('common_close')) +
-				'</button>' +
-			'</div>';
+			return buildCompletedTabActions(tab);
 		}
 
 		return '<div class="ms-auto d-flex gap-2">' +
@@ -2445,6 +2529,13 @@
 
 	if (tabsContent) {
 		tabsContent.addEventListener('click', function (event) {
+			const downloadButton = event.target.closest('.product-registration-tab-download-btn');
+
+			if (downloadButton) {
+				downloadRegistration(downloadButton);
+				return;
+			}
+
 			const sendButton = event.target.closest('.product-registration-tab-send-btn');
 
 			if (sendButton) {

@@ -79,11 +79,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								<div class="ms-auto d-flex gap-2">
 									<button
 										type="button"
-										class="btn btn-sm btn-outline-success product-registration-tab-send-btn"
+										class="btn btn-sm btn-outline-primary product-registration-tab-download-btn"
 										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 										data-mdb-ripple-init
 									>
-										<i class="fas fa-paper-plane me-1"></i> <?php echo html_escape(app_line('reg_send')); ?>
+										<i class="fas fa-download me-1"></i> <?php echo html_escape(app_line('common_download')); ?>
 									</button>
 									<button
 										type="button"

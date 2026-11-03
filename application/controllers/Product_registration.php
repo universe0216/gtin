@@ -704,6 +704,50 @@ class Product_registration extends AuthenticatedController {
 		));
 	}
 
+	public function download($id = NULL)
+	{
+		$registration = $this->product_registration_model->get($id);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
+		}
+
+		if (strcasecmp((string) $registration['status'], 'completed') !== 0)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_download_not_completed'),
+			), 422);
+		}
+
+		$this->load->library('product_registration_export');
+		$items = $this->product_registration_item_model->get_by_product_registration($registration['id']);
+
+		try
+		{
+			$archive = $this->product_registration_export->build($registration, $items);
+		}
+		catch (Exception $exception)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_download_failed'),
+			), 500);
+		}
+
+		if ((int) $archive['count'] < 1)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('reg_download_empty'),
+			), 422);
+		}
+
+		$this->load->helper('download');
+		force_download($archive['filename'], $archive['binary']);
+	}
+
 	public function assignees()
 	{
 		if ( ! $this->input->is_ajax_request())
