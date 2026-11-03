@@ -40,6 +40,32 @@ class Account_model extends CI_Model {
 			->row_array();
 	}
 
+	public function get_product_editors($exclude_id = NULL)
+	{
+		$this->db
+			->select('accounts.id, accounts.username, accounts.full_name, accounts.is_admin')
+			->from('accounts')
+			->join(
+				'account_permissions',
+				"account_permissions.account_id = accounts.id AND account_permissions.permission = 'product.edit'",
+				'left'
+			)
+			->where('accounts.is_active', 1)
+			->group_start()
+				->where('accounts.is_admin', 1)
+				->or_where('account_permissions.permission', 'product.edit')
+			->group_end()
+			->order_by('accounts.full_name', 'ASC')
+			->order_by('accounts.id', 'ASC');
+
+		if ($exclude_id)
+		{
+			$this->db->where('accounts.id !=', (int) $exclude_id);
+		}
+
+		return $this->db->get()->result_array();
+	}
+
 	public function get_permissions($account_id)
 	{
 		$rows = $this->db

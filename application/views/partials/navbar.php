@@ -12,6 +12,7 @@ $admin_children = array(
 
 $nav_items = array(
 	'product_registration' => array('label' => app_line('nav_product_registration'), 'url' => site_url('product_registration'), 'permission' => NULL),
+	'registration_data'    => array('label' => app_line('nav_registration_data'), 'url' => site_url('registration_data'), 'permission' => NULL),
 	'organizations' => array('label' => app_line('nav_organizations'), 'url' => site_url('organizations'), 'permission' => 'organization.view'),
 	'products'      => array('label' => app_line('nav_products'), 'url' => site_url('products'), 'permission' => 'product.view'),
 );

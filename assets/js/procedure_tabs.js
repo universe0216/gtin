@@ -193,7 +193,9 @@
 
 			initTabControls(settings.tabsWrapper);
 
-			if (newTabs.length) {
+			const hadActive = !!settings.tabsNav.querySelector('.nav-link.active');
+
+			if (newTabs.length && (context.activate !== false || !hadActive)) {
 				activateTab(settings.getTabId(newTabs[0]));
 			}
 

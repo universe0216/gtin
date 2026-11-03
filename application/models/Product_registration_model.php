@@ -15,6 +15,17 @@ class Product_registration_model extends CI_Model {
 			->result_array();
 	}
 
+	public function get_incomplete()
+	{
+		return $this->db
+			->select('product_registrations.*, accounts.full_name AS processor_name, accounts.username AS processor_username')
+			->join('accounts', 'accounts.id = product_registrations.account_id', 'left')
+			->where('product_registrations.status !=', 'completed')
+			->order_by('product_registrations.id', 'DESC')
+			->get($this->table)
+			->result_array();
+	}
+
 	public function get_incomplete_by_account($account_id)
 	{
 		return $this->db

@@ -196,19 +196,19 @@ class Product_registration extends AuthenticatedController {
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_reject_failed')), 500);
 		}
 
+		$counts = array();
+
 		if ($was_pending || $was_approved)
 		{
-			$counts = array(
-				'rejected' => (int) $registration['rejected'] + 1,
-			);
+			$counts['rejected'] = (int) $registration['rejected'] + 1;
 
 			if ($was_approved)
 			{
 				$counts['approved'] = max(0, (int) $registration['approved'] - 1);
 			}
-
-			$this->product_registration_model->update($registration['id'], $counts);
 		}
+
+		$registration_status = $this->mark_registration_processing($registration, $counts);
 
 		return $this->json_response(array(
 			'success' => TRUE,
@@ -218,6 +218,7 @@ class Product_registration extends AuthenticatedController {
 				'product_registration_id' => (int) $item['product_registration_id'],
 				'status'                  => 'rejected',
 				'message'                 => $reason,
+				'registration_status'     => $registration_status,
 			),
 		));
 	}
@@ -302,12 +303,14 @@ class Product_registration extends AuthenticatedController {
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_accept_save_failed')), 500);
 		}
 
+		$counts = array();
+
 		if ($was_pending)
 		{
-			$this->product_registration_model->update($registration['id'], array(
-				'approved' => (int) $registration['approved'] + 1,
-			));
+			$counts['approved'] = (int) $registration['approved'] + 1;
 		}
+
+		$registration_status = $this->mark_registration_processing($registration, $counts);
 
 		return $this->json_response(array(
 			'success' => TRUE,
@@ -317,6 +320,7 @@ class Product_registration extends AuthenticatedController {
 				'product_registration_id' => (int) $item['product_registration_id'],
 				'status'                  => 'approved',
 				'barcode'                 => $barcode,
+				'registration_status'     => $registration_status,
 			),
 		));
 	}
@@ -697,6 +701,131 @@ class Product_registration extends AuthenticatedController {
 				'saved'  => $saved,
 				'status' => 'completed',
 			),
+		));
+	}
+
+	public function assignees()
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->load->model('account_model');
+		$user = $this->auth->user();
+		$accounts = $this->account_model->get_product_editors($user['id']);
+		$users = array();
+
+		foreach ($accounts as $account)
+		{
+			$users[] = array(
+				'id'        => (int) $account['id'],
+				'username'  => $account['username'],
+				'full_name' => $account['full_name'],
+				'is_admin'  => (bool) $account['is_admin'],
+			);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'users'   => $users,
+		));
+	}
+
+	public function assign($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$registration = $this->product_registration_model->get($id);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
+		}
+
+		$user = $this->auth->user();
+
+		if ((int) $registration['account_id'] !== (int) $user['id'])
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_send_forbidden')), 403);
+		}
+
+		$account_id = (int) $this->input->post('account_id');
+		$this->load->model('account_model');
+		$target = $this->account_model->get($account_id);
+		$permissions = ($target && isset($target['permissions']) && is_array($target['permissions']))
+			? $target['permissions']
+			: array();
+		$can_receive = $target
+			&& ! empty($target['is_active'])
+			&& ( ! empty($target['is_admin']) || in_array('product.edit', $permissions, TRUE))
+			&& (int) $target['id'] !== (int) $user['id'];
+
+		if ( ! $can_receive)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_send_user_invalid')), 422);
+		}
+
+		if ( ! $this->product_registration_model->update($registration['id'], array(
+			'account_id' => (int) $target['id'],
+		)))
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_send_failed')), 500);
+		}
+
+		$name = trim((string) $target['full_name']) !== '' ? $target['full_name'] : $target['username'];
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('reg_send_success', $name),
+			'data'    => array(
+				'account_id' => (int) $target['id'],
+				'full_name'  => $name,
+			),
+		));
+	}
+
+	public function incoming()
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$raw_ids = $this->input->get('ids');
+		$known = array();
+
+		if (is_array($raw_ids))
+		{
+			$known = $raw_ids;
+		}
+		elseif (is_string($raw_ids) && $raw_ids !== '')
+		{
+			$known = explode(',', $raw_ids);
+		}
+
+		$known = array_fill_keys(array_map('intval', $known), TRUE);
+		$user = $this->auth->user();
+		$registrations = $this->product_registration_model->get_incomplete_by_account($user['id']);
+		$tabs = array();
+
+		foreach ($registrations as $registration)
+		{
+			if (isset($known[(int) $registration['id']]))
+			{
+				continue;
+			}
+
+			$items = $this->product_registration_item_model->get_by_product_registration($registration['id']);
+			$tabs[] = $this->product_registration_processor->format_product_registration_tab($registration, $items);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'tabs'    => $tabs,
 		));
 	}
 
@@ -1081,16 +1210,21 @@ class Product_registration extends AuthenticatedController {
 				);
 			}
 
+			$counts = array();
+
 			if (($item['status'] ?? '') !== 'approved')
 			{
-				$this->add_registration_approved($registration, 1);
+				$counts['approved'] = (int) $registration['approved'] + 1;
 			}
+
+			$registration_status = $this->mark_registration_processing($registration, $counts);
 
 			return array(
 				'error'   => FALSE,
 				'message' => app_line('reg_auto_process_done', 1),
 				'data'    => array(
-					'done'     => FALSE,
+					'done'                 => FALSE,
+					'registration_status'  => $registration_status,
 					'assigned' => array(array(
 						'id'      => (int) $item['id'],
 						'barcode' => $result['barcode'],
@@ -1112,18 +1246,26 @@ class Product_registration extends AuthenticatedController {
 		);
 	}
 
-	protected function add_registration_approved($registration, $added)
+	protected function mark_registration_processing($registration, $extra = array())
 	{
-		$added = (int) $added;
-
-		if ($added < 1)
+		if ( ! $registration || strcasecmp((string) $registration['status'], 'completed') === 0)
 		{
-			return;
+			return $registration ? (string) $registration['status'] : '';
 		}
 
-		$this->product_registration_model->update($registration['id'], array(
-			'approved' => (int) $registration['approved'] + $added,
-		));
+		$data = is_array($extra) ? $extra : array();
+
+		if (strcasecmp((string) $registration['status'], 'processing') !== 0)
+		{
+			$data['status'] = 'processing';
+		}
+
+		if ($data)
+		{
+			$this->product_registration_model->update($registration['id'], $data);
+		}
+
+		return 'processing';
 	}
 
 	protected function write_barcode_cells($info, $barcode, $type)

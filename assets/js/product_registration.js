@@ -22,6 +22,10 @@
 	const openUploadBtn = document.getElementById('btnOpenUploadModal');
 	const openImportBtn = document.getElementById('btnOpenImportModal');
 	const importModalEl = document.getElementById('procedureImportModal');
+	const sendModalEl = document.getElementById('procedureSendModal');
+	const sendUserList = document.getElementById('procedureSendUserList');
+	const sendEmpty = document.getElementById('procedureSendEmpty');
+	const sendLoading = document.getElementById('procedureSendLoading');
 	const importLoadingEl = document.getElementById('procedureImportLoading');
 	const importSearchInput = document.getElementById('procedureImportSearch');
 	const tabsWrapper = document.getElementById('procedureTabsWrapper');
@@ -833,6 +837,7 @@
 				});
 
 				markRowAccepted(regId, rowIndex);
+				setRegistrationStatus(regId, result.data && result.data.registration_status);
 				showBarcodesTab();
 
 				const previewValue = assignable && assignable.barcode ? assignable.barcode : '';
@@ -933,6 +938,7 @@
 				}
 
 				markRowRejected(regId, rowIndex, reasonText);
+				setRegistrationStatus(regId, result.data && result.data.registration_status);
 				advanceToNextRowAfterReview();
 				showToast(result.message, 'success');
 			})
@@ -1823,6 +1829,28 @@
 		'</li>';
 	}
 
+	function setRegistrationStatus(registrationId, status) {
+		const nextStatus = String(status || '');
+
+		if (!nextStatus) {
+			return;
+		}
+
+		const key = String(registrationId);
+		const tab = tabData.get(key);
+
+		if (tab) {
+			tab.status = nextStatus;
+		}
+
+		const pane = paneFor(key);
+		const statusEl = pane ? pane.querySelector('.procedure-tab-status-value') : null;
+
+		if (statusEl) {
+			statusEl.textContent = nextStatus;
+		}
+	}
+
 	function markRegistrationSaved(registrationId, status) {
 		const key = String(registrationId);
 		const savedStatus = status || 'completed';
@@ -1931,6 +1959,10 @@
 			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_1d', '');
 			syncOpenBarcodeInputs(item.id, '', '');
 		});
+
+		if (payload.registration_status) {
+			setRegistrationStatus(registrationId, payload.registration_status);
+		}
 
 		if (activeDetail && String(activeDetail.regId) === String(registrationId) && productModalTitle) {
 			const badge = productModalTitle.querySelector('.badge');
@@ -2092,18 +2124,30 @@
 		});
 	}
 
+	function buildSendButton(tab) {
+		return '<button type="button" class="btn btn-sm btn-outline-success product-registration-tab-send-btn"' +
+			' data-product-registration-id="' + tab.product_registration_id + '"' +
+			' data-mdb-ripple-init>' +
+			'<i class="fas fa-paper-plane me-1"></i> ' + escapeHtml(t('reg_send')) +
+		'</button>';
+	}
+
 	function buildTabActionButton(tab, isImported) {
 		const isCompleted = isImported || String(tab.status || '').toLowerCase() === 'completed';
 
 		if (isCompleted) {
-			return '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto product-registration-tab-close-btn"' +
-				' data-product-registration-id="' + tab.product_registration_id + '"' +
-				' data-mdb-ripple-init>' +
-				'<i class="fas fa-times me-1"></i> ' + escapeHtml(t('common_close')) +
-			'</button>';
+			return '<div class="ms-auto d-flex gap-2">' +
+				buildSendButton(tab) +
+				'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-close-btn"' +
+					' data-product-registration-id="' + tab.product_registration_id + '"' +
+					' data-mdb-ripple-init>' +
+					'<i class="fas fa-times me-1"></i> ' + escapeHtml(t('common_close')) +
+				'</button>' +
+			'</div>';
 		}
 
 		return '<div class="ms-auto d-flex gap-2">' +
+			buildSendButton(tab) +
 			'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-auto-process-btn"' +
 				' data-product-registration-id="' + tab.product_registration_id + '"' +
 				' data-mdb-ripple-init>' +
@@ -2203,8 +2247,211 @@
 		},
 	});
 
+	let sendModal = null;
+	let pendingSendId = null;
+	let incomingRequest = null;
+
+	function sendUserLabel(user) {
+		const name = String(user.full_name || '').trim();
+
+		return name || String(user.username || '');
+	}
+
+	function renderSendUser(user) {
+		const label = sendUserLabel(user);
+		const username = String(user.username || '');
+
+		return '<button type="button" class="btn btn-outline-secondary text-start procedure-send-user"' +
+			' data-account-id="' + escapeAttr(user.id) + '"' +
+			' data-user-name="' + escapeAttr(label) + '">' +
+			'<span class="d-block fw-semibold">' + escapeHtml(label) + '</span>' +
+			(username && username !== label
+				? '<span class="small text-muted">' + escapeHtml(username) + '</span>'
+				: '') +
+		'</button>';
+	}
+
+	function initSendModal() {
+		if (typeof mdb === 'undefined' || !sendModalEl) {
+			return;
+		}
+
+		sendModal = mdb.Modal.getOrCreateInstance(sendModalEl);
+	}
+
+	function openSendModal(registrationId) {
+		if (!sendModal || !registrationId) {
+			return;
+		}
+
+		pendingSendId = String(registrationId);
+
+		if (sendUserList) {
+			sendUserList.innerHTML = '';
+		}
+
+		if (sendEmpty) {
+			sendEmpty.classList.add('d-none');
+		}
+
+		if (sendLoading) {
+			sendLoading.classList.remove('d-none');
+		}
+
+		sendModal.show();
+
+		fetchApi(baseUrl + '/assignees').then(function (result) {
+			if (pendingSendId !== String(registrationId)) {
+				return;
+			}
+
+			const users = result.users || [];
+
+			if (sendLoading) {
+				sendLoading.classList.add('d-none');
+			}
+
+			if (!users.length) {
+				if (sendEmpty) {
+					sendEmpty.classList.remove('d-none');
+				}
+				return;
+			}
+
+			if (sendUserList) {
+				sendUserList.innerHTML = users.map(renderSendUser).join('');
+			}
+		}).catch(function (error) {
+			if (sendModal) {
+				sendModal.hide();
+			}
+
+			showAlert({
+				message: error.message || t('reg_send_failed'),
+				variant: 'danger',
+			});
+		});
+	}
+
+	function finishSend(registrationId) {
+		if (activeDetail && String(activeDetail.regId) === String(registrationId) && productModal) {
+			productModal.hide();
+		}
+
+		tabData.delete(String(registrationId));
+		procedureTabs.closeTab(registrationId);
+	}
+
+	function confirmSend(accountId, userName) {
+		const registrationId = pendingSendId;
+
+		if (!registrationId || !accountId || !sendModalEl) {
+			return;
+		}
+
+		function ask() {
+			showConfirm({
+				title: t('reg_send'),
+				message: t('reg_send_confirm', { name: userName }),
+				confirmLabel: t('reg_send'),
+				confirmClass: 'btn btn-primary',
+			}).then(function () {
+				const formData = new FormData();
+				formData.append('account_id', accountId);
+
+				return fetchApi(baseUrl + '/assign/' + registrationId, {
+					method: 'POST',
+					body: formData,
+				});
+			}).then(function (result) {
+				if (!result) {
+					return;
+				}
+
+				finishSend(registrationId);
+				showToast(result.message || t('reg_send_success'), 'success');
+			}).catch(function (error) {
+				if (window.isConfirmCancelled(error)) {
+					return;
+				}
+
+				showAlert({
+					message: error.message || t('reg_send_failed'),
+					variant: 'danger',
+				});
+			});
+		}
+
+		sendModalEl.addEventListener('hidden.mdb.modal', function onHidden() {
+			sendModalEl.removeEventListener('hidden.mdb.modal', onHidden);
+			ask();
+		});
+		sendModal.hide();
+	}
+
+	function currentRegistrationIds() {
+		if (!tabsNav) {
+			return [];
+		}
+
+		return Array.from(tabsNav.querySelectorAll('.nav-link[' + ID_ATTR + ']')).map(function (button) {
+			return button.getAttribute(ID_ATTR);
+		}).filter(Boolean);
+	}
+
+	function pullIncomingRegistrations() {
+		if (incomingRequest || document.hidden) {
+			return;
+		}
+
+		const ids = currentRegistrationIds().join(',');
+		incomingRequest = fetchApi(baseUrl + '/incoming?ids=' + encodeURIComponent(ids)).then(function (result) {
+			const tabs = result.tabs || [];
+
+			if (!tabs.length) {
+				return;
+			}
+
+			procedureTabs.prependTabs(tabs, { activate: false });
+			showToast(t('reg_send_received'), 'success');
+		}).catch(function () {
+			return null;
+		}).finally(function () {
+			incomingRequest = null;
+		});
+	}
+
+	function watchIncomingRegistrations() {
+		window.setInterval(pullIncomingRegistrations, 10000);
+		window.addEventListener('focus', pullIncomingRegistrations);
+		document.addEventListener('visibilitychange', function () {
+			if (!document.hidden) {
+				pullIncomingRegistrations();
+			}
+		});
+	}
+
+	if (sendUserList) {
+		sendUserList.addEventListener('click', function (event) {
+			const button = event.target.closest('.procedure-send-user');
+
+			if (!button) {
+				return;
+			}
+
+			confirmSend(button.getAttribute('data-account-id'), button.getAttribute('data-user-name') || '');
+		});
+	}
+
 	if (tabsContent) {
 		tabsContent.addEventListener('click', function (event) {
+			const sendButton = event.target.closest('.product-registration-tab-send-btn');
+
+			if (sendButton) {
+				openSendModal(sendButton.getAttribute(ID_ATTR));
+				return;
+			}
+
 			const autoButton = event.target.closest('.product-registration-tab-auto-process-btn');
 
 			if (autoButton) {
@@ -2227,6 +2474,8 @@
 
 	procedureUpload.init();
 	procedureTabs.init();
+	initSendModal();
+	watchIncomingRegistrations();
 
 	// A finished registration stays in the catalog. Its tab control only closes the tab.
 	document.addEventListener('click', function (event) {

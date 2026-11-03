@@ -44,6 +44,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/js/product_registration.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/organization_registration.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/history.js'); ?>"></script>
+<script src="<?php echo base_url('assets/js/registration_data.js'); ?>"></script>
 
 <?php $this->load->view('partials/confirm_modal'); ?>
 <?php $this->load->view('partials/alert_modal'); ?>

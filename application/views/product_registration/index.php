@@ -76,16 +76,34 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							<span><strong><?php echo html_escape(app_line('reg_status')); ?>:</strong> <span class="procedure-tab-status-value"><?php echo html_escape($tab['status']); ?></span></span>
 							<span><strong><?php echo html_escape(app_line('reg_uploaded')); ?>:</strong> <?php echo html_escape($tab['created_at']); ?></span>
 							<?php if ($tab_completed): ?>
-								<button
-									type="button"
-									class="btn btn-sm btn-outline-secondary ms-auto product-registration-tab-close-btn"
-									data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
-									data-mdb-ripple-init
-								>
-									<i class="fas fa-times me-1"></i> <?php echo html_escape(app_line('common_close')); ?>
-								</button>
+								<div class="ms-auto d-flex gap-2">
+									<button
+										type="button"
+										class="btn btn-sm btn-outline-success product-registration-tab-send-btn"
+										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+										data-mdb-ripple-init
+									>
+										<i class="fas fa-paper-plane me-1"></i> <?php echo html_escape(app_line('reg_send')); ?>
+									</button>
+									<button
+										type="button"
+										class="btn btn-sm btn-outline-secondary product-registration-tab-close-btn"
+										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+										data-mdb-ripple-init
+									>
+										<i class="fas fa-times me-1"></i> <?php echo html_escape(app_line('common_close')); ?>
+									</button>
+								</div>
 							<?php else: ?>
 								<div class="ms-auto d-flex gap-2">
+									<button
+										type="button"
+										class="btn btn-sm btn-outline-success product-registration-tab-send-btn"
+										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
+										data-mdb-ripple-init
+									>
+										<i class="fas fa-paper-plane me-1"></i> <?php echo html_escape(app_line('reg_send')); ?>
+									</button>
 									<button
 										type="button"
 										class="btn btn-sm btn-outline-secondary product-registration-tab-auto-process-btn"
@@ -334,6 +352,28 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 			<div class="modal-footer">
 				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_cancel')); ?></button>
 				<button type="button" class="btn btn-danger" id="procedureConfirmRejectBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_reject')); ?></button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="procedureSendModal" tabindex="-1" aria-labelledby="procedureSendModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="procedureSendModalLabel"><?php echo html_escape(app_line('reg_send_title')); ?></h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
+			</div>
+			<div class="modal-body">
+				<p class="text-muted small mb-3"><?php echo html_escape(app_line('reg_send_hint')); ?></p>
+				<div id="procedureSendLoading" class="text-center text-muted py-4 d-none">
+					<div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+				</div>
+				<div id="procedureSendUserList" class="procedure-send-user-list d-grid gap-2"></div>
+				<p id="procedureSendEmpty" class="text-muted mb-0 d-none"><?php echo html_escape(app_line('reg_send_empty')); ?></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_cancel')); ?></button>
 			</div>
 		</div>
 	</div>
