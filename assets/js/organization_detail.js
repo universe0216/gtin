@@ -297,13 +297,63 @@
 		'</div>';
 	}
 
+	const productColumnWidths = {
+		name: 220,
+		brand: 150,
+		standard_number: 170,
+		barcode_1d: 170,
+		package_type: 150,
+		price: 120,
+		reg_date: 160,
+		test_status: 140,
+	};
+
+	function productIndexRenderer(row) {
+		let number = row + 1;
+		const host = $('#organizationProductsGrid');
+
+		if (host.length) {
+			const paging = host.jqxGrid('getpaginginformation');
+
+			if (paging && paging.pagesize && row < paging.pagesize) {
+				number = (paging.pagenum || 0) * paging.pagesize + row + 1;
+			}
+		}
+
+		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + number + '</div>';
+	}
+
+	function productsGridHeight() {
+		const table = document.querySelector('#organizationProductsTab .entity-detail-products-table');
+
+		if (table && table.clientHeight > 200) {
+			return table.clientHeight;
+		}
+
+		return Math.max(320, window.innerHeight - 280);
+	}
+
 	function buildProductColumns() {
 		const columns = [
-			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+			{
+				text: '#',
+				datafield: '__rownum',
+				sortable: false,
+				filterable: false,
+				width: 56,
+				pinned: true,
+				cellsalign: 'right',
+				align: 'right',
+				cellsrenderer: productIndexRenderer,
+			},
 		];
 
 		productColumns.forEach(function (column) {
-			columns.push({ text: column.label, datafield: column.key });
+			columns.push({
+				text: column.label,
+				datafield: column.key,
+				width: productColumnWidths[column.key] || 160,
+			});
 		});
 
 		if (canDeleteProduct) {
@@ -317,7 +367,7 @@
 	}
 
 	function buildProductDatafields() {
-		const names = { id: 'number', name: 'string' };
+		const names = { id: 'number', name: 'string', __rownum: 'number' };
 
 		productColumns.forEach(function (column) {
 			if (!names[column.key]) {
@@ -341,7 +391,7 @@
 			datafields: buildProductDatafields(),
 			pagesize: perPage,
 			pagesizeoptions: ['10', '20', '50'],
-			height: Math.max(320, window.innerHeight - 280),
+			height: productsGridHeight(),
 			emptyMessage: t('org_products_empty'),
 			getParams: function () {
 				return productsState.search ? { q: productsState.search } : {};
@@ -353,6 +403,11 @@
 		});
 
 		if (productsGrid) {
+			window.addEventListener('resize', function () {
+				if (productsGrid) {
+					productsGrid.$el.jqxGrid('height', productsGridHeight());
+				}
+			});
 			$(productsGrid.$el).on('click', '.organization-product-delete-btn', function (event) {
 				event.preventDefault();
 				event.stopPropagation();

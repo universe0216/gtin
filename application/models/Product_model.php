@@ -95,6 +95,17 @@ class Product_model extends Basic_model {
 		$this->db->group_end();
 	}
 
+	public function get_with_organization($id)
+	{
+		return $this->db
+			->select('products.*, organizations.name AS organization_name')
+			->from($this->table)
+			->join('organizations', 'organizations.id = products.org_id', 'left')
+			->where('products.id', (int) $id)
+			->get()
+			->row_array();
+	}
+
 	public function find_catalog_match($organization_id, $barcode, $name)
 	{
 		$this->db

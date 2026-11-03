@@ -42,7 +42,7 @@
 		(tab.columns || []).forEach(function (column, index) {
 			const field = 'c' + index;
 			datafields.push({ name: field, type: 'string' });
-			columns.push({ text: column, datafield: field });
+			columns.push({ text: column, datafield: field, width: 160 });
 		});
 
 		const data = (tab.rows || []).map(function (row) {
@@ -223,4 +223,12 @@
 	if (activeId) {
 		ensureGrid(activeId);
 	}
+
+	window.addEventListener('resize', function () {
+		const height = Math.max(360, window.innerHeight - 320);
+
+		tabGrids.forEach(function (grid) {
+			grid.$el.jqxGrid('height', height);
+		});
+	});
 })();

@@ -27,6 +27,64 @@ class Product_registration_export {
 
 	public function build($registration, $items)
 	{
+		$entries = $this->collect_entries($registration, $items);
+
+		return array(
+			'filename' => $this->download_name($registration['file_name'] ?? ''),
+			'binary'   => $this->zip_entries($entries),
+			'count'    => count($entries),
+		);
+	}
+
+	public function build_catalog($product, $source = NULL)
+	{
+		$registration = array(
+			'procedure_number'  => '',
+			'organization_name' => trim((string) ($product['organization_name'] ?? '')),
+			'created_at'        => trim((string) ($product['reg_date'] ?? ($product['created_at'] ?? ''))),
+		);
+		$item = NULL;
+
+		if (is_array($source))
+		{
+			$item = $source;
+			$item['status'] = 'approved';
+			$registration['procedure_number'] = trim((string) ($source['procedure_number'] ?? ''));
+
+			if ($registration['procedure_number'] === '')
+			{
+				$info = json_decode((string) ($source['info'] ?? ''), TRUE);
+
+				if (is_array($info))
+				{
+					$registration['procedure_number'] = trim((string) ($info['procedure_number'] ?? ''));
+				}
+			}
+
+			if ( ! empty($source['registration_created_at']))
+			{
+				$registration['created_at'] = $source['registration_created_at'];
+			}
+		}
+
+		$entries = $item ? $this->collect_entries($registration, array($item)) : array();
+
+		if ( ! $entries)
+		{
+			$entries = $this->collect_entries($registration, array($this->catalog_item($product)));
+		}
+
+		$barcode = trim((string) ($product['barcode_1d'] ?? ''));
+
+		return array(
+			'filename' => $this->file_part($product['name'] ?? '').'_'.$this->file_part($barcode, 'barcode').'.zip',
+			'binary'   => $this->zip_entries($entries),
+			'count'    => count($entries),
+		);
+	}
+
+	protected function collect_entries($registration, $items)
+	{
 		require_once APPPATH.'libraries/Barcode_png.php';
 		require_once APPPATH.'libraries/Qr_png.php';
 		require_once APPPATH.'libraries/Product_registration_doc.php';
@@ -132,10 +190,43 @@ class Product_registration_export {
 			);
 		}
 
+		return $entries;
+	}
+
+	protected function catalog_item($product)
+	{
 		return array(
-			'filename' => $this->download_name($registration['file_name'] ?? ''),
-			'binary'   => $this->zip_entries($entries),
-			'count'    => count($entries),
+			'status'  => 'approved',
+			'name'    => $product['name'] ?? '',
+			'barcode' => $product['barcode_1d'] ?? '',
+			'info'    => json_encode(array(
+				'columns' => array(
+					'Product Name',
+					'Brand',
+					'Standard',
+					'Package Type',
+					'Perios before expired',
+					'1D barcode',
+					'type of 1D barcode',
+					'2D barcode',
+					'type of 2d Barcode',
+					'factory name',
+					'ReceiveDate',
+				),
+				'cells' => array(
+					$product['name'] ?? '',
+					$product['brand'] ?? '',
+					$product['standard_number'] ?? '',
+					$product['package_type'] ?? '',
+					$product['effective_period'] ?? '',
+					$product['barcode_1d'] ?? '',
+					$product['barcode_1d_type'] ?? '',
+					$product['barcode_2d'] ?? '',
+					$product['barcode_2d_type'] ?? '',
+					$product['organization_name'] ?? '',
+					$product['reg_date'] ?? '',
+				),
+			)),
 		);
 	}
 

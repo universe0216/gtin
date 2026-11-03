@@ -37,6 +37,32 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	</div>
 </div>
 
+<div class="modal fade" id="productDetailModal" tabindex="-1" aria-labelledby="productDetailModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="productDetailModalLabel"><?php echo html_escape(app_line('title_products')); ?></h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
+			</div>
+			<form id="productDetailForm">
+				<div class="modal-body">
+					<div id="productDetailLoading" class="text-center text-muted py-5 d-none">
+						<div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+						<?php echo html_escape(app_line('jqx_load')); ?>
+					</div>
+					<div id="productDetailAlert" class="alert d-none" role="alert"></div>
+					<div id="productDetailFormWrap" class="entity-detail-info-form"></div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-primary" id="productDetailDownloadBtn" data-mdb-ripple-init disabled>
+						<i class="fas fa-download me-1"></i> <?php echo html_escape(app_line('common_download')); ?>
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
 <script>
 	window.PRODUCTS_CONFIG = <?php echo json_encode(array(
 		'apiUrl'             => $list_api_url,
@@ -45,5 +71,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		'perPageOptions'     => array_values($list_per_page_options),
 		'emptyMessage'       => $list_empty_message,
 		'emptySearchMessage' => $list_empty_search_message,
+		'detail'             => $detail_config ?? NULL,
 	)); ?>;
 </script>

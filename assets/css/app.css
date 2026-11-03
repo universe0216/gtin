@@ -628,6 +628,25 @@ body.modal-open .modal-backdrop.app-alert-backdrop {
 	overflow: hidden;
 }
 
+#productsPage #productsGrid,
+#organizationsPage #organizationsGrid {
+	flex: 1 1 auto;
+	min-height: 0;
+	min-width: 0;
+	width: 100%;
+}
+
+#productDetailModal .modal-content > form {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+#productDetailModal .modal-body {
+	overflow: auto;
+}
+
 .entity-list-toolbar {
 	flex-shrink: 0;
 }

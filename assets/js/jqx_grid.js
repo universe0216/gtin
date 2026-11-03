@@ -178,6 +178,10 @@
 			root: opts.root || 'data',
 			cache: false,
 			pagesize: perPage,
+			// Ask the server to sort. Without this, jqxGrid only reorders the current page.
+			sort: function () {
+				$el.jqxGrid('updatebounddata', 'sort');
+			},
 			beforeprocessing: function (data) {
 				source.totalrecords = (data && data.total) || 0;
 
@@ -190,9 +194,9 @@
 				params.page = (data.pagenum || 0) + 1;
 				params.per_page = data.pagesize || perPage;
 
-				if (data.sortdatafield) {
+				if (data.sortdatafield && (data.sortorder === 'asc' || data.sortorder === 'desc')) {
 					params.sort = data.sortdatafield;
-					params.dir = data.sortorder || 'asc';
+					params.dir = data.sortorder;
 				}
 
 				const extra = typeof opts.getParams === 'function' ? opts.getParams() : null;

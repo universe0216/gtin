@@ -24,6 +24,28 @@ class Products extends BasicController {
 		array('key' => 'reg_date', 'label' => 'Registration Date'),
 		array('key' => 'test_status', 'label' => 'Test Status'),
 	);
+	protected $detail_fields = array(
+		array('name' => 'name', 'label' => 'Name', 'type' => 'text'),
+		array('name' => 'brand', 'label' => 'Brand', 'type' => 'text'),
+		array('name' => 'standard_number', 'label' => 'Standard Number', 'type' => 'text'),
+		array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text'),
+		array('name' => 'package_type', 'label' => 'Package Type', 'type' => 'text'),
+		array('name' => 'barcode_1d', 'label' => 'Barcode', 'type' => 'text'),
+		array('name' => 'barcode_1d_type', 'label' => 'Barcode Type', 'type' => 'text'),
+		array('name' => 'barcode_2d', 'label' => '2D Barcode', 'type' => 'text'),
+		array('name' => 'barcode_2d_type', 'label' => '2D Barcode Type', 'type' => 'text'),
+		array('name' => 'price', 'label' => 'Price', 'type' => 'text'),
+		array('name' => 'effective_period', 'label' => 'Effective Period', 'type' => 'text'),
+		array('name' => 'reg_date', 'label' => 'Registration Date', 'type' => 'date'),
+		array('name' => 'test_date', 'label' => 'Test Date', 'type' => 'date'),
+		array('name' => 'test_status', 'label' => 'Test Status', 'type' => 'text'),
+		array('name' => 'processor_name', 'label' => 'Processor', 'type' => 'text'),
+		array('name' => 'c_code', 'label' => 'Country Code', 'type' => 'text'),
+		array('name' => 'global_id', 'label' => 'Global ID', 'type' => 'text'),
+		array('name' => 'effect', 'label' => 'Effect', 'type' => 'textarea'),
+		array('name' => 'usage', 'label' => 'Usage', 'type' => 'textarea'),
+		array('name' => 'description', 'label' => 'Description', 'type' => 'textarea'),
+	);
 	protected $fields = array(
 		array(
 			'name'     => 'name',
@@ -176,8 +198,94 @@ class Products extends BasicController {
 		$this->load->model('product_model', 'model');
 	}
 
+	public function detail($id = NULL)
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->auth->require_permission($this->permission_view);
+		$record = $this->model->get_with_organization($id);
+
+		if ( ! $record)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_not_found'),
+			), 404);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $record,
+		));
+	}
+
+	public function download($id = NULL)
+	{
+		$this->auth->require_permission($this->permission_view);
+		$product = $this->model->get_with_organization($id);
+
+		if ( ! $product)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_not_found'),
+			), 404);
+		}
+
+		if (trim((string) ($product['barcode_1d'] ?? '')) === '')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_download_no_barcode'),
+			), 422);
+		}
+
+		$this->load->model('product_registration_item_model');
+		$this->load->library('product_registration_export');
+		$source = $this->product_registration_item_model->find_latest_approved_match(
+			$product['barcode_1d'],
+			$product['name']
+		);
+
+		try
+		{
+			$archive = $this->product_registration_export->build_catalog($product, $source ?: NULL);
+		}
+		catch (Exception $exception)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_download_failed'),
+			), 500);
+		}
+
+		if ((int) $archive['count'] < 1)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_download_no_barcode'),
+			), 422);
+		}
+
+		$this->load->helper('download');
+		force_download($archive['filename'], $archive['binary']);
+	}
+
 	protected function get_add_label()
 	{
 		return app_line('add_products');
+	}
+
+	protected function get_detail_config()
+	{
+		return array(
+			'enabled'     => TRUE,
+			'detailUrl'   => site_url('products/detail'),
+			'downloadUrl' => site_url('products/download'),
+			'fields'      => $this->localize_labeled($this->detail_fields),
+		);
 	}
 }

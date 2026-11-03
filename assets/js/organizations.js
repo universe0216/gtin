@@ -21,6 +21,17 @@
 		return;
 	}
 
+	const columnWidths = {
+		name: 240,
+		reg_number: 180,
+		gs1_prefix: 140,
+		parent_org: 200,
+		phone: 150,
+		init_date: 150,
+		reg_date: 160,
+		expiry_date: 150,
+	};
+
 	let currentSearch = '';
 
 	function updateMeta(data) {
@@ -37,23 +48,67 @@
 		}
 	}
 
-	const datafields = columns.map(function (column) {
-		return { name: column.key, type: 'string' };
-	});
+	function gridHeight() {
+		const panel = document.querySelector('#organizationsPage .entity-list-panel');
+		const toolbar = document.querySelector('#organizationsPage .entity-list-toolbar');
 
-	if (detailEnabled && !datafields.some(function (field) { return field.name === 'id'; })) {
-		datafields.unshift({ name: 'id', type: 'number' });
+		if (!panel) {
+			return 420;
+		}
+
+		return Math.max(240, panel.clientHeight - (toolbar ? toolbar.offsetHeight : 0) - 8);
 	}
+
+	function indexRenderer(row) {
+		let number = row + 1;
+		const host = $('#organizationsGrid');
+
+		if (host.length) {
+			const paging = host.jqxGrid('getpaginginformation');
+
+			if (paging && paging.pagesize && row < paging.pagesize) {
+				number = (paging.pagenum || 0) * paging.pagesize + row + 1;
+			}
+		}
+
+		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + number + '</div>';
+	}
+
+	const datafields = [
+		{ name: 'id', type: 'number' },
+		{ name: '__rownum', type: 'number' },
+	].concat(columns.map(function (column) {
+		return { name: column.key, type: 'string' };
+	}));
+
+	const gridColumns = [
+		{
+			text: '#',
+			datafield: '__rownum',
+			width: 56,
+			pinned: true,
+			sortable: false,
+			filterable: false,
+			cellsalign: 'right',
+			align: 'right',
+			cellsrenderer: indexRenderer,
+		},
+	].concat(columns.map(function (column) {
+		return {
+			text: column.label,
+			datafield: column.key,
+			width: columnWidths[column.key] || 160,
+		};
+	}));
 
 	const grid = JqxGrid.remote('#organizationsGrid', {
 		url: apiUrl,
-		columns: columns.map(function (column) {
-			return { text: column.label, datafield: column.key };
-		}),
+		columns: gridColumns,
 		datafields: datafields,
 		pagesize: perPage,
 		pagesizeoptions: perPageOptions,
 		selectionmode: detailEnabled ? 'singlerow' : 'none',
+		height: gridHeight(),
 		emptyMessage: config.emptyMessage,
 		getParams: function () {
 			return currentSearch ? { q: currentSearch } : {};
@@ -67,6 +122,10 @@
 	if (!grid) {
 		return;
 	}
+
+	window.addEventListener('resize', function () {
+		grid.$el.jqxGrid('height', gridHeight());
+	});
 
 	if (detailEnabled) {
 		grid.$el.addClass('entity-list-grid-clickable');
