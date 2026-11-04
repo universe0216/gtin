@@ -718,6 +718,20 @@ body.modal-open .modal-backdrop.app-alert-backdrop {
 	max-width: 36rem;
 }
 
+.products-location-filter {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	width: 18rem;
+	max-width: 100%;
+	flex: 0 0 auto;
+}
+
+.products-location-dropdown {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
 .entity-list-table-scroll {
 	flex: 1 1 auto;
 	min-height: 0;
@@ -2206,5 +2220,68 @@ select.procedure-detail-info-input option {
 }
 
 #locationTreeEmpty {
+	padding: 0.75rem;
+}
+
+#categoriesPage > .location-tree-panel {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+#categoriesPage .location-tree-toolbar,
+#categoriesPage #categoryTreeEmpty {
+	flex-shrink: 0;
+}
+
+.category-tree {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.category-head {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+}
+
+.category-head,
+.category-row {
+	display: grid;
+	grid-template-columns: 2.25rem minmax(12rem, 1.6fr) minmax(12rem, 1.4fr) 7rem 6.5rem minmax(4.5rem, auto);
+	align-items: center;
+	column-gap: 0.65rem;
+	min-height: 2.6rem;
+	min-width: 52rem;
+	padding: 0.3rem 0.75rem;
+	border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.category-head {
+	background-color: var(--app-surface-raised);
+	color: var(--app-text-muted);
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.category-row:hover {
+	background-color: var(--app-table-row-hover);
+}
+
+.category-original,
+.category-level {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #cbd5e1;
+	font-size: 0.8125rem;
+}
+
+#categoryTreeEmpty {
 	padding: 0.75rem;
 }

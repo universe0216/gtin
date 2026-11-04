@@ -278,4 +278,25 @@ ALTER TABLE `organization_archieve`
 	ADD INDEX `idx_organization_archieve_origin` (`origin_id`),
 	ADD INDEX `idx_organization_archieve_deleted` (`deleted_at`);
 
+-- ----------------------------
+-- Table structure for categories
+-- GS1 GPC hierarchy: 1 segment, 2 family, 3 class, 4 brick
+-- ----------------------------
+DROP TABLE IF EXISTS `categories`;
+CREATE TABLE `categories`  (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `parent_id` int UNSIGNED NULL DEFAULT NULL,
+  `gpc_code` char(8) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  `original_name` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  `level` tinyint UNSIGNED NOT NULL,
+  `sort_order` int UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_categories_gpc_code`(`gpc_code` ASC) USING BTREE,
+  INDEX `idx_categories_parent`(`parent_id` ASC) USING BTREE,
+  CONSTRAINT `fk_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
+
 SET FOREIGN_KEY_CHECKS = 1;

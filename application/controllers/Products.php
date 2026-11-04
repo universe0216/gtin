@@ -28,7 +28,7 @@ class Products extends BasicController {
 		array('name' => 'name', 'label' => 'Name', 'type' => 'text'),
 		array('name' => 'brand', 'label' => 'Brand', 'type' => 'text'),
 		array('name' => 'standard_number', 'label' => 'Standard Number', 'type' => 'text'),
-		array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text'),
+		array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text', 'readonly' => TRUE),
 		array('name' => 'package_type', 'label' => 'Package Type', 'type' => 'text'),
 		array('name' => 'barcode_1d', 'label' => 'Barcode', 'type' => 'text'),
 		array('name' => 'barcode_1d_type', 'label' => 'Barcode Type', 'type' => 'text'),
@@ -196,6 +196,64 @@ class Products extends BasicController {
 	{
 		parent::__construct();
 		$this->load->model('product_model', 'model');
+		$this->load->model('location_model');
+	}
+
+	protected function list_view_data()
+	{
+		return array(
+			'location_nodes' => $this->location_model->tree_nodes(),
+		);
+	}
+
+	protected function list_query_params()
+	{
+		$params = parent::list_query_params();
+		$params['location_ids'] = $this->location_model->filter_ids($this->input->get('location_id'));
+
+		return $params;
+	}
+
+	public function update($id = NULL)
+	{
+		$this->auth->require_permission($this->permission_edit);
+
+		if ( ! $this->model->get($id))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_not_found'),
+			), 404);
+		}
+
+		if ( ! $this->validate_fields())
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => validation_errors(' ', ' '),
+			), 422);
+		}
+
+		$data = $this->collect_field_values();
+
+		if ($this->input->post('org_id') === NULL)
+		{
+			unset($data['org_id']);
+		}
+
+		if ( ! $this->model->update($id, $data))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('common_failed_update'),
+			), 500);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('common_record_updated'),
+			'data'    => $this->model->get_with_organization($id),
+		));
 	}
 
 	public function detail($id = NULL)
@@ -312,6 +370,8 @@ class Products extends BasicController {
 			'enabled'     => TRUE,
 			'detailUrl'   => site_url('products/detail'),
 			'downloadUrl' => site_url('products/download'),
+			'updateUrl'   => site_url('products/update'),
+			'canEdit'     => $this->auth->can($this->permission_edit),
 			'deleteUrl'   => site_url('products/delete'),
 			'canDelete'   => $this->auth->can($this->permission_edit),
 			'fields'      => $this->localize_labeled($this->detail_fields),

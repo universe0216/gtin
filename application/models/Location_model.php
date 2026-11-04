@@ -6,6 +6,7 @@ require_once APPPATH.'models/Basic_model.php';
 class Location_model extends Basic_model {
 
 	protected $table = 'locations';
+	protected $tree_nodes = NULL;
 
 	public function list_for_tree()
 	{
@@ -128,6 +129,72 @@ class Location_model extends Basic_model {
 			$this->get($siblings[$index]['id']),
 			$this->get($siblings[$target]['id']),
 		);
+	}
+
+	public function tree_nodes()
+	{
+		if ($this->tree_nodes !== NULL)
+		{
+			return $this->tree_nodes;
+		}
+
+		$nodes = array();
+
+		foreach ($this->list_for_tree() as $row)
+		{
+			$nodes[] = array(
+				'id'         => (string) $row['id'],
+				'parent_id'  => $row['parent_id'] === NULL ? '' : (string) $row['parent_id'],
+				'name'       => $row['name'],
+				'sort_order' => (int) $row['sort_order'],
+			);
+		}
+
+		$this->tree_nodes = $nodes;
+
+		return $nodes;
+	}
+
+	public function filter_ids($raw)
+	{
+		$raw = trim((string) $raw);
+
+		if ($raw === '' || ! ctype_digit($raw))
+		{
+			return array();
+		}
+
+		$children = array();
+		$known = FALSE;
+
+		foreach ($this->tree_nodes() as $node)
+		{
+			if ((string) $node['id'] === $raw)
+			{
+				$known = TRUE;
+			}
+
+			$parent = (string) $node['parent_id'];
+			$children[$parent][] = (string) $node['id'];
+		}
+
+		if ( ! $known)
+		{
+			return array(-1);
+		}
+
+		$ids = array();
+		$walk = function ($id) use (&$walk, &$ids, $children) {
+			$ids[] = (int) $id;
+
+			foreach ($children[$id] ?? array() as $child_id)
+			{
+				$walk($child_id);
+			}
+		};
+		$walk($raw);
+
+		return $ids;
 	}
 
 	public function present_row(array $row)

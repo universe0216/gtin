@@ -16,7 +16,9 @@
 	const searchForm = document.getElementById('productsSearchForm');
 	const searchInput = document.getElementById('productsSearchInput');
 	const clearBtn = document.getElementById('productsClearBtn');
+	const locationClearBtn = document.getElementById('productsLocationClear');
 	const toolbarMeta = document.getElementById('productsToolbarMeta');
+	const locationNodes = config.locationNodes || [];
 	const modalEl = document.getElementById('productDetailModal');
 	const modalTitle = document.getElementById('productDetailModalLabel');
 	const detailForm = document.getElementById('productDetailForm');
@@ -24,6 +26,8 @@
 	const loadingEl = document.getElementById('productDetailLoading');
 	const alertEl = document.getElementById('productDetailAlert');
 	const downloadBtn = document.getElementById('productDetailDownloadBtn');
+	const saveBtn = document.getElementById('productDetailSaveBtn');
+	const canEditProduct = !!(detail.canEdit && detail.updateUrl);
 	const deleteBtn = document.getElementById('productDetailDeleteBtn');
 	const restoreBtn = document.getElementById('productDetailRestoreBtn');
 	const rowAction = detail.rowAction || {};
@@ -45,6 +49,7 @@
 	};
 
 	let currentSearch = '';
+	let currentLocationId = '';
 	let detailModal = null;
 	let detailRequest = null;
 	let currentProductId = null;
@@ -58,8 +63,9 @@
 			toolbarMeta.textContent = data.range_start + '–' + data.range_end + ' of ' + data.total;
 			toolbarMeta.classList.remove('d-none');
 		} else {
-			toolbarMeta.textContent = currentSearch ? config.emptySearchMessage : '';
-			toolbarMeta.classList.toggle('d-none', !currentSearch);
+			const filtered = currentSearch !== '' || currentLocationId !== '';
+			toolbarMeta.textContent = filtered ? config.emptySearchMessage : '';
+			toolbarMeta.classList.toggle('d-none', !filtered);
 		}
 	}
 
@@ -148,7 +154,17 @@
 		height: gridHeight(),
 		emptyMessage: config.emptyMessage,
 		getParams: function () {
-			return currentSearch ? { q: currentSearch } : {};
+			const params = {};
+
+			if (currentSearch) {
+				params.q = currentSearch;
+			}
+
+			if (currentLocationId) {
+				params.location_id = currentLocationId;
+			}
+
+			return params;
 		},
 		onLoad: updateMeta,
 		onError: function () {
@@ -209,10 +225,184 @@
 		grid.reload();
 	});
 
+	function locationChildren(parentId) {
+		const key = parentId == null || parentId === '' ? '' : String(parentId);
+
+		return locationNodes.filter(function (node) {
+			return String(node.parent_id || '') === key;
+		}).sort(function (left, right) {
+			const order = (Number(left.sort_order) || 0) - (Number(right.sort_order) || 0);
+
+			if (order !== 0) {
+				return order;
+			}
+
+			return String(left.name).localeCompare(String(right.name));
+		});
+	}
+
+	function locationTreeSource(parentId) {
+		return locationChildren(parentId).map(function (node) {
+			const children = locationTreeSource(node.id);
+			const item = {
+				label: escapeHtml(node.name),
+				value: String(node.id),
+			};
+
+			if (children.length) {
+				item.items = children;
+			}
+
+			return item;
+		});
+	}
+
+	function locationChain(id) {
+		const byId = locationChain.byId || (locationChain.byId = {});
+
+		if (!locationChain.ready) {
+			locationNodes.forEach(function (node) {
+				byId[String(node.id)] = node;
+			});
+			locationChain.ready = true;
+		}
+
+		const chain = [];
+		const seen = {};
+		let current = byId[String(id)];
+
+		while (current && !seen[current.id]) {
+			seen[current.id] = true;
+			chain.unshift(current.name);
+			const parentId = current.parent_id == null ? '' : String(current.parent_id);
+			current = parentId ? byId[parentId] : null;
+		}
+
+		return chain.length ? chain.join(' / ') : (id == null ? '' : String(id));
+	}
+
+	function locationDropContent(text) {
+		return '<span class="organization-location-dropdown-label">' + escapeHtml(text || '') + '</span>';
+	}
+
+	function syncLocationClear() {
+		if (!locationClearBtn) {
+			return;
+		}
+
+		locationClearBtn.classList.toggle('d-none', currentLocationId === '');
+	}
+
+	function mountLocationFilter() {
+		const $ = window.jQuery;
+		const host = document.getElementById('productsLocationDropDown');
+
+		if (!host || !$ || !$.fn || !$.fn.jqxDropDownButton || !$.fn.jqxTree) {
+			return;
+		}
+
+		const $drop = $(host);
+		const $tree = $('#productsLocationTree');
+		let applyingSelection = false;
+
+		function showSelection(id) {
+			$drop.jqxDropDownButton('setContent', locationDropContent(id ? locationChain(id) : ''));
+		}
+
+		$drop.jqxDropDownButton({
+			width: '100%',
+			height: 31,
+			theme: 'dark',
+			popupZIndex: 2000,
+			dropDownWidth: 320,
+			dropDownHeight: 260,
+			initContent: function () {
+				$tree.jqxTree({
+					source: locationTreeSource(''),
+					width: 320,
+					height: 260,
+					theme: 'dark',
+					allowDrag: false,
+					allowDrop: false,
+					toggleMode: 'dblclick',
+					incrementalSearch: true,
+				});
+				$tree.on('select', function (event) {
+					if (applyingSelection || !event.args) {
+						return;
+					}
+
+					const item = $tree.jqxTree('getItem', event.args.element);
+
+					if (!item || item.value == null || item.value === '') {
+						return;
+					}
+
+					currentLocationId = String(item.value);
+					showSelection(currentLocationId);
+					syncLocationClear();
+					$drop.jqxDropDownButton('close');
+					applySearch();
+				});
+
+				const currentId = String(currentLocationId || '');
+
+				if (currentId) {
+					const items = $tree.jqxTree('getItems') || [];
+					const match = items.filter(function (item) {
+						return String(item.value) === currentId;
+					})[0];
+
+					if (match) {
+						applyingSelection = true;
+						let parent = match.parentElement;
+
+						while (parent) {
+							$tree.jqxTree('expandItem', parent);
+							const parentItem = $tree.jqxTree('getItem', parent);
+							parent = parentItem ? parentItem.parentElement : null;
+						}
+
+						$tree.jqxTree('selectItem', match.element);
+						applyingSelection = false;
+					}
+				}
+			},
+		});
+
+		showSelection('');
+
+		if (locationClearBtn) {
+			locationClearBtn.addEventListener('click', function () {
+				currentLocationId = '';
+				showSelection('');
+				syncLocationClear();
+
+				if ($tree.data('jqxTree')) {
+					applyingSelection = true;
+					try {
+						$tree.jqxTree('selectItem', null);
+					} catch (error) {
+						// The tree is created the first time the dropdown opens.
+					}
+					applyingSelection = false;
+				}
+
+				if ($drop.jqxDropDownButton('isOpened')) {
+					$drop.jqxDropDownButton('close');
+				}
+
+				applySearch();
+			});
+		}
+	}
+
 	function applySearch() {
 		grid.gotoFirst();
 		grid.reload();
 	}
+
+	mountLocationFilter();
 
 	const scheduleSearch = debounce(applySearch, 300);
 
@@ -305,6 +495,31 @@
 		return String(value);
 	}
 
+	function detailActionButtons() {
+		return [downloadBtn, deleteBtn, restoreBtn, saveBtn];
+	}
+
+	function setDetailActionsDisabled(isDisabled) {
+		detailActionButtons().forEach(function (button) {
+			if (button) {
+				button.disabled = isDisabled;
+			}
+		});
+	}
+
+	function setDetailSaving(isSaving) {
+		if (!saveBtn) {
+			return;
+		}
+
+		saveBtn.disabled = isSaving;
+		const spinner = saveBtn.querySelector('.spinner-border');
+
+		if (spinner) {
+			spinner.classList.toggle('d-none', !isSaving);
+		}
+	}
+
 	function renderDetailForm(data) {
 		if (!formWrap) {
 			return;
@@ -316,13 +531,16 @@
 		fields.forEach(function (field) {
 			const inputId = 'productDetailField_' + field.name;
 			const value = escapeHtml(fieldValue(data, field));
+			const locked = !canEditProduct || field.readonly;
+			const nameAttr = locked ? '' : ' name="' + escapeAttr(field.name) + '"';
+			const readOnlyAttr = locked ? ' readonly' : '';
 			let control = '';
 
 			if (field.type === 'textarea') {
-				control = '<textarea class="form-control form-control-sm" id="' + inputId + '" rows="3" readonly>' + value + '</textarea>';
+				control = '<textarea class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' rows="3"' + readOnlyAttr + '>' + value + '</textarea>';
 			} else {
 				const type = field.type === 'date' ? 'date' : 'text';
-				control = '<input type="' + type + '" class="form-control form-control-sm" id="' + inputId + '" value="' + value + '" readonly>';
+				control = '<input type="' + type + '" class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' value="' + value + '"' + readOnlyAttr + '>';
 			}
 
 			html +=
@@ -334,12 +552,7 @@
 
 		html += '</div>';
 		formWrap.innerHTML = html;
-
-		[downloadBtn, deleteBtn, restoreBtn].forEach(function (button) {
-			if (button) {
-				button.disabled = false;
-			}
-		});
+		setDetailActionsDisabled(false);
 	}
 
 	function openDetail(productId) {
@@ -351,11 +564,7 @@
 		hideDetailAlert();
 		setDetailLoading(true);
 
-		[downloadBtn, deleteBtn, restoreBtn].forEach(function (button) {
-			if (button) {
-				button.disabled = true;
-			}
-		});
+		setDetailActionsDisabled(true);
 
 		if (formWrap) {
 			formWrap.innerHTML = '';
@@ -463,6 +672,33 @@
 	if (detailForm) {
 		detailForm.addEventListener('submit', function (event) {
 			event.preventDefault();
+
+			if (!canEditProduct || !currentProductId || !saveBtn || saveBtn.disabled) {
+				return;
+			}
+
+			hideDetailAlert();
+			setDetailSaving(true);
+
+			fetchApi(detail.updateUrl.replace(/\/$/, '') + '/' + currentProductId, {
+				method: 'POST',
+				body: new FormData(detailForm),
+			}).then(function (result) {
+				const record = result.data || {};
+				currentProductId = record.id || currentProductId;
+
+				if (modalTitle) {
+					modalTitle.textContent = record.name || t('title_products');
+				}
+
+				renderDetailForm(record);
+				grid.reload();
+				showToast(result.message || t('common_record_updated'), 'success');
+			}).catch(function (error) {
+				showDetailAlert(error.message || t('common_failed_update'));
+			}).finally(function () {
+				setDetailSaving(false);
+			});
 		});
 	}
 

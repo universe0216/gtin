@@ -156,7 +156,6 @@ class Organizations extends BasicController {
 
 	protected $permission_view = 'organization.view';
 	protected $permission_edit = 'organization.edit';
-	protected $location_options = NULL;
 
 	public function __construct()
 	{
@@ -337,44 +336,7 @@ class Organizations extends BasicController {
 
 	protected function location_filter_ids()
 	{
-		$raw = trim((string) $this->input->get('location_id'));
-
-		if ($raw === '' || ! ctype_digit($raw))
-		{
-			return array();
-		}
-
-		$children = array();
-		$known = FALSE;
-
-		foreach ($this->location_nodes() as $node)
-		{
-			if ((string) $node['id'] === $raw)
-			{
-				$known = TRUE;
-			}
-
-			$parent = (string) $node['parent_id'];
-			$children[$parent][] = (string) $node['id'];
-		}
-
-		if ( ! $known)
-		{
-			return array(-1);
-		}
-
-		$ids = array();
-		$walk = function ($id) use (&$walk, &$ids, $children) {
-			$ids[] = (int) $id;
-
-			foreach ($children[$id] ?? array() as $child_id)
-			{
-				$walk($child_id);
-			}
-		};
-		$walk($raw);
-
-		return $ids;
+		return $this->location_model->filter_ids($this->input->get('location_id'));
 	}
 
 	protected function get_add_label()
@@ -421,25 +383,6 @@ class Organizations extends BasicController {
 
 	protected function location_nodes()
 	{
-		if ($this->location_options !== NULL)
-		{
-			return $this->location_options;
-		}
-
-		$nodes = array();
-
-		foreach ($this->location_model->list_for_tree() as $row)
-		{
-			$nodes[] = array(
-				'id'         => (string) $row['id'],
-				'parent_id'  => $row['parent_id'] === NULL ? '' : (string) $row['parent_id'],
-				'name'       => $row['name'],
-				'sort_order' => (int) $row['sort_order'],
-			);
-		}
-
-		$this->location_options = $nodes;
-
-		return $nodes;
+		return $this->location_model->tree_nodes();
 	}
 }

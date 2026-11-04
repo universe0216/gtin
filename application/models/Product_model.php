@@ -43,6 +43,33 @@ class Product_model extends Basic_model {
 		return 'products.'.$this->primary_key;
 	}
 
+	protected function apply_list_filters(array $filters)
+	{
+		$ids = $this->location_filter_id_list($filters);
+
+		if (empty($ids))
+		{
+			return;
+		}
+
+		$this->db->where_in('organizations.location_id', $ids);
+	}
+
+	protected function location_filter_id_list(array $filters)
+	{
+		$ids = array();
+
+		foreach ((array) ($filters['location_ids'] ?? array()) as $id)
+		{
+			if (is_numeric($id))
+			{
+				$ids[] = (int) $id;
+			}
+		}
+
+		return $ids;
+	}
+
 	public function count_by_organization($organization_id, $search = '')
 	{
 		$this->prepare_organization_products_query($organization_id);

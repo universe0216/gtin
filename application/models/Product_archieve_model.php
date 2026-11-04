@@ -52,6 +52,22 @@ class Product_archieve_model extends Product_model {
 		return 'products_archieve.deleted_at';
 	}
 
+	protected function apply_list_filters(array $filters)
+	{
+		$ids = $this->location_filter_id_list($filters);
+
+		if (empty($ids))
+		{
+			return;
+		}
+
+		$this->db->where(
+			'COALESCE(organizations.location_id, archived_org.location_id) IN ('.implode(',', $ids).')',
+			NULL,
+			FALSE
+		);
+	}
+
 	protected function apply_list_order($sort)
 	{
 		if ( ! empty($sort['sql']) && ($sort['key'] ?? '') === 'organization_name')

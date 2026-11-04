@@ -213,7 +213,12 @@ class BasicController extends AuthenticatedController {
 			'page_scripts'              => $this->list_scripts,
 		);
 
-		$this->render($this->list_view, $data);
+		$this->render($this->list_view, array_merge($data, $this->list_view_data()));
+	}
+
+	protected function list_view_data()
+	{
+		return array();
 	}
 
 	protected function get_detail_modal_partial()

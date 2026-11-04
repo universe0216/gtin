@@ -20,6 +20,11 @@ class Products_archieve extends Products {
 		$this->list_columns[] = array('key' => 'deleted_at', 'label' => 'Deleted At');
 	}
 
+	public function update($id = NULL)
+	{
+		show_404();
+	}
+
 	public function delete($id = NULL)
 	{
 		show_404();
@@ -86,8 +91,8 @@ class Products_archieve extends Products {
 	protected function get_detail_config()
 	{
 		$fields = $this->detail_fields;
-		$fields[] = array('name' => 'origin_id', 'label' => 'Original ID', 'type' => 'text');
-		$fields[] = array('name' => 'deleted_at', 'label' => 'Deleted At', 'type' => 'text');
+		$fields[] = array('name' => 'origin_id', 'label' => 'Original ID', 'type' => 'text', 'readonly' => TRUE);
+		$fields[] = array('name' => 'deleted_at', 'label' => 'Deleted At', 'type' => 'text', 'readonly' => TRUE);
 
 		return array(
 			'enabled'    => TRUE,
