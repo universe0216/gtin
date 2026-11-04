@@ -135,6 +135,7 @@ class Organization_archieve extends Organizations {
 			'infoFields'         => $this->localize_labeled($info_fields),
 			'editableFields'     => array(),
 			'readOnlyFields'     => $this->localize_labeled($info_fields),
+			'locationNodes'      => $this->location_nodes(),
 			'productColumns'     => $this->localize_labeled($this->detail_product_columns),
 			'canDeleteProduct'   => FALSE,
 			'canRestoreProduct'  => $this->auth->can('product.edit'),

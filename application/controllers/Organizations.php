@@ -32,7 +32,6 @@ class Organizations extends BasicController {
 		array('key' => 'name', 'label' => 'Name'),
 		array('key' => 'reg_number', 'label' => 'Registration Number'),
 		array('key' => 'parent_org', 'label' => 'Parent Organization'),
-		array('key' => 'location_id', 'label' => 'Location'),
 		array('key' => 'gs1_prefix', 'label' => 'GS1 Prefix'),
 		array('key' => 'init_date', 'label' => 'Initial Date'),
 		array('key' => 'reg_date', 'label' => 'Registration Date'),
@@ -44,6 +43,7 @@ class Organizations extends BasicController {
 		array('key' => 'description', 'label' => 'Description'),
 		array('key' => 'created_at', 'label' => 'Created At'),
 		array('key' => 'updated_at', 'label' => 'Updated At'),
+		array('key' => 'location_id', 'label' => 'Location'),
 	);
 	protected $detail_product_columns = array(
 		array('key' => 'name', 'label' => 'Name'),
@@ -76,13 +76,6 @@ class Organizations extends BasicController {
 			'type'     => 'text',
 			'required' => FALSE,
 			'rules'    => array('trim', 'max_length[255]'),
-		),
-		array(
-			'name'     => 'location_id',
-			'label'    => 'Location',
-			'type'     => 'number',
-			'required' => FALSE,
-			'rules'    => array('trim', 'integer'),
 		),
 		array(
 			'name'     => 'gs1_prefix',
@@ -152,16 +145,25 @@ class Organizations extends BasicController {
 			'required' => FALSE,
 			'rules'    => array('trim'),
 		),
+		array(
+			'name'     => 'location_id',
+			'label'    => 'Location',
+			'type'     => 'location',
+			'required' => FALSE,
+			'rules'    => array('trim', 'callback_valid_location'),
+		),
 	);
 
 	protected $permission_view = 'organization.view';
 	protected $permission_edit = 'organization.edit';
+	protected $location_options = NULL;
 
 	public function __construct()
 	{
 		parent::__construct();
 		$this->load->model('organization_model', 'model');
 		$this->load->model('product_model');
+		$this->load->model('location_model');
 
 		foreach ($this->fields as &$field)
 		{
@@ -175,6 +177,23 @@ class Organizations extends BasicController {
 			}
 		}
 		unset($field);
+	}
+
+	public function valid_location($value)
+	{
+		if ($value === '' || $value === NULL || $value === FALSE)
+		{
+			return TRUE;
+		}
+
+		if ($this->location_model->get($value))
+		{
+			return TRUE;
+		}
+
+		$this->form_validation->set_message('valid_location', app_line('location_invalid'));
+
+		return FALSE;
 	}
 
 	public function detail($id = NULL)
@@ -308,6 +327,56 @@ class Organizations extends BasicController {
 		));
 	}
 
+	protected function list_query_params()
+	{
+		$params = parent::list_query_params();
+		$params['location_ids'] = $this->location_filter_ids();
+
+		return $params;
+	}
+
+	protected function location_filter_ids()
+	{
+		$raw = trim((string) $this->input->get('location_id'));
+
+		if ($raw === '' || ! ctype_digit($raw))
+		{
+			return array();
+		}
+
+		$children = array();
+		$known = FALSE;
+
+		foreach ($this->location_nodes() as $node)
+		{
+			if ((string) $node['id'] === $raw)
+			{
+				$known = TRUE;
+			}
+
+			$parent = (string) $node['parent_id'];
+			$children[$parent][] = (string) $node['id'];
+		}
+
+		if ( ! $known)
+		{
+			return array(-1);
+		}
+
+		$ids = array();
+		$walk = function ($id) use (&$walk, &$ids, $children) {
+			$ids[] = (int) $id;
+
+			foreach ($children[$id] ?? array() as $child_id)
+			{
+				$walk($child_id);
+			}
+		};
+		$walk($raw);
+
+		return $ids;
+	}
+
 	protected function get_add_label()
 	{
 		return app_line('add_organizations');
@@ -328,6 +397,7 @@ class Organizations extends BasicController {
 			'canEdit'         => $this->auth->can($this->permission_edit),
 			'infoFields'      => $this->localize_labeled($this->detail_info_fields),
 			'editableFields'  => $this->localize_labeled($this->fields),
+			'locationNodes'   => $this->location_nodes(),
 			'readOnlyFields'  => $this->localize_labeled(array(
 				array('key' => 'id', 'label' => 'ID'),
 				array('key' => 'created_at', 'label' => 'Created At'),
@@ -347,5 +417,29 @@ class Organizations extends BasicController {
 			'perPage'           => $this->list_per_page,
 			'perPageOptions'    => $this->list_per_page_options,
 		);
+	}
+
+	protected function location_nodes()
+	{
+		if ($this->location_options !== NULL)
+		{
+			return $this->location_options;
+		}
+
+		$nodes = array();
+
+		foreach ($this->location_model->list_for_tree() as $row)
+		{
+			$nodes[] = array(
+				'id'         => (string) $row['id'],
+				'parent_id'  => $row['parent_id'] === NULL ? '' : (string) $row['parent_id'],
+				'name'       => $row['name'],
+				'sort_order' => (int) $row['sort_order'],
+			);
+		}
+
+		$this->location_options = $nodes;
+
+		return $nodes;
 	}
 }

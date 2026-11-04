@@ -16,7 +16,9 @@
 	const searchForm = document.getElementById('organizationsSearchForm');
 	const searchInput = document.getElementById('organizationsSearchInput');
 	const clearBtn = document.getElementById('organizationsClearBtn');
+	const locationClearBtn = document.getElementById('organizationLocationFilterClear');
 	const toolbarMeta = document.getElementById('organizationsToolbarMeta');
+	const locationNodes = (config.detail && config.detail.locationNodes) || [];
 
 	if (typeof JqxGrid === 'undefined' || !document.getElementById('organizationsGrid')) {
 		return;
@@ -35,6 +37,19 @@
 	};
 
 	let currentSearch = '';
+	let currentLocationId = '';
+
+	function hasActiveFilter() {
+		return currentSearch !== '' || currentLocationId !== '';
+	}
+
+	function syncLocationClear() {
+		if (!locationClearBtn) {
+			return;
+		}
+
+		locationClearBtn.classList.toggle('d-none', currentLocationId === '');
+	}
 
 	function updateMeta(data) {
 		if (!toolbarMeta) {
@@ -45,8 +60,8 @@
 			toolbarMeta.textContent = data.range_start + '–' + data.range_end + ' of ' + data.total;
 			toolbarMeta.classList.remove('d-none');
 		} else {
-			toolbarMeta.textContent = currentSearch ? config.emptySearchMessage : '';
-			toolbarMeta.classList.toggle('d-none', !currentSearch);
+			toolbarMeta.textContent = hasActiveFilter() ? config.emptySearchMessage : '';
+			toolbarMeta.classList.toggle('d-none', !hasActiveFilter());
 		}
 	}
 
@@ -172,7 +187,17 @@
 		height: gridHeight(),
 		emptyMessage: config.emptyMessage,
 		getParams: function () {
-			return currentSearch ? { q: currentSearch } : {};
+			const params = {};
+
+			if (currentSearch) {
+				params.q = currentSearch;
+			}
+
+			if (currentLocationId) {
+				params.location_id = currentLocationId;
+			}
+
+			return params;
 		},
 		onLoad: updateMeta,
 		onError: function () {
@@ -184,8 +209,116 @@
 		return;
 	}
 
+	function locationChildren(parentId) {
+		const key = parentId == null || parentId === '' ? '' : String(parentId);
+
+		return locationNodes.filter(function (node) {
+			return String(node.parent_id || '') === key;
+		}).sort(function (left, right) {
+			const order = (Number(left.sort_order) || 0) - (Number(right.sort_order) || 0);
+
+			if (order !== 0) {
+				return order;
+			}
+
+			return String(left.name).localeCompare(String(right.name));
+		});
+	}
+
+	function locationTreeSource(parentId) {
+		return locationChildren(parentId).map(function (node) {
+			const children = locationTreeSource(node.id);
+			const item = {
+				label: escapeHtml(node.name),
+				value: String(node.id),
+			};
+
+			if (children.length) {
+				item.items = children;
+			}
+
+			return item;
+		});
+	}
+
+	function locationTreeHeight() {
+		const panel = document.querySelector('#organizationsPage .organizations-location-panel');
+		const header = document.querySelector('#organizationsPage .organizations-location-header');
+
+		if (!panel) {
+			return 320;
+		}
+
+		return Math.max(160, panel.clientHeight - (header ? header.offsetHeight : 0) - 12);
+	}
+
+	function mountLocationFilter() {
+		const host = document.getElementById('organizationLocationFilterTree');
+		const $ = window.jQuery;
+
+		if (!host || !$ || !$.fn || !$.fn.jqxTree) {
+			return null;
+		}
+
+		const $tree = $(host);
+		let applyingSelection = false;
+
+		$tree.jqxTree({
+			source: locationTreeSource(''),
+			width: '100%',
+			height: locationTreeHeight(),
+			theme: 'dark',
+			allowDrag: false,
+			allowDrop: false,
+			toggleMode: 'dblclick',
+			incrementalSearch: true,
+		});
+
+		$tree.on('select', function (event) {
+			if (applyingSelection || !event.args) {
+				return;
+			}
+
+			const item = $tree.jqxTree('getItem', event.args.element);
+			const id = item && item.value != null ? String(item.value) : '';
+
+			if (id === '' || id === currentLocationId) {
+				return;
+			}
+
+			currentLocationId = id;
+			syncLocationClear();
+			applySearch();
+		});
+
+		if (locationClearBtn) {
+			locationClearBtn.addEventListener('click', function () {
+				currentLocationId = '';
+				applyingSelection = true;
+
+				try {
+					$tree.jqxTree('selectItem', null);
+				} catch (error) {
+					// Clearing the highlight is optional; the list filter is already reset.
+				}
+
+				applyingSelection = false;
+				syncLocationClear();
+				applySearch();
+			});
+		}
+
+		return $tree;
+	}
+
+	const locationTree = mountLocationFilter();
+
 	window.addEventListener('resize', function () {
 		grid.$el.jqxGrid('height', gridHeight());
+
+		if (locationTree) {
+			locationTree.jqxTree('height', locationTreeHeight());
+		}
 	});
 
 	grid.$el.on('click', '.entity-row-action', function (event) {

@@ -13,6 +13,12 @@
 	const updateUrl = (detailConfig.updateUrl || '').replace(/\/$/, '');
 	const infoFields = detailConfig.infoFields || [];
 	const editableFields = detailConfig.editableFields || [];
+	const locationNodes = detailConfig.locationNodes || [];
+	const locationById = {};
+
+	locationNodes.forEach(function (node) {
+		locationById[String(node.id)] = node;
+	});
 	const readOnlyFields = detailConfig.readOnlyFields || [];
 	const canEdit = !!detailConfig.canEdit;
 	const productColumns = detailConfig.productColumns || [];
@@ -123,12 +129,215 @@
 		return '';
 	}
 
+	function locationChildren(parentId) {
+		const key = parentId == null || parentId === '' ? '' : String(parentId);
+
+		return locationNodes.filter(function (node) {
+			return String(node.parent_id || '') === key;
+		}).sort(function (left, right) {
+			const order = (Number(left.sort_order) || 0) - (Number(right.sort_order) || 0);
+
+			if (order !== 0) {
+				return order;
+			}
+
+			return String(left.name).localeCompare(String(right.name));
+		});
+	}
+
+	function locationChain(id) {
+		const chain = [];
+		const seen = {};
+		let current = locationById[String(id)];
+
+		while (current && !seen[current.id]) {
+			seen[current.id] = true;
+			chain.unshift(String(current.id));
+			const parentId = current.parent_id == null ? '' : String(current.parent_id);
+			current = parentId ? locationById[parentId] : null;
+		}
+
+		return chain;
+	}
+
+	function locationLabel(value) {
+		const id = String(value == null ? '' : value);
+
+		if (!id) {
+			return '';
+		}
+
+		const names = locationChain(id).map(function (nodeId) {
+			return locationById[nodeId].name;
+		});
+
+		return names.length ? names.join(' / ') : id;
+	}
+
+	function locationTreeSource(parentId) {
+		return locationChildren(parentId).map(function (node) {
+			const children = locationTreeSource(node.id);
+			const item = {
+				label: escapeHtml(node.name),
+				value: String(node.id),
+			};
+
+			if (children.length) {
+				item.items = children;
+			}
+
+			return item;
+		});
+	}
+
+	function locationDropContent(text) {
+		return '<span class="organization-location-dropdown-label">' + escapeHtml(text || '') + '</span>';
+	}
+
+	function destroyLocationPicker() {
+		const $ = window.jQuery;
+
+		if (!$ || !$.fn) {
+			return;
+		}
+
+		const $tree = $('#organizationLocationTree');
+		const $drop = $('#organizationLocationDropDown');
+
+		if ($tree.length && $tree.data('jqxTree')) {
+			$tree.jqxTree('destroy');
+		}
+
+		if ($drop.length && $drop.data('jqxDropDownButton')) {
+			$drop.jqxDropDownButton('destroy');
+		}
+	}
+
+	function mountLocationPicker() {
+		const $ = window.jQuery;
+		const hidden = document.getElementById('organizationDetailField_location_id');
+		const clearBtn = document.getElementById('organizationLocationClear');
+
+		if (!$ || !$.fn || !$.fn.jqxDropDownButton || !$.fn.jqxTree || !hidden) {
+			return;
+		}
+
+		const $drop = $('#organizationLocationDropDown');
+		const $tree = $('#organizationLocationTree');
+		let applyingSelection = false;
+
+		function showSelection(id) {
+			$drop.jqxDropDownButton('setContent', locationDropContent(id ? locationLabel(id) : ''));
+		}
+
+		$drop.jqxDropDownButton({
+			width: '100%',
+			height: 32,
+			theme: 'dark',
+			popupZIndex: 2100,
+			dropDownWidth: 360,
+			dropDownHeight: 260,
+			initContent: function () {
+				$tree.jqxTree({
+					source: locationTreeSource(''),
+					width: 360,
+					height: 260,
+					theme: 'dark',
+					allowDrag: false,
+					allowDrop: false,
+					toggleMode: 'dblclick',
+					incrementalSearch: true,
+				});
+				$tree.on('select', function (event) {
+					if (applyingSelection || !event.args) {
+						return;
+					}
+
+					const item = $tree.jqxTree('getItem', event.args.element);
+
+					if (!item || item.value == null || item.value === '') {
+						return;
+					}
+
+					hidden.value = String(item.value);
+					showSelection(hidden.value);
+					$drop.jqxDropDownButton('close');
+				});
+
+				const currentId = String(hidden.value || '');
+
+				if (currentId && locationById[currentId]) {
+					const items = $tree.jqxTree('getItems') || [];
+					const match = items.filter(function (item) {
+						return String(item.value) === currentId;
+					})[0];
+
+					if (match) {
+						applyingSelection = true;
+						let parent = match.parentElement;
+
+						while (parent) {
+							$tree.jqxTree('expandItem', parent);
+							const parentItem = $tree.jqxTree('getItem', parent);
+							parent = parentItem ? parentItem.parentElement : null;
+						}
+
+						$tree.jqxTree('selectItem', match.element);
+						applyingSelection = false;
+					}
+				}
+			},
+		});
+
+		const initialId = String(hidden.value || '');
+		showSelection(initialId);
+
+		if (clearBtn) {
+			clearBtn.addEventListener('click', function () {
+				hidden.value = '';
+				showSelection('');
+
+				if ($tree.data('jqxTree')) {
+					applyingSelection = true;
+					$tree.jqxTree('selectItem', null);
+					applyingSelection = false;
+				}
+
+				if ($drop.jqxDropDownButton('isOpened')) {
+					$drop.jqxDropDownButton('close');
+				}
+			});
+		}
+	}
+
+	function renderLocationPicker(selectedId) {
+		const id = selectedId == null ? '' : String(selectedId);
+
+		return (
+			'<div class="organization-location-picker">' +
+				'<input type="hidden" name="location_id" id="organizationDetailField_location_id" value="' + escapeAttr(id) + '">' +
+				'<div id="organizationLocationDropDown" class="organization-location-dropdown" aria-label="' + escapeAttr(t('col_location_id')) + '">' +
+					'<div id="organizationLocationTree"></div>' +
+				'</div>' +
+				'<button type="button" class="btn btn-secondary btn-sm organization-location-clear" id="organizationLocationClear">' +
+					escapeHtml(t('common_clear')) +
+				'</button>' +
+			'</div>'
+		);
+	}
+
 	function renderReadOnlyItems(fields, data, gridClass) {
 		let html = '<div class="' + gridClass + '">';
 
 		fields.forEach(function (field) {
 			const raw = data[field.key] ?? '';
-			const value = field.key === 'currency' ? currencyLabel(raw) : raw;
+			let value = raw;
+
+			if (field.key === 'currency') {
+				value = currencyLabel(raw);
+			} else if (field.key === 'location_id') {
+				value = locationLabel(raw);
+			}
 			html +=
 				'<div class="entity-detail-info-item">' +
 					'<div class="entity-detail-info-label">' + escapeHtml(field.label) + '</div>' +
@@ -144,6 +353,16 @@
 		const fieldName = field.name;
 		const value = data[fieldName] ?? '';
 		const inputId = 'organizationDetailField_' + fieldName;
+
+		if (fieldName === 'location_id') {
+			return (
+				'<div class="entity-detail-info-item organization-location-field">' +
+					'<div class="entity-detail-info-label">' + escapeHtml(field.label) + '</div>' +
+					renderLocationPicker(value) +
+				'</div>'
+			);
+		}
+
 		let inputHtml = '';
 
 		if (field.type === 'textarea') {
@@ -208,6 +427,7 @@
 		}
 
 		hideInfoAlert();
+		destroyLocationPicker();
 
 		let html = '';
 
@@ -243,6 +463,7 @@
 
 		if (form) {
 			form.addEventListener('submit', submitInfoUpdate);
+			mountLocationPicker();
 		}
 	}
 

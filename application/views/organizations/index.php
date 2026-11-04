@@ -13,7 +13,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<?php endif; ?>
 	</div>
 
-	<div class="app-panel p-2 entity-list-panel">
+	<div class="organizations-layout">
+		<aside class="app-panel organizations-location-panel" aria-label="<?php echo html_escape(app_line('col_location_id')); ?>">
+			<div class="organizations-location-header">
+				<span class="organizations-location-title"><?php echo html_escape(app_line('col_location_id')); ?></span>
+				<button type="button" class="btn btn-secondary btn-sm d-none" id="organizationLocationFilterClear"><?php echo html_escape(app_line('common_clear')); ?></button>
+			</div>
+			<div id="organizationLocationFilterTree"></div>
+		</aside>
+
+		<div class="app-panel p-2 entity-list-panel">
 		<div class="entity-list-toolbar d-flex flex-wrap align-items-center gap-2 px-2 py-2 mb-2">
 			<form class="entity-list-search-form d-flex flex-wrap align-items-center gap-2 flex-grow-1" role="search" id="organizationsSearchForm">
 				<div class="input-group input-group-sm entity-list-search-input-group">
@@ -34,6 +43,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		</div>
 
 		<div id="organizationsGrid"></div>
+		</div>
 	</div>
 </div>
 

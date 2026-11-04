@@ -29,6 +29,26 @@ class Organization_model extends Basic_model {
 		'address'     => 'organizations.address',
 	);
 
+	protected function apply_list_filters(array $filters)
+	{
+		$ids = array();
+
+		foreach ((array) ($filters['location_ids'] ?? array()) as $id)
+		{
+			if (is_numeric($id))
+			{
+				$ids[] = (int) $id;
+			}
+		}
+
+		if (empty($ids))
+		{
+			return;
+		}
+
+		$this->db->where_in($this->table.'.location_id', $ids);
+	}
+
 	public function get_by_name($name)
 	{
 		$name = trim((string) $name);

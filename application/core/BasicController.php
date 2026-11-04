@@ -257,9 +257,16 @@ class BasicController extends AuthenticatedController {
 		}
 
 		$params = $this->list_query_params();
-		$total = $this->model->count_filtered($params['search']);
+		$filters = array();
+
+		if ( ! empty($params['location_ids']) && is_array($params['location_ids']))
+		{
+			$filters['location_ids'] = $params['location_ids'];
+		}
+
+		$total = $this->model->count_filtered($params['search'], $filters);
 		$offset = ($params['page'] - 1) * $params['per_page'];
-		$records = $this->model->get_paginated($params['per_page'], $offset, $params['search'], $params['sort']);
+		$records = $this->model->get_paginated($params['per_page'], $offset, $params['search'], $params['sort'], $filters);
 		$meta = $this->build_paginated_meta(
 			$total,
 			$params['page'],
@@ -436,7 +443,7 @@ class BasicController extends AuthenticatedController {
 			$value = $this->input->post($field['name']);
 			$type = isset($field['type']) ? $field['type'] : 'text';
 
-			if (($type === 'number' || $type === 'date' || $type === 'select') && ($value === '' || $value === FALSE))
+			if (($type === 'number' || $type === 'date' || $type === 'select' || $type === 'location') && ($value === '' || $value === FALSE))
 			{
 				$value = NULL;
 			}

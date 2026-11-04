@@ -24,18 +24,20 @@ class Basic_model extends CI_Model {
 			->row_array();
 	}
 
-	public function count_filtered($search = '')
+	public function count_filtered($search = '', array $filters = array())
 	{
 		$this->prepare_list_query();
 		$this->apply_search_filters($search);
+		$this->apply_list_filters($filters);
 
 		return (int) $this->db->count_all_results();
 	}
 
-	public function get_paginated($limit, $offset = 0, $search = '', $sort = array())
+	public function get_paginated($limit, $offset = 0, $search = '', $sort = array(), array $filters = array())
 	{
 		$this->prepare_list_query();
 		$this->apply_search_filters($search);
+		$this->apply_list_filters($filters);
 		$this->apply_list_order($sort);
 
 		return $this->db
@@ -120,6 +122,10 @@ class Basic_model extends CI_Model {
 		}
 
 		$this->db->order_by($sort['sql'], $sort['direction'] === 'asc' ? 'ASC' : 'DESC');
+	}
+
+	protected function apply_list_filters(array $filters)
+	{
 	}
 
 	protected function apply_search_filters($search)

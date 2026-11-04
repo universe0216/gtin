@@ -51,11 +51,17 @@ CREATE TABLE `accounts`  (
 DROP TABLE IF EXISTS `locations`;
 CREATE TABLE `locations`  (
   `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `parent_id` int UNSIGNED NULL DEFAULT NULL,
+  `level` tinyint UNSIGNED NOT NULL DEFAULT 1,
+  `sort_order` int UNSIGNED NOT NULL DEFAULT 0,
   `name` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  `tag` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
   `description` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
-  PRIMARY KEY (`id`) USING BTREE
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_locations_parent`(`parent_id` ASC) USING BTREE,
+  CONSTRAINT `fk_locations_parent` FOREIGN KEY (`parent_id`) REFERENCES `locations` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
