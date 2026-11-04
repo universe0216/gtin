@@ -546,6 +546,11 @@ body.modal-open .modal-backdrop.app-alert-backdrop {
 	font-size: 0.75rem;
 }
 
+.procedure-tabs .procedure-tab-processing-icon {
+	color: #38bdf8;
+	font-size: 0.75rem;
+}
+
 .procedure-tab-meta strong {
 	color: #cbd5e1;
 }
@@ -1209,6 +1214,31 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	padding: 1.25rem 1.5rem;
 }
 
+#procedureDetailTabSimilar.tab-pane.active.show {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.procedure-similar-search {
+	flex-shrink: 0;
+}
+
+.procedure-similar-search-input {
+	flex: 1 1 16rem;
+	max-width: 36rem;
+}
+
+#procedureSimilarGrid {
+	flex: 1 1 auto;
+	min-height: 0;
+	min-width: 0;
+}
+
+.procedure-similar-reuse {
+	white-space: nowrap;
+}
+
 .procedure-detail-image-gallery {
 	width: 100%;
 }
@@ -1328,6 +1358,20 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	border-top: 1px solid var(--app-border);
 	background-color: var(--app-surface);
 	padding: 0.9rem 1.5rem;
+}
+
+.procedure-detail-footer-reason {
+	min-width: 0;
+	color: #f87171;
+	font-size: 0.875rem;
+	font-weight: 500;
+	line-height: 1.4;
+}
+
+.procedure-detail-footer-reason-label {
+	margin-right: 0.35rem;
+	color: var(--app-text-muted);
+	font-weight: 600;
 }
 
 .procedure-assignable-barcode {
@@ -1880,6 +1924,10 @@ select.procedure-detail-info-input option {
 	background-color: #16291f !important;
 }
 
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-warning {
+	background-color: #2a2414 !important;
+}
+
 .jqx-grid-cell.jqx-grid-cell-selected,
 .jqx-grid-cell.jqx-fill-state-pressed {
 	background-color: var(--app-accent-soft) !important;
@@ -1937,10 +1985,19 @@ select.procedure-detail-info-input option {
 	color: #43dd7b !important;
 }
 
+.jqx-grid-cell.procedure-grid-row-warning {
+	background-color: rgba(245, 158, 11, 0.12) !important;
+	color: #fbbf24 !important;
+}
+
 .procedure-item-status-icon-rejected {
 	color: #ef4444;
 }
 
 .procedure-item-status-icon-approved {
 	color: #22c55e;
+}
+
+.procedure-item-status-icon-warning {
+	color: #f59e0b;
 }

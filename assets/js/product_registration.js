@@ -38,6 +38,7 @@
 	const productDetailImageGallery = document.getElementById('procedureDetailImageGallery');
 	const productDetailInfo = document.getElementById('procedureDetailInfo');
 	const productDetailFooterMeta = document.getElementById('procedureDetailFooterMeta');
+	const productDetailReason = document.getElementById('procedureDetailReason');
 	const productDetailPrevBtn = document.getElementById('procedureDetailPrevBtn');
 	const productDetailNextBtn = document.getElementById('procedureDetailNextBtn');
 	const procedureBarcodeInput = document.getElementById('procedureBarcodeInput');
@@ -55,12 +56,16 @@
 	const confirmRejectBtn = document.getElementById('procedureConfirmRejectBtn');
 	const productDetailRejectBtn = document.getElementById('procedureDetailRejectBtn');
 	const productDetailAcceptBtn = document.getElementById('procedureDetailAcceptBtn');
+	const similarSearchInput = document.getElementById('procedureSimilarSearch');
+	const similarClearBtn = document.getElementById('procedureSimilarClearBtn');
+	const similarOrgLabel = document.getElementById('procedureSimilarOrg');
 
 	let importModal;
 	let productModal;
 	let rejectModal;
 	let importGrid = null;
 	let similarGrid = null;
+	let similarQuery = '';
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
 	let barcodeTypingTimer = null;
@@ -80,7 +85,7 @@
 		return status === 'accepted' ? 'approved' : status;
 	}
 
-	function statusIconRenderer(row, columnfield, value) {
+	function statusIconRenderer(row, columnfield, value, defaultHtml, columnSettings, rowdata) {
 		const status = normalizeItemStatus(value);
 		let icon = '';
 
@@ -88,6 +93,9 @@
 			icon = '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="' + t('reg_rejected') + '"></i>';
 		} else if (status === 'approved') {
 			icon = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="' + t('reg_accepted') + '"></i>';
+		} else if (status === 'warning') {
+			const label = (rowdata && rowdata.message) ? rowdata.message : t('reg_similar_warning');
+			icon = '<i class="fas fa-exclamation-triangle procedure-item-status-icon procedure-item-status-icon-warning" title="' + escapeAttr(label) + '" aria-label="' + escapeAttr(label) + '"></i>';
 		}
 
 		return '<div style="text-align:center;margin-top:6px;">' + icon + '</div>';
@@ -102,6 +110,10 @@
 
 		if (status === 'approved') {
 			return 'procedure-grid-row-approved';
+		}
+
+		if (status === 'warning') {
+			return 'procedure-grid-row-warning';
 		}
 
 		return '';
@@ -168,6 +180,7 @@
 		const obj = {
 			id: row.id,
 			item_status: normalizeItemStatus(row.item_status || row.status || 'pending'),
+			message: row.message || '',
 			__num: index + 1,
 			product_procedure_number: row.product_procedure_number,
 		};
@@ -196,6 +209,7 @@
 		const datafields = [
 			{ name: 'id', type: 'number' },
 			{ name: 'item_status', type: 'string' },
+			{ name: 'message', type: 'string' },
 			{ name: '__num', type: 'number' },
 			{ name: 'product_procedure_number', type: 'string' },
 		];
@@ -379,7 +393,17 @@
 		}
 
 		const status = activeItemStatus();
-		return status === 'pending' || status === 'approved';
+		return status === 'pending' || status === 'approved' || status === 'warning';
+	}
+
+	function canAcceptActiveRow() {
+		const tab = getActiveTab();
+
+		if (!tab || tab.status === 'completed') {
+			return false;
+		}
+
+		return canReviewActiveRow() || activeItemStatus() === 'rejected';
 	}
 
 	function selectGridRow(regId, rowIndex) {
@@ -407,16 +431,17 @@
 	}
 
 	function updateReviewButtonState() {
-		const reviewable = canReviewActiveRow();
+		const rejectable = canReviewActiveRow();
+		const acceptable = canAcceptActiveRow();
 
 		if (productDetailRejectBtn) {
-			productDetailRejectBtn.disabled = !reviewable;
-			productDetailRejectBtn.classList.toggle('d-none', !reviewable);
+			productDetailRejectBtn.disabled = !rejectable;
+			productDetailRejectBtn.classList.toggle('d-none', !rejectable);
 		}
 
 		if (productDetailAcceptBtn) {
-			productDetailAcceptBtn.disabled = !reviewable;
-			productDetailAcceptBtn.classList.toggle('d-none', !reviewable);
+			productDetailAcceptBtn.disabled = !acceptable;
+			productDetailAcceptBtn.classList.toggle('d-none', !acceptable);
 		}
 	}
 
@@ -438,6 +463,10 @@
 			productDetailFooterMeta.textContent = currentIndex >= 0
 				? t('reg_row_position', { current: currentIndex + 1, count: count })
 				: '';
+		}
+
+		if (!activeDetail) {
+			updateDetailReason(null);
 		}
 	}
 
@@ -508,6 +537,7 @@
 
 		updateAssignableBarcodeDisplay();
 		updateDetailNavButtons();
+		refreshSimilarSearch();
 
 		const imageTabBtn = document.getElementById('procedureDetailTabImageBtn');
 
@@ -565,6 +595,7 @@
 		tab.rows[rowIndex].item_status = 'rejected';
 		tab.rows[rowIndex].message = reason;
 		refreshGridRow(regId, rowIndex);
+		syncModalHeaderForRow(regId, rowIndex);
 	}
 
 	function markRowAccepted(regId, rowIndex) {
@@ -577,6 +608,20 @@
 		tab.rows[rowIndex].item_status = 'approved';
 		tab.rows[rowIndex].message = '';
 		refreshGridRow(regId, rowIndex);
+		syncModalHeaderForRow(regId, rowIndex);
+	}
+
+	function markRowWarning(regId, rowIndex, message) {
+		const tab = tabData.get(String(regId));
+
+		if (!tab || !tab.rows[rowIndex]) {
+			return;
+		}
+
+		tab.rows[rowIndex].item_status = 'warning';
+		tab.rows[rowIndex].message = message || t('reg_similar_warning');
+		refreshGridRow(regId, rowIndex);
+		syncModalHeaderForRow(regId, rowIndex);
 	}
 
 	function updateRowBarcodeCell(regId, rowIndex, ean13) {
@@ -771,7 +816,7 @@
 	}
 
 	function acceptProduct() {
-		if (!activeDetail || !canReviewActiveRow()) {
+		if (!activeDetail || !canAcceptActiveRow()) {
 			return;
 		}
 
@@ -1002,33 +1047,329 @@
 		});
 	}
 
-	function ensureSimilarGrid() {
-		if (similarGrid || typeof JqxGrid === 'undefined' || !document.getElementById('procedureSimilarGrid')) {
-			if (similarGrid) {
-				similarGrid.render();
+	function selectedCell(names, fallbackIndex) {
+		const tab = getActiveTab();
+		const row = getActiveRow();
+
+		if (!tab || !row) {
+			return '';
+		}
+
+		let index = findColumnIndex(tab.columns || [], names);
+
+		if (index < 0 && fallbackIndex !== undefined) {
+			index = fallbackIndex;
+		}
+
+		if (index < 0 || !row.cells || row.cells[index] === undefined || row.cells[index] === null) {
+			return '';
+		}
+
+		return String(row.cells[index]).trim();
+	}
+
+	function selectedProductName() {
+		const name = selectedCell(['product name']);
+
+		if (name) {
+			return name;
+		}
+
+		const row = getActiveRow();
+		return row && row.name ? String(row.name).trim() : '';
+	}
+
+	function selectedFactoryName() {
+		const factory = selectedCell(['factory name'], 22);
+
+		if (factory) {
+			return factory;
+		}
+
+		const tab = getActiveTab();
+		return tab && tab.organization_name ? String(tab.organization_name).trim() : '';
+	}
+
+	function similarGridHeight() {
+		const pane = document.getElementById('procedureDetailTabSimilar');
+		const search = pane ? pane.querySelector('.procedure-similar-search') : null;
+
+		if (!pane || pane.clientHeight < 160) {
+			return Math.max(280, window.innerHeight - 320);
+		}
+
+		return Math.max(220, pane.clientHeight - (search ? search.offsetHeight : 0) - 16);
+	}
+
+	function similarIndexRenderer(row) {
+		let number = row + 1;
+		const host = $('#procedureSimilarGrid');
+
+		if (host.length) {
+			const paging = host.jqxGrid('getpaginginformation');
+
+			if (paging && paging.pagesize && row < paging.pagesize) {
+				number = (paging.pagenum || 0) * paging.pagesize + row + 1;
 			}
+		}
+
+		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + number + '</div>';
+	}
+
+	function updateSimilarOrgLabel() {
+		if (!similarOrgLabel) {
 			return;
 		}
 
-		similarGrid = JqxGrid.local('#procedureSimilarGrid', {
-			data: [],
-			datafields: [
-				{ name: 'product_procedure_number', type: 'string' },
-				{ name: 'product_name', type: 'string' },
-				{ name: 'match', type: 'string' },
-			],
-			columns: [
-				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
-				{ text: t('reg_product_number'), datafield: 'product_procedure_number', width: 160 },
-				{ text: t('reg_product_name'), datafield: 'product_name' },
-				{ text: t('reg_match'), datafield: 'match', width: 120 },
-			],
-			height: Math.max(280, window.innerHeight - 320),
-			emptyMessage: t('reg_no_similar'),
-		});
+		const factory = selectedFactoryName();
+		similarOrgLabel.textContent = factory;
+	}
+
+	function toggleSimilarClear() {
+		if (!similarClearBtn || !similarSearchInput) {
+			return;
+		}
+
+		similarClearBtn.classList.toggle('d-none', similarSearchInput.value.trim() === '');
+	}
+
+	function ensureSimilarGrid() {
+		if (typeof JqxGrid === 'undefined' || !document.getElementById('procedureSimilarGrid')) {
+			return;
+		}
+
+		if (!similarGrid) {
+			similarGrid = JqxGrid.remote('#procedureSimilarGrid', {
+				url: baseUrl + '/organization_products',
+				pagesize: 10,
+				pagesizeoptions: ['10', '20', '50'],
+				height: similarGridHeight(),
+				emptyMessage: similarEmptyMessage(),
+				datafields: [
+					{ name: 'id', type: 'number' },
+					{ name: '__rownum', type: 'number' },
+					{ name: 'name', type: 'string' },
+					{ name: 'brand', type: 'string' },
+					{ name: 'standard_number', type: 'string' },
+					{ name: 'barcode_1d', type: 'string' },
+					{ name: 'barcode_1d_type', type: 'string' },
+					{ name: 'package_type', type: 'string' },
+					{ name: 'reg_date', type: 'string' },
+				],
+				columns: [
+					{
+						text: '#',
+						datafield: '__rownum',
+						width: 56,
+						pinned: true,
+						sortable: false,
+						filterable: false,
+						cellsalign: 'right',
+						align: 'right',
+						cellsrenderer: similarIndexRenderer,
+					},
+					{
+						text: t('reg_reuse'),
+						datafield: 'id',
+						width: 110,
+						sortable: false,
+						filterable: false,
+						cellsrenderer: similarReuseRenderer,
+					},
+					{ text: t('col_name'), datafield: 'name', width: 200 },
+					{ text: t('col_brand'), datafield: 'brand', width: 140 },
+					{ text: t('col_standard_number'), datafield: 'standard_number', width: 150 },
+					{ text: t('col_barcode_1d'), datafield: 'barcode_1d', width: 160 },
+					{ text: t('col_package_type'), datafield: 'package_type', width: 140 },
+					{ text: t('col_reg_date'), datafield: 'reg_date', width: 150 },
+				],
+				getParams: function () {
+					const params = { organization: selectedFactoryName() };
+
+					if (similarQuery) {
+						params.q = similarQuery;
+					}
+
+					return params;
+				},
+				onError: function () {
+					showToast(t('org_products_load_failed'), 'error');
+				},
+			});
+
+			JqxGrid.bindCellButtons(similarGrid.$el, '.procedure-similar-reuse', function (id, event, button) {
+				reuseCatalogBarcode(button);
+			});
+		}
+
+		if (similarGrid) {
+			similarGrid.$el.jqxGrid('height', similarGridHeight());
+			similarGrid.render();
+		}
+	}
+
+	function similarReuseRenderer(row, column, value, defaultHtml, columnSettings, rowdata) {
+		const barcode = rowdata && rowdata.barcode_1d ? String(rowdata.barcode_1d).trim() : '';
+		const barcodeType = rowdata && rowdata.barcode_1d_type ? String(rowdata.barcode_1d_type).trim() : '';
+		const title = barcode ? t('reg_reuse') : t('reg_reuse_no_barcode');
+
+		return '<div class="jqx-action-cell">' +
+			'<button type="button" class="btn btn-sm btn-outline-primary procedure-similar-reuse"' +
+			' data-id="' + escapeAttr(rowdata && rowdata.id !== undefined ? rowdata.id : '') + '"' +
+			' data-barcode="' + escapeAttr(barcode) + '"' +
+			' data-barcode-type="' + escapeAttr(barcodeType) + '"' +
+			' title="' + escapeAttr(title) + '"' +
+			(barcode ? '' : ' disabled') + '>' +
+			escapeHtml(t('reg_reuse')) +
+			'</button></div>';
+	}
+
+	function setBarcodeControl(input, value) {
+		if (!input || input.disabled) {
+			return;
+		}
+
+		const next = String(value == null ? '' : value);
+
+		if (input.tagName === 'SELECT') {
+			const match = Array.prototype.find.call(input.options, function (option) {
+				return option.value.toLowerCase() === next.toLowerCase();
+			});
+
+			if (!match && next) {
+				const option = document.createElement('option');
+				option.value = next;
+				option.textContent = next;
+				input.appendChild(option);
+			}
+
+			input.value = match ? match.value : next;
+		} else {
+			input.value = next;
+		}
+
+		input.classList.remove('is-invalid');
+
+		if ((input.getAttribute('data-saved-value') || '') !== input.value) {
+			saveBarcodeField(input);
+		}
+	}
+
+	function reuseCatalogBarcode(button) {
+		const barcode = (button.getAttribute('data-barcode') || '').trim();
+		const barcodeType = (button.getAttribute('data-barcode-type') || '').trim();
+		const valueInput = barcodeFieldInput('barcode_1d');
+		const tab = getActiveTab();
+
+		if (!barcode) {
+			showToast(t('reg_reuse_no_barcode'), 'error');
+			return;
+		}
+
+		if (!valueInput) {
+			showToast(t('reg_barcode_field_missing'), 'error');
+			return;
+		}
+
+		if (!tab || tab.status === 'completed' || valueInput.disabled) {
+			showToast(t('reg_completed_locked'), 'error');
+			return;
+		}
+
+		if (barcodeType) {
+			setBarcodeControl(barcodeFieldInput('barcode_1d_type'), barcodeType);
+		}
+
+		setBarcodeControl(valueInput, barcode);
+		showToast(t('reg_reuse_assigned'), 'success');
+	}
+
+	function similarEmptyMessage() {
+		return similarQuery ? t('reg_no_similar') : t('org_products_empty');
+	}
+
+	function applySimilarEmptyMessage() {
+		if (!similarGrid) {
+			return;
+		}
+
+		similarGrid.$el.jqxGrid('localizestrings', { emptydatastring: similarEmptyMessage() });
+	}
+
+	function reloadSimilarGrid() {
+		if (!similarGrid) {
+			return;
+		}
+
+		applySimilarEmptyMessage();
+		similarGrid.gotoFirst();
+		similarGrid.reload();
+	}
+
+	function refreshSimilarSearch() {
+		similarQuery = selectedProductName();
+
+		if (similarSearchInput) {
+			similarSearchInput.value = similarQuery;
+		}
+
+		toggleSimilarClear();
+		updateSimilarOrgLabel();
+		reloadSimilarGrid();
 	}
 
 	// ------------------------------------------------------------- modal header
+
+	function productStatusLabel(status) {
+		const normalized = normalizeItemStatus(status);
+
+		if (normalized === 'rejected') {
+			return t('reg_rejected');
+		}
+
+		if (normalized === 'approved') {
+			return t('reg_accepted');
+		}
+
+		if (normalized === 'warning') {
+			return t('reg_warning');
+		}
+
+		return t('reg_data_pending');
+	}
+
+	function productStatusBadgeClass(status) {
+		const normalized = normalizeItemStatus(status);
+
+		if (normalized === 'rejected') {
+			return 'bg-danger';
+		}
+
+		if (normalized === 'approved') {
+			return 'bg-success';
+		}
+
+		if (normalized === 'warning') {
+			return 'bg-warning text-dark';
+		}
+
+		return 'bg-secondary';
+	}
+
+	function syncModalHeaderForRow(regId, rowIndex) {
+		if (!activeDetail || String(activeDetail.regId) !== String(regId) || activeDetail.rowIndex !== rowIndex) {
+			return;
+		}
+
+		const tab = tabData.get(String(regId));
+		const row = tab && tab.rows[rowIndex];
+
+		if (!tab || !row) {
+			return;
+		}
+
+		renderModalHeader(buildRowPayload(tab, row, rowIndex));
+	}
 
 	function renderModalHeader(payload) {
 		if (!productModalTitle) {
@@ -1037,12 +1378,36 @@
 
 		const orgName = escapeHtml(payload.organization_name || '');
 		const productNumber = escapeHtml(payload.product_procedure_number || 'Product');
-		const status = escapeHtml(payload.status || 'uploaded');
+		const itemStatus = normalizeItemStatus(payload.item_status || 'pending');
 
 		productModalTitle.innerHTML =
 			(orgName ? '<span class="procedure-detail-header-org">' + orgName + '</span>' : '') +
 			'<span class="procedure-detail-header-product">' + productNumber + '</span>' +
-			'<span class="badge bg-info text-dark">' + status + '</span>';
+			'<span class="badge ' + productStatusBadgeClass(itemStatus) + '">' + escapeHtml(productStatusLabel(itemStatus)) + '</span>';
+		updateDetailReason(payload);
+	}
+
+	function updateDetailReason(payload) {
+		if (!productDetailReason) {
+			return;
+		}
+
+		const itemStatus = payload ? normalizeItemStatus(payload.item_status || 'pending') : '';
+		const reason = itemStatus === 'rejected' ? String(payload.rejection_reason || '').trim() : '';
+
+		productDetailReason.textContent = '';
+
+		if (!reason) {
+			productDetailReason.hidden = true;
+			return;
+		}
+
+		const label = document.createElement('span');
+		label.className = 'procedure-detail-footer-reason-label';
+		label.textContent = t('common_reason');
+		productDetailReason.appendChild(label);
+		productDetailReason.appendChild(document.createTextNode(reason));
+		productDetailReason.hidden = false;
 	}
 
 	function barcodeTypeOptions(field, currentValue) {
@@ -1806,6 +2171,7 @@
 	function buildTabButton(tab, isActive, isImported) {
 		const isCompleted = isImported || tab.status === 'completed';
 		const showSavedCheck = isCompleted || String(tab.status || '').toLowerCase() === 'saved';
+		const showProcessing = !showSavedCheck && String(tab.status || '').toLowerCase() === 'processing';
 
 		return '<li class="nav-item procedure-tab-nav-item" role="presentation">' +
 			'<div class="procedure-tab-nav-wrap">' +
@@ -1822,6 +2188,9 @@
 					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
 					(showSavedCheck
 						? '<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>'
+						: '') +
+					(showProcessing
+						? '<i class="fas fa-spinner fa-spin ms-2 procedure-tab-processing-icon" title="' + escapeAttr(t('reg_processing')) + '" aria-label="' + escapeAttr(t('reg_processing')) + '"></i>'
 						: '') +
 				'</button>' +
 				buildTabNavCloseButton(tab, isCompleted) +
@@ -1849,6 +2218,36 @@
 		if (statusEl) {
 			statusEl.textContent = nextStatus;
 		}
+
+		syncTabStatusIcon(key, nextStatus);
+	}
+
+	function syncTabStatusIcon(registrationId, status) {
+		const tabButton = document.getElementById('product-registration-tab-' + registrationId + '-tab');
+
+		if (!tabButton) {
+			return;
+		}
+
+		const normalized = String(status || '').toLowerCase();
+		const processingIcon = tabButton.querySelector('.procedure-tab-processing-icon');
+
+		if (normalized === 'processing') {
+			if (processingIcon) {
+				return;
+			}
+
+			const icon = document.createElement('i');
+			icon.className = 'fas fa-spinner fa-spin ms-2 procedure-tab-processing-icon';
+			icon.title = t('reg_processing');
+			icon.setAttribute('aria-label', t('reg_processing'));
+			tabButton.appendChild(icon);
+			return;
+		}
+
+		if (processingIcon) {
+			processingIcon.remove();
+		}
 	}
 
 	function markRegistrationSaved(registrationId, status) {
@@ -1871,6 +2270,7 @@
 
 		if (tabButton) {
 			tabButton.setAttribute('data-completed', 'true');
+			syncTabStatusIcon(key, savedStatus);
 
 			if (!tabButton.querySelector('.procedure-tab-completed-icon')) {
 				const icon = document.createElement('i');
@@ -1966,18 +2366,20 @@
 			syncOpenBarcodeInputs(item.id, '', '');
 		});
 
+		(payload.warned || []).forEach(function (item) {
+			const rowIndex = rowIndexForItem(registrationId, item.id);
+
+			if (rowIndex >= 0) {
+				markRowWarning(registrationId, rowIndex, item.message);
+			}
+		});
+
 		if (payload.registration_status) {
 			setRegistrationStatus(registrationId, payload.registration_status);
 		}
 
-		if (activeDetail && String(activeDetail.regId) === String(registrationId) && productModalTitle) {
-			const badge = productModalTitle.querySelector('.badge');
-			const row = getActiveRow();
-
-			if (badge && row) {
-				badge.textContent = normalizeItemStatus(row.item_status || row.status || '');
-			}
-
+		if (activeDetail && String(activeDetail.regId) === String(registrationId)) {
+			syncModalHeaderForRow(activeDetail.regId, activeDetail.rowIndex);
 			updateReviewButtonState();
 		}
 	}
@@ -2002,7 +2404,9 @@
 
 	function focusAutoProcessRow(registrationId, data) {
 		const payload = data || {};
-		const changed = (payload.assigned && payload.assigned[0]) || (payload.cleared && payload.cleared[0]);
+		const changed = (payload.assigned && payload.assigned[0])
+			|| (payload.cleared && payload.cleared[0])
+			|| (payload.warned && payload.warned[0]);
 
 		if (!changed) {
 			return;
@@ -2026,6 +2430,7 @@
 		const maxSteps = ((tab && tab.rows) ? tab.rows.length : 0) + 1;
 		let assignedCount = 0;
 		let clearedCount = 0;
+		let warnedCount = 0;
 		let step = 0;
 
 		button.disabled = true;
@@ -2033,15 +2438,15 @@
 		function finish() {
 			if (assignedCount) {
 				showToast(t('reg_auto_process_done').replace('%d', String(assignedCount)), 'success');
-				return;
-			}
-
-			if (clearedCount) {
+			} else if (clearedCount) {
 				showToast(t('reg_auto_process_cleared'), 'success');
-				return;
+			} else if (!warnedCount) {
+				showToast(t('reg_auto_process_none'), 'success');
 			}
 
-			showToast(t('reg_auto_process_none'), 'success');
+			if (warnedCount) {
+				showToast(t('reg_auto_process_similar').replace('%d', String(warnedCount)), 'success');
+			}
 		}
 
 		function next() {
@@ -2068,6 +2473,7 @@
 					applyAutoProcessResult(registrationId, data);
 					assignedCount += (data.assigned || []).length;
 					clearedCount += (data.cleared || []).length;
+					warnedCount += (data.warned || []).length;
 					return wait(AUTO_PROCESS_STEP_MS).then(next);
 				});
 			});
@@ -2602,6 +3008,36 @@
 
 		if (event.target.id === 'procedureDetailTabSimilarBtn') {
 			ensureSimilarGrid();
+		}
+	});
+
+	const scheduleSimilarSearch = debounce(function () {
+		similarQuery = similarSearchInput ? similarSearchInput.value.trim() : '';
+		toggleSimilarClear();
+		reloadSimilarGrid();
+	}, 300);
+
+	if (similarSearchInput) {
+		similarSearchInput.addEventListener('input', scheduleSimilarSearch);
+	}
+
+	if (similarClearBtn) {
+		similarClearBtn.addEventListener('click', function () {
+			scheduleSimilarSearch.cancel();
+			similarQuery = '';
+
+			if (similarSearchInput) {
+				similarSearchInput.value = '';
+			}
+
+			toggleSimilarClear();
+			reloadSimilarGrid();
+		});
+	}
+
+	window.addEventListener('resize', function () {
+		if (similarGrid) {
+			similarGrid.$el.jqxGrid('height', similarGridHeight());
 		}
 	});
 

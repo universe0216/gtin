@@ -129,6 +129,16 @@ class Product_model extends Basic_model {
 			->row_array();
 	}
 
+	public function list_similarity_fields($organization_id)
+	{
+		return $this->db
+			->select('id, name, brand, standard_number, package_type')
+			->from($this->table)
+			->where('org_id', (int) $organization_id)
+			->get()
+			->result_array();
+	}
+
 	public function get_barcodes_by_organization($organization_id)
 	{
 		return $this->db

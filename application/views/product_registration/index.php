@@ -39,6 +39,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								<span class="badge bg-secondary ms-2"><?php echo count($tab['rows']); ?></span>
 								<?php if (strcasecmp((string) $tab['status'], 'Saved') === 0 || strcasecmp((string) $tab['status'], 'completed') === 0): ?>
 									<i class="fas fa-check ms-2 procedure-tab-completed-icon" aria-hidden="true"></i>
+								<?php elseif (strcasecmp((string) $tab['status'], 'processing') === 0): ?>
+									<i class="fas fa-spinner fa-spin ms-2 procedure-tab-processing-icon" title="<?php echo html_escape(app_line('reg_processing')); ?>" aria-label="<?php echo html_escape(app_line('reg_processing')); ?>"></i>
 								<?php endif; ?>
 							</button>
 							<button
@@ -245,6 +247,21 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								<div id="procedureDetailImageGallery" class="procedure-detail-image-gallery"></div>
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabSimilar" role="tabpanel" aria-labelledby="procedureDetailTabSimilarBtn">
+								<div class="procedure-similar-search d-flex flex-wrap align-items-center gap-2 mb-2">
+									<div class="input-group input-group-sm procedure-similar-search-input">
+										<span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
+										<input
+											type="search"
+											class="form-control"
+											id="procedureSimilarSearch"
+											placeholder="<?php echo html_escape(app_line('reg_similar_search')); ?>"
+											autocomplete="off"
+											aria-label="<?php echo html_escape(app_line('reg_similar_search')); ?>"
+										>
+										<button type="button" class="btn btn-outline-secondary d-none" id="procedureSimilarClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
+									</div>
+									<p class="text-muted small mb-0" id="procedureSimilarOrg"></p>
+								</div>
 								<div id="procedureSimilarGrid"></div>
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabBarcodes" role="tabpanel" aria-labelledby="procedureDetailTabBarcodesBtn">
@@ -275,6 +292,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				</div>
 			</div>
 			<div class="modal-footer procedure-detail-footer">
+				<span class="procedure-detail-footer-reason me-auto" id="procedureDetailReason" hidden></span>
 				<span class="procedure-assignable-barcode text-muted small me-auto" id="assignable_barcode"></span>
 				<div class="d-flex flex-wrap gap-2">
 					<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_accept')); ?></button>

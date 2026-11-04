@@ -185,7 +185,7 @@ class Product_registration extends AuthenticatedController {
 			), 422);
 		}
 
-		$was_pending = $item['status'] === 'pending';
+		$was_pending = in_array($item['status'], array('pending', 'warning'), TRUE);
 		$was_approved = $item['status'] === 'approved';
 
 		if ( ! $this->product_registration_item_model->update($id, array(
@@ -252,15 +252,8 @@ class Product_registration extends AuthenticatedController {
 			), 422);
 		}
 
-		if ($item['status'] === 'rejected')
-		{
-			return $this->json_response(array(
-				'success' => FALSE,
-				'message' => app_line('reg_accept_blocked'),
-			), 422);
-		}
-
-		$was_pending = $item['status'] === 'pending';
+		$was_rejected = $item['status'] === 'rejected';
+		$was_pending = in_array($item['status'], array('pending', 'warning', 'rejected'), TRUE);
 		$barcode_1d_type = trim((string) $this->input->post('barcode_1d_type', FALSE));
 		$barcode_1d = trim((string) $this->input->post('barcode_1d', FALSE));
 		$problem = barcode_1d_problem($barcode_1d_type, $barcode_1d);
@@ -308,6 +301,11 @@ class Product_registration extends AuthenticatedController {
 		if ($was_pending)
 		{
 			$counts['approved'] = (int) $registration['approved'] + 1;
+
+			if ($was_rejected)
+			{
+				$counts['rejected'] = max(0, (int) $registration['rejected'] - 1);
+			}
 		}
 
 		$registration_status = $this->mark_registration_processing($registration, $counts);
@@ -1138,6 +1136,7 @@ class Product_registration extends AuthenticatedController {
 	protected function auto_process_step($registration, $items)
 	{
 		$reserved = array();
+		$catalog_cache = array();
 
 		foreach ($items as $item)
 		{
@@ -1152,7 +1151,8 @@ class Product_registration extends AuthenticatedController {
 		foreach ($items as $item)
 		{
 			$info = $this->item_info($item);
-			$is_rejected = ($item['status'] ?? '') === 'rejected';
+			$status = strtolower(trim((string) ($item['status'] ?? '')));
+			$is_rejected = $status === 'rejected';
 
 			if ($is_rejected)
 			{
@@ -1203,9 +1203,50 @@ class Product_registration extends AuthenticatedController {
 				);
 			}
 
-			if ($this->item_barcode_1d($item) !== '')
+			if ($status === 'warning' || $this->item_barcode_1d($item) !== '')
 			{
 				continue;
+			}
+
+			$similar = $this->find_similar_catalog_product($info, $item, $catalog_cache);
+
+			if ($similar)
+			{
+				$matched_name = trim((string) ($similar['name'] ?? ''));
+				$message = $matched_name === ''
+					? app_line('reg_similar_warning')
+					: app_line('reg_similar_warning_match', $matched_name);
+
+				if ( ! $this->product_registration_item_model->update($item['id'], array(
+					'status'  => 'warning',
+					'message' => $message,
+				)))
+				{
+					return array(
+						'error'   => TRUE,
+						'status'  => 500,
+						'message' => app_line('reg_barcode_save_failed'),
+						'data'    => array('done' => FALSE, 'assigned' => array(), 'cleared' => array(), 'warned' => array()),
+					);
+				}
+
+				$registration_status = $this->mark_registration_processing($registration);
+
+				return array(
+					'error'   => FALSE,
+					'message' => $message,
+					'data'    => array(
+						'done'                => FALSE,
+						'registration_status' => $registration_status,
+						'assigned'            => array(),
+						'cleared'             => array(),
+						'warned'              => array(array(
+							'id'      => (int) $item['id'],
+							'status'  => 'warning',
+							'message' => $message,
+						)),
+					),
+				);
 			}
 
 			$cells = $info['cells'] ?? array();
@@ -1275,6 +1316,7 @@ class Product_registration extends AuthenticatedController {
 						'status'  => 'approved',
 					)),
 					'cleared'  => array(),
+					'warned'   => array(),
 				),
 			);
 		}
@@ -1286,8 +1328,57 @@ class Product_registration extends AuthenticatedController {
 				'done'     => TRUE,
 				'assigned' => array(),
 				'cleared'  => array(),
+				'warned'   => array(),
 			),
 		);
+	}
+
+	protected function find_similar_catalog_product($info, $item, &$catalog_cache)
+	{
+		$this->load->model('organization_model');
+		$this->load->model('product_model');
+		$this->load->library('product_similarity');
+
+		$columns = $info['columns'] ?? array();
+		$cells = $info['cells'] ?? array();
+		$factory_name = isset($cells[22]) ? trim((string) $cells[22]) : '';
+
+		if ($factory_name === '')
+		{
+			return NULL;
+		}
+
+		if ( ! array_key_exists($factory_name, $catalog_cache))
+		{
+			$organization = $this->organization_model->get_by_name($factory_name);
+			$catalog_cache[$factory_name] = $organization
+				? $this->product_model->list_similarity_fields($organization['id'])
+				: array();
+		}
+
+		$name = $this->registration_cell($columns, $cells, array('product name'));
+
+		if ($name === '')
+		{
+			$name = trim((string) ($item['name'] ?? ''));
+		}
+
+		$incoming = array(
+			'name'            => $name,
+			'brand'           => $this->registration_cell($columns, $cells, array('brand', 'size of brand')),
+			'standard_number' => $this->registration_cell($columns, $cells, array('standard')),
+			'package_type'    => $this->registration_cell($columns, $cells, array('package type')),
+		);
+
+		foreach ($catalog_cache[$factory_name] as $product)
+		{
+			if ($this->product_similarity->is_similar($incoming, $product))
+			{
+				return $product;
+			}
+		}
+
+		return NULL;
 	}
 
 	protected function mark_registration_processing($registration, $extra = array())
@@ -1429,6 +1520,77 @@ class Product_registration extends AuthenticatedController {
 		$info['cells'] = array_values($cells);
 
 		return json_encode($info);
+	}
+
+	public function organization_products()
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->load->model('organization_model');
+		$this->load->model('product_model');
+
+		$organization_name = trim((string) $this->input->get('organization'));
+		$organization = $organization_name === '' ? NULL : $this->organization_model->get_by_name($organization_name);
+		$per_page = (int) $this->input->get('per_page');
+		$page = max(1, (int) $this->input->get('page'));
+		$search = trim((string) $this->input->get('q'));
+
+		if ( ! in_array($per_page, array(10, 20, 50), TRUE))
+		{
+			$per_page = 10;
+		}
+
+		if ( ! $organization)
+		{
+			return $this->json_response(array(
+				'success'     => TRUE,
+				'data'        => array(),
+				'total'       => 0,
+				'page'        => 1,
+				'per_page'    => $per_page,
+				'range_start' => 0,
+				'range_end'   => 0,
+			));
+		}
+
+		$sort = $this->product_model->resolve_sort(
+			$this->input->get('sort'),
+			$this->input->get('dir'),
+			$this->product_model->get_sortable_columns_for_keys(array(
+				'name',
+				'brand',
+				'standard_number',
+				'barcode_1d',
+				'package_type',
+				'reg_date',
+			))
+		);
+		$total = $this->product_model->count_by_organization($organization['id'], $search);
+		$total_pages = max(1, (int) ceil($total / $per_page));
+		$page = min($page, $total_pages);
+		$offset = ($page - 1) * $per_page;
+		$records = $this->product_model->get_paginated_by_organization(
+			$organization['id'],
+			$per_page,
+			$offset,
+			$search,
+			$sort
+		);
+
+		return $this->json_response(array(
+			'success'     => TRUE,
+			'data'        => $records,
+			'total'       => $total,
+			'page'        => $page,
+			'per_page'    => $per_page,
+			'range_start' => $total > 0 ? $offset + 1 : 0,
+			'range_end'   => min($offset + count($records), $total),
+			'sort'        => $sort['key'] ?? '',
+			'sort_dir'    => $sort['direction'] ?? '',
+		));
 	}
 
 	protected function json_response($payload, $status = 200)
