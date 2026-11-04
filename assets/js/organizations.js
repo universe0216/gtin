@@ -11,6 +11,7 @@
 	const perPage = config.perPage || 10;
 	const perPageOptions = (config.perPageOptions || [5, 10, 20, 50]).map(String);
 	const detailEnabled = !!(config.detail && config.detail.enabled);
+	const rowAction = (config.detail && config.detail.rowAction) || {};
 
 	const searchForm = document.getElementById('organizationsSearchForm');
 	const searchInput = document.getElementById('organizationsSearchInput');
@@ -27,6 +28,7 @@
 		gs1_prefix: 140,
 		parent_org: 200,
 		phone: 150,
+		currency: 130,
 		init_date: 150,
 		reg_date: 160,
 		expiry_date: 150,
@@ -81,6 +83,24 @@
 		return { name: column.key, type: 'string' };
 	}));
 
+	function currencyLabel(value) {
+		const code = String(value == null ? '' : value);
+
+		if (code === '1') {
+			return t('currency_foreign');
+		}
+
+		if (code === '2') {
+			return t('currency_domestic');
+		}
+
+		return '';
+	}
+
+	function currencyRenderer(row, column, value) {
+		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + escapeHtml(currencyLabel(value)) + '</div>';
+	}
+
 	const gridColumns = [
 		{
 			text: '#',
@@ -94,12 +114,53 @@
 			cellsrenderer: indexRenderer,
 		},
 	].concat(columns.map(function (column) {
-		return {
+		const gridColumn = {
 			text: column.label,
 			datafield: column.key,
 			width: columnWidths[column.key] || 160,
 		};
+
+		if (column.key === 'currency') {
+			gridColumn.cellsrenderer = currencyRenderer;
+			gridColumn.cellclassname = function (row, columnfield, value) {
+				const code = String(value == null ? '' : value);
+
+				if (code === '1') {
+					return 'organization-currency-foreign';
+				}
+
+				if (code === '2') {
+					return 'organization-currency-domestic';
+				}
+
+				return '';
+			};
+		}
+
+		return gridColumn;
 	}));
+
+	function rowActionRenderer(row, column, value, defaultHtml, props, rowdata) {
+		const label = rowAction.type === 'restore' ? t('common_restore') : t('common_delete');
+		const buttonClass = rowAction.type === 'restore' ? 'btn-outline-success' : 'btn-outline-danger';
+
+		return '<div class="jqx-action-cell">' +
+			'<button type="button" class="btn btn-sm ' + buttonClass + ' entity-row-action" data-id="' +
+			escapeAttr(rowdata && rowdata.id) + '" data-name="' + escapeAttr(rowdata && rowdata.name) + '">' +
+			escapeHtml(label) + '</button></div>';
+	}
+
+	if (rowAction.enabled) {
+		datafields.push({ name: '__actions', type: 'string' });
+		gridColumns.push({
+			text: '',
+			datafield: '__actions',
+			width: 120,
+			sortable: false,
+			filterable: false,
+			cellsrenderer: rowActionRenderer,
+		});
+	}
 
 	const grid = JqxGrid.remote('#organizationsGrid', {
 		url: apiUrl,
@@ -127,10 +188,104 @@
 		grid.$el.jqxGrid('height', gridHeight());
 	});
 
+	grid.$el.on('click', '.entity-row-action', function (event) {
+		event.preventDefault();
+		event.stopPropagation();
+		const id = this.getAttribute('data-id');
+		const name = this.getAttribute('data-name') || '';
+
+		if (rowAction.type === 'restore') {
+			restoreOrganization(id, name);
+			return;
+		}
+
+		deleteOrganization(id, name);
+	});
+
+	document.addEventListener('organizationsListChanged', function () {
+		grid.reload();
+	});
+
+	function deleteOrganization(organizationId) {
+		const previewUrl = (config.detail.deletePreviewUrl || '').replace(/\/$/, '');
+		const deleteUrl = (config.detail.deleteUrl || rowAction.url || '').replace(/\/$/, '');
+
+		if (!organizationId || !deleteUrl) {
+			return;
+		}
+
+		fetchApi(previewUrl + '/' + organizationId).then(function (preview) {
+			const count = preview.data ? Number(preview.data.product_count) || 0 : 0;
+			const message = count > 0
+				? t('org_delete_with_products', { count: count })
+				: t('org_delete_confirm');
+
+			return showConfirm({
+				title: t('common_delete'),
+				message: message,
+				confirmLabel: t('common_delete'),
+			});
+		}).then(function () {
+			return fetchApi(deleteUrl + '/' + organizationId, { method: 'POST' });
+		}).then(function (result) {
+			if (!result) {
+				return;
+			}
+
+			showToast(result.message || t('org_deleted'), 'success');
+			grid.reload();
+		}).catch(function (error) {
+			if (isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('org_delete_failed'), 'error');
+		});
+	}
+
+	function restoreOrganization(organizationId) {
+		const restoreUrl = (config.detail.restoreUrl || rowAction.url || '').replace(/\/$/, '');
+
+		if (!organizationId || !restoreUrl) {
+			return;
+		}
+
+		showConfirm({
+			title: t('common_restore'),
+			message: t('org_restore_confirm'),
+			confirmLabel: t('common_restore'),
+			confirmClass: 'btn btn-success',
+		}).then(function () {
+			return fetchApi(restoreUrl + '/' + organizationId, { method: 'POST' });
+		}).then(function (result) {
+			showToast(result.message || t('org_restored'), 'success');
+			grid.reload();
+		}).catch(function (error) {
+			if (isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('org_restore_failed'), 'error');
+		});
+	}
+
 	if (detailEnabled) {
 		grid.$el.addClass('entity-list-grid-clickable');
+		grid.$el.on('mousedown', '.entity-row-action', function (event) {
+			event.stopPropagation();
+		});
+
 		grid.$el.on('rowdoubleclick', function (event) {
 			const args = event.args || {};
+			const original = args.originalEvent;
+			const target = original && original.target
+				? (original.target.nodeType === 3 ? original.target.parentElement : original.target)
+				: null;
+
+			if (target && target.closest && target.closest('.entity-row-action')) {
+				return;
+			}
+
 			const row = args.row && args.row.bounddata ? args.row.bounddata : args.row;
 			let organizationId = row && row.id;
 

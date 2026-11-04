@@ -25,6 +25,7 @@ class Organization_model extends Basic_model {
 		'expiry_date' => 'organizations.expiry_date',
 		'phone'       => 'organizations.phone',
 		'c_code'      => 'organizations.c_code',
+		'currency'    => 'organizations.currency',
 		'address'     => 'organizations.address',
 	);
 

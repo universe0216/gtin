@@ -18,6 +18,14 @@
 	const productColumns = detailConfig.productColumns || [];
 	const productDeleteUrl = (detailConfig.productDeleteUrl || '').replace(/\/$/, '');
 	const canDeleteProduct = !!detailConfig.canDeleteProduct;
+	const canRestoreProduct = !!detailConfig.canRestoreProduct;
+	const productRestoreUrl = (detailConfig.productRestoreUrl || '').replace(/\/$/, '');
+	const productRestorePreviewUrl = (detailConfig.productRestorePreviewUrl || '').replace(/\/$/, '');
+	const organizationDeleteUrl = (detailConfig.deleteUrl || '').replace(/\/$/, '');
+	const organizationDeletePreviewUrl = (detailConfig.deletePreviewUrl || '').replace(/\/$/, '');
+	const organizationRestoreUrl = (detailConfig.restoreUrl || '').replace(/\/$/, '');
+	const organizationDeleteBtn = document.getElementById('organizationDetailDeleteBtn');
+	const organizationRestoreBtn = document.getElementById('organizationDetailRestoreBtn');
 	const perPage = detailConfig.perPage || 10;
 
 	const modalEl = document.getElementById('organizationDetailModal');
@@ -101,11 +109,26 @@
 		alertEl.textContent = message;
 	}
 
+	function currencyLabel(value) {
+		const code = String(value == null ? '' : value);
+
+		if (code === '1') {
+			return t('currency_foreign');
+		}
+
+		if (code === '2') {
+			return t('currency_domestic');
+		}
+
+		return '';
+	}
+
 	function renderReadOnlyItems(fields, data, gridClass) {
 		let html = '<div class="' + gridClass + '">';
 
 		fields.forEach(function (field) {
-			const value = data[field.key] ?? '';
+			const raw = data[field.key] ?? '';
+			const value = field.key === 'currency' ? currencyLabel(raw) : raw;
 			html +=
 				'<div class="entity-detail-info-item">' +
 					'<div class="entity-detail-info-label">' + escapeHtml(field.label) + '</div>' +
@@ -133,6 +156,14 @@
 				'<input type="date" class="form-control form-control-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '" value="' +
 				escapeHtml(normalizeDateValue(value)) +
 				'">';
+		} else if (field.type === 'select') {
+			const options = field.options || [];
+			inputHtml = '<select class="form-select form-select-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '">';
+			options.forEach(function (option) {
+				const selected = String(value) === String(option.value) ? ' selected' : '';
+				inputHtml += '<option value="' + escapeAttr(option.value) + '"' + selected + '>' + escapeHtml(option.label) + '</option>';
+			});
+			inputHtml += '</select>';
 		} else {
 			inputHtml =
 				'<input type="text" class="form-control form-control-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '" value="' +
@@ -247,7 +278,7 @@
 				}
 
 				renderInfoFields(record);
-				showInfoAlert(result.message || t('org_updated'), 'success');
+				showToast(result.message || t('org_updated'), 'success');
 				document.dispatchEvent(new CustomEvent('organizationsListRefresh'));
 
 				// Refresh products in case the rename affected them.
@@ -288,13 +319,19 @@
 		}
 	}
 
-	function productDeleteRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
-		return '<div class="jqx-action-cell">' +
-			'<button type="button" class="btn btn-sm btn-outline-danger organization-product-delete-btn" ' +
-				'data-product-id="' + JqxGrid.escapeAttr(rowdata.id) + '" ' +
-				'data-product-name="' + JqxGrid.escapeAttr(rowdata.name || '') + '" ' +
-				'title="Delete product"><i class="fas fa-trash"></i></button>' +
-		'</div>';
+	function productActionRenderer(kind) {
+		return function (row, columnfield, value, defaultHtml, props, rowdata) {
+			const restore = kind === 'restore';
+			const label = restore ? t('common_restore') : t('common_delete');
+			const buttonClass = restore ? 'btn-outline-success organization-product-restore-btn' : 'btn-outline-danger organization-product-delete-btn';
+
+			return '<div class="jqx-action-cell">' +
+				'<button type="button" class="btn btn-sm ' + buttonClass + '" ' +
+					'data-product-id="' + JqxGrid.escapeAttr(rowdata.id) + '" ' +
+					'data-product-name="' + JqxGrid.escapeAttr(rowdata.name || '') + '">' +
+					escapeHtml(label) +
+				'</button></div>';
+		};
 	}
 
 	const productColumnWidths = {
@@ -358,8 +395,15 @@
 
 		if (canDeleteProduct) {
 			columns.push({
-				text: '', datafield: '__actions', width: 70, sortable: false, filterable: false,
-				align: 'right', cellsalign: 'right', cellsrenderer: productDeleteRenderer,
+				text: '', datafield: '__actions', width: 110, sortable: false, filterable: false,
+				align: 'right', cellsalign: 'right', cellsrenderer: productActionRenderer('delete'),
+			});
+		}
+
+		if (canRestoreProduct) {
+			columns.push({
+				text: '', datafield: '__restore', width: 110, sortable: false, filterable: false,
+				align: 'right', cellsalign: 'right', cellsrenderer: productActionRenderer('restore'),
 			});
 		}
 
@@ -367,7 +411,7 @@
 	}
 
 	function buildProductDatafields() {
-		const names = { id: 'number', name: 'string', __rownum: 'number' };
+		const names = { id: 'number', name: 'string', __rownum: 'number', __actions: 'string', __restore: 'string' };
 
 		productColumns.forEach(function (column) {
 			if (!names[column.key]) {
@@ -415,6 +459,11 @@
 					$(this).attr('data-product-id'),
 					$(this).attr('data-product-name')
 				);
+			});
+			$(productsGrid.$el).on('click', '.organization-product-restore-btn', function (event) {
+				event.preventDefault();
+				event.stopPropagation();
+				restoreArchivedProduct($(this).attr('data-product-id'));
 			});
 		}
 	}
@@ -576,6 +625,130 @@
 
 				showToast(error.message || t('org_product_delete_failed'), 'error');
 			});
+	}
+
+	function finishOrganizationChange(message) {
+		showToast(message, 'success');
+
+		if (modal) {
+			modal.hide();
+		}
+
+		document.dispatchEvent(new CustomEvent('organizationsListChanged'));
+	}
+
+	function deleteCurrentOrganization() {
+		const organizationId = detailState.organizationId;
+
+		if (!organizationId || !organizationDeleteUrl || !organizationDeletePreviewUrl) {
+			return;
+		}
+
+		fetchApi(organizationDeletePreviewUrl + '/' + organizationId).then(function (preview) {
+			const count = preview.data ? Number(preview.data.product_count) || 0 : 0;
+
+			return showConfirm({
+				title: t('common_delete'),
+				message: count > 0 ? t('org_delete_with_products', { count: count }) : t('org_delete_confirm'),
+				confirmLabel: t('common_delete'),
+			});
+		}).then(function () {
+			return fetchApi(organizationDeleteUrl + '/' + organizationId, { method: 'POST' });
+		}).then(function (result) {
+			if (!result) {
+				return;
+			}
+
+			finishOrganizationChange(result.message || t('org_deleted'));
+		}).catch(function (error) {
+			if (isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('org_delete_failed'), 'error');
+		});
+	}
+
+	function restoreCurrentOrganization() {
+		const organizationId = detailState.organizationId;
+
+		if (!organizationId || !organizationRestoreUrl) {
+			return;
+		}
+
+		showConfirm({
+			title: t('common_restore'),
+			message: t('org_restore_confirm'),
+			confirmLabel: t('common_restore'),
+			confirmClass: 'btn btn-success',
+		}).then(function () {
+			return fetchApi(organizationRestoreUrl + '/' + organizationId, { method: 'POST' });
+		}).then(function (result) {
+			finishOrganizationChange(result.message || t('org_restored'));
+		}).catch(function (error) {
+			if (isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('org_restore_failed'), 'error');
+		});
+	}
+
+	function restoreArchivedProduct(productId) {
+		if (!productId || !productRestoreUrl || !productRestorePreviewUrl) {
+			return;
+		}
+
+		fetchApi(productRestorePreviewUrl + '/' + productId).then(function (preview) {
+			const data = preview.data || {};
+			const message = data.needs_organization
+				? t('product_restore_with_org', { name: data.organization_name || '' })
+				: t('product_restore_confirm');
+
+			return showConfirm({
+				title: t('common_restore'),
+				message: message,
+				confirmLabel: t('common_restore'),
+				confirmClass: 'btn btn-success',
+			}).then(function () {
+				const body = new FormData();
+
+				if (data.needs_organization) {
+					body.append('restore_organization', '1');
+				}
+
+				return fetchApi(productRestoreUrl + '/' + productId, { method: 'POST', body: body });
+			});
+		}).then(function (result) {
+			if (!result) {
+				return;
+			}
+
+			if (result.data && result.data.restored_organization) {
+				finishOrganizationChange(result.message || t('product_restored'));
+				return;
+			}
+
+			showToast(result.message || t('product_restored'), 'success');
+
+			if (productsGrid) {
+				productsGrid.reload();
+			}
+		}).catch(function (error) {
+			if (isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('product_restore_failed'), 'error');
+		});
+	}
+
+	if (organizationDeleteBtn) {
+		organizationDeleteBtn.addEventListener('click', deleteCurrentOrganization);
+	}
+
+	if (organizationRestoreBtn) {
+		organizationRestoreBtn.addEventListener('click', restoreCurrentOrganization);
 	}
 
 	const scheduleProductsSearch = debounce(function () {

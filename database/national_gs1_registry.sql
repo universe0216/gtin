@@ -136,6 +136,7 @@ CREATE TABLE `organizations`  (
   `address` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL,
   `phone` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
   `c_code` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
+  `currency` tinyint NULL DEFAULT NULL,
   `description` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
@@ -254,5 +255,21 @@ CREATE TABLE `users`  (
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
+
+CREATE TABLE IF NOT EXISTS `products_archieve` LIKE `products`;
+
+ALTER TABLE `products_archieve`
+	ADD COLUMN `origin_id` INT UNSIGNED NOT NULL AFTER `id`,
+	ADD COLUMN `deleted_at` DATETIME NOT NULL AFTER `updated_at`,
+	ADD INDEX `idx_products_archieve_origin` (`origin_id`),
+	ADD INDEX `idx_products_archieve_deleted` (`deleted_at`);
+
+CREATE TABLE IF NOT EXISTS `organization_archieve` LIKE `organizations`;
+
+ALTER TABLE `organization_archieve`
+	ADD COLUMN `origin_id` INT UNSIGNED NOT NULL AFTER `id`,
+	ADD COLUMN `deleted_at` DATETIME NOT NULL AFTER `updated_at`,
+	ADD INDEX `idx_organization_archieve_origin` (`origin_id`),
+	ADD INDEX `idx_organization_archieve_deleted` (`deleted_at`);
 
 SET FOREIGN_KEY_CHECKS = 1;

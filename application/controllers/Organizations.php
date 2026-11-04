@@ -22,6 +22,7 @@ class Organizations extends BasicController {
 		array('key' => 'gs1_prefix', 'label' => 'GS1 Prefix'),
 		array('key' => 'parent_org', 'label' => 'Parent Organization'),
 		array('key' => 'phone', 'label' => 'Phone'),
+		array('key' => 'currency', 'label' => 'Currency'),
 		array('key' => 'init_date', 'label' => 'Initial Date'),
 		array('key' => 'reg_date', 'label' => 'Registration Date'),
 		array('key' => 'expiry_date', 'label' => 'Expiry Date'),
@@ -39,6 +40,7 @@ class Organizations extends BasicController {
 		array('key' => 'address', 'label' => 'Address'),
 		array('key' => 'phone', 'label' => 'Phone'),
 		array('key' => 'c_code', 'label' => 'Country Code'),
+		array('key' => 'currency', 'label' => 'Currency'),
 		array('key' => 'description', 'label' => 'Description'),
 		array('key' => 'created_at', 'label' => 'Created At'),
 		array('key' => 'updated_at', 'label' => 'Updated At'),
@@ -132,6 +134,18 @@ class Organizations extends BasicController {
 			'rules'    => array('trim', 'max_length[50]'),
 		),
 		array(
+			'name'     => 'currency',
+			'label'    => 'Currency',
+			'type'     => 'select',
+			'required' => FALSE,
+			'rules'    => array('trim', 'in_list[,1,2]'),
+			'options'  => array(
+				array('value' => '', 'label' => ''),
+				array('value' => '1', 'label' => 'Foreign'),
+				array('value' => '2', 'label' => 'Domestic'),
+			),
+		),
+		array(
 			'name'     => 'description',
 			'label'    => 'Description',
 			'type'     => 'textarea',
@@ -148,6 +162,19 @@ class Organizations extends BasicController {
 		parent::__construct();
 		$this->load->model('organization_model', 'model');
 		$this->load->model('product_model');
+
+		foreach ($this->fields as &$field)
+		{
+			if (($field['name'] ?? '') === 'currency')
+			{
+				$field['options'] = array(
+					array('value' => '', 'label' => ''),
+					array('value' => '1', 'label' => app_line('currency_foreign')),
+					array('value' => '2', 'label' => app_line('currency_domestic')),
+				);
+			}
+		}
+		unset($field);
 	}
 
 	public function detail($id = NULL)
@@ -223,6 +250,64 @@ class Organizations extends BasicController {
 		), $meta));
 	}
 
+	public function delete_preview($id = NULL)
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->auth->require_permission($this->permission_edit);
+		$record = $this->model->get($id);
+
+		if ( ! $record)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('org_not_found'),
+			), 404);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => array(
+				'id'            => (int) $record['id'],
+				'name'          => $record['name'],
+				'product_count' => $this->product_model->count_by_organization($record['id']),
+			),
+		));
+	}
+
+	public function delete($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$this->auth->require_permission($this->permission_edit);
+		$this->load->library('catalog_archieve');
+		$result = $this->catalog_archieve->archive_organization($id);
+
+		if (empty($result['ok']))
+		{
+			$status = ($result['code'] ?? '') === 'not_found' ? 404 : 500;
+
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => $status === 404 ? app_line('org_not_found') : app_line('org_delete_failed'),
+			), $status);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('org_deleted'),
+			'data'    => array(
+				'product_count' => (int) ($result['product_count'] ?? 0),
+			),
+		));
+	}
+
 	protected function get_add_label()
 	{
 		return app_line('add_organizations');
@@ -251,6 +336,14 @@ class Organizations extends BasicController {
 			'productColumns'    => $this->localize_labeled($this->detail_product_columns),
 			'productDeleteUrl'  => site_url('products/delete'),
 			'canDeleteProduct'  => $this->auth->can('product.edit'),
+			'deleteUrl'         => site_url('organizations/delete'),
+			'deletePreviewUrl'  => site_url('organizations/delete_preview'),
+			'canDelete'         => $this->auth->can($this->permission_edit),
+			'rowAction'         => array(
+				'type'    => 'delete',
+				'url'     => site_url('organizations/delete'),
+				'enabled' => $this->auth->can($this->permission_edit),
+			),
 			'perPage'           => $this->list_per_page,
 			'perPageOptions'    => $this->list_per_page_options,
 		);

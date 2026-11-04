@@ -274,6 +274,33 @@ class Products extends BasicController {
 		force_download($archive['filename'], $archive['binary']);
 	}
 
+	public function delete($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$this->auth->require_permission($this->permission_edit);
+		$this->load->library('catalog_archieve');
+		$result = $this->catalog_archieve->archive_product($id);
+
+		if (empty($result['ok']))
+		{
+			$status = ($result['code'] ?? '') === 'not_found' ? 404 : 500;
+
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => $status === 404 ? app_line('product_not_found') : app_line('product_delete_failed'),
+			), $status);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('product_deleted'),
+		));
+	}
+
 	protected function get_add_label()
 	{
 		return app_line('add_products');
@@ -285,7 +312,14 @@ class Products extends BasicController {
 			'enabled'     => TRUE,
 			'detailUrl'   => site_url('products/detail'),
 			'downloadUrl' => site_url('products/download'),
+			'deleteUrl'   => site_url('products/delete'),
+			'canDelete'   => $this->auth->can($this->permission_edit),
 			'fields'      => $this->localize_labeled($this->detail_fields),
+			'rowAction'   => array(
+				'type'    => 'delete',
+				'url'     => site_url('products/delete'),
+				'enabled' => $this->auth->can($this->permission_edit),
+			),
 		);
 	}
 }

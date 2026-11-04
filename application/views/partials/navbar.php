@@ -20,6 +20,8 @@ $nav_items = array(
 $history_children = array(
 	'history_products'       => array('label' => app_line('nav_products'), 'url' => site_url('history/products')),
 	'history_organizations'  => array('label' => app_line('nav_organizations'), 'url' => site_url('history/organizations')),
+	'products_archieve'      => array('label' => app_line('nav_products_archieve'), 'url' => site_url('products_archieve'), 'permission' => 'product.view'),
+	'organization_archieve'  => array('label' => app_line('nav_organizations_archieve'), 'url' => site_url('organization_archieve'), 'permission' => 'organization.view'),
 );
 
 $books_children = array(
@@ -69,12 +71,14 @@ $show_admin = $CI->auth->is_admin();
 					><?php echo html_escape(app_line('nav_history')); ?></a>
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="historyDropdown">
 						<?php foreach ($history_children as $key => $item): ?>
+							<?php if ( ! isset($item['permission']) || $CI->auth->can($item['permission'])): ?>
 							<li>
 								<a
 									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"
 									href="<?php echo $item['url']; ?>"
 								><?php echo html_escape($item['label']); ?></a>
 							</li>
+							<?php endif; ?>
 						<?php endforeach; ?>
 					</ul>
 				</li>

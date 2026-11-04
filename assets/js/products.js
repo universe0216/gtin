@@ -24,6 +24,9 @@
 	const loadingEl = document.getElementById('productDetailLoading');
 	const alertEl = document.getElementById('productDetailAlert');
 	const downloadBtn = document.getElementById('productDetailDownloadBtn');
+	const deleteBtn = document.getElementById('productDetailDeleteBtn');
+	const restoreBtn = document.getElementById('productDetailRestoreBtn');
+	const rowAction = detail.rowAction || {};
 
 	if (typeof JqxGrid === 'undefined' || !document.getElementById('productsGrid')) {
 		return;
@@ -113,6 +116,28 @@
 		};
 	}));
 
+	function rowActionRenderer(row, column, value, defaultHtml, props, rowdata) {
+		const label = rowAction.type === 'restore' ? t('common_restore') : t('common_delete');
+		const buttonClass = rowAction.type === 'restore' ? 'btn-outline-success' : 'btn-outline-danger';
+
+		return '<div class="jqx-action-cell">' +
+			'<button type="button" class="btn btn-sm ' + buttonClass + ' entity-row-action" data-id="' +
+			escapeAttr(rowdata && rowdata.id) + '" data-name="' + escapeAttr(rowdata && rowdata.name) + '">' +
+			escapeHtml(label) + '</button></div>';
+	}
+
+	if (rowAction.enabled) {
+		datafields.push({ name: '__actions', type: 'string' });
+		gridColumns.push({
+			text: '',
+			datafield: '__actions',
+			width: 120,
+			sortable: false,
+			filterable: false,
+			cellsrenderer: rowActionRenderer,
+		});
+	}
+
 	const grid = JqxGrid.remote('#productsGrid', {
 		url: apiUrl,
 		columns: gridColumns,
@@ -137,8 +162,21 @@
 
 	if (detailEnabled) {
 		grid.$el.addClass('entity-list-grid-clickable');
+		grid.$el.on('mousedown', '.entity-row-action', function (event) {
+			event.stopPropagation();
+		});
+
 		grid.$el.on('rowclick', function (event) {
 			const args = event.args || {};
+			const original = args.originalEvent;
+			const target = original && original.target
+				? (original.target.nodeType === 3 ? original.target.parentElement : original.target)
+				: null;
+
+			if (target && target.closest && target.closest('.entity-row-action')) {
+				return;
+			}
+
 			const bound = args.row && args.row.bounddata ? args.row.bounddata : null;
 			const row = bound || grid.$el.jqxGrid('getrowdata', args.rowindex);
 			const productId = row && row.id;
@@ -151,6 +189,24 @@
 
 	window.addEventListener('resize', function () {
 		grid.$el.jqxGrid('height', gridHeight());
+	});
+
+	grid.$el.on('click', '.entity-row-action', function (event) {
+		event.preventDefault();
+		event.stopPropagation();
+		const id = this.getAttribute('data-id');
+		const name = this.getAttribute('data-name') || '';
+
+		if (rowAction.type === 'restore') {
+			restoreProduct(id, name);
+			return;
+		}
+
+		deleteProduct(id, name);
+	});
+
+	document.addEventListener('productsListChanged', function () {
+		grid.reload();
 	});
 
 	function applySearch() {
@@ -279,9 +335,11 @@
 		html += '</div>';
 		formWrap.innerHTML = html;
 
-		if (downloadBtn) {
-			downloadBtn.disabled = false;
-		}
+		[downloadBtn, deleteBtn, restoreBtn].forEach(function (button) {
+			if (button) {
+				button.disabled = false;
+			}
+		});
 	}
 
 	function openDetail(productId) {
@@ -293,9 +351,11 @@
 		hideDetailAlert();
 		setDetailLoading(true);
 
-		if (downloadBtn) {
-			downloadBtn.disabled = true;
-		}
+		[downloadBtn, deleteBtn, restoreBtn].forEach(function (button) {
+			if (button) {
+				button.disabled = true;
+			}
+		});
 
 		if (formWrap) {
 			formWrap.innerHTML = '';
@@ -409,6 +469,95 @@
 	if (downloadBtn) {
 		downloadBtn.addEventListener('click', function () {
 			downloadProduct(downloadBtn);
+		});
+	}
+
+	function deleteProduct(productId, productName) {
+		if (!productId || !detail.deleteUrl) {
+			return;
+		}
+
+		showConfirm({
+			title: t('common_delete'),
+			message: t('product_delete_confirm'),
+			confirmLabel: t('common_delete'),
+		}).then(function () {
+			return fetchApi(detail.deleteUrl.replace(/\/$/, '') + '/' + productId, { method: 'POST' });
+		}).then(function (result) {
+			showToast(result.message || t('product_deleted'), 'success');
+
+			if (String(currentProductId) === String(productId) && detailModal) {
+				detailModal.hide();
+			}
+
+			grid.reload();
+		}).catch(function (error) {
+			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('product_delete_failed'), 'error');
+		});
+	}
+
+	function restoreProduct(productId) {
+		if (!productId || !detail.restoreUrl) {
+			return;
+		}
+
+		const previewUrl = (detail.restorePreviewUrl || (detail.rowAction && detail.rowAction.previewUrl) || '').replace(/\/$/, '');
+		const restoreUrl = detail.restoreUrl.replace(/\/$/, '') + '/' + productId;
+
+		fetchApi(previewUrl + '/' + productId).then(function (preview) {
+			const data = preview.data || {};
+			const message = data.needs_organization
+				? t('product_restore_with_org', { name: data.organization_name || '' })
+				: t('product_restore_confirm');
+
+			return showConfirm({
+				title: t('common_restore'),
+				message: message,
+				confirmLabel: t('common_restore'),
+				confirmClass: 'btn btn-success',
+			}).then(function () {
+				const body = new FormData();
+
+				if (data.needs_organization) {
+					body.append('restore_organization', '1');
+				}
+
+				return fetchApi(restoreUrl, { method: 'POST', body: body });
+			});
+		}).then(function (result) {
+			if (!result) {
+				return;
+			}
+
+			showToast(result.message || t('product_restored'), 'success');
+
+			if (String(currentProductId) === String(productId) && detailModal) {
+				detailModal.hide();
+			}
+
+			grid.reload();
+		}).catch(function (error) {
+			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('product_restore_failed'), 'error');
+		});
+	}
+
+	if (deleteBtn) {
+		deleteBtn.addEventListener('click', function () {
+			deleteProduct(currentProductId);
+		});
+	}
+
+	if (restoreBtn) {
+		restoreBtn.addEventListener('click', function () {
+			restoreProduct(currentProductId);
 		});
 	}
 

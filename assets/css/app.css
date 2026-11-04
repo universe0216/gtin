@@ -778,13 +778,15 @@ body.modal-open .modal-backdrop.app-alert-backdrop {
 	word-break: break-word;
 }
 
-.entity-detail-info-form .entity-detail-info-item .form-control {
+.entity-detail-info-form .entity-detail-info-item .form-control,
+.entity-detail-info-form .entity-detail-info-item .form-select {
 	background-color: rgba(15, 23, 42, 0.6);
 	border-color: rgba(148, 163, 184, 0.25);
 	color: #e2e8f0;
 }
 
-.entity-detail-info-form .entity-detail-info-item .form-control:focus {
+.entity-detail-info-form .entity-detail-info-item .form-control:focus,
+.entity-detail-info-form .entity-detail-info-item .form-select:focus {
 	background-color: rgba(15, 23, 42, 0.85);
 	border-color: var(--mdb-primary);
 	color: #e2e8f0;
@@ -2000,4 +2002,24 @@ select.procedure-detail-info-input option {
 
 .procedure-item-status-icon-warning {
 	color: #f59e0b;
+}
+
+.jqx-grid-cell.organization-currency-foreign,
+.jqx-grid-cell.organization-currency-foreign.jqx-grid-cell-alt,
+.jqx-grid-cell.organization-currency-foreign.jqx-grid-cell-hover,
+.jqx-grid-cell.organization-currency-foreign.jqx-fill-state-hover,
+.jqx-grid-cell.organization-currency-foreign.jqx-grid-cell-selected,
+.jqx-grid-cell.organization-currency-foreign.jqx-fill-state-pressed {
+	background-color: #dc2626 !important;
+	color: #fff !important;
+}
+
+.jqx-grid-cell.organization-currency-domestic,
+.jqx-grid-cell.organization-currency-domestic.jqx-grid-cell-alt,
+.jqx-grid-cell.organization-currency-domestic.jqx-grid-cell-hover,
+.jqx-grid-cell.organization-currency-domestic.jqx-fill-state-hover,
+.jqx-grid-cell.organization-currency-domestic.jqx-grid-cell-selected,
+.jqx-grid-cell.organization-currency-domestic.jqx-fill-state-pressed {
+	background-color: #2563eb !important;
+	color: #fff !important;
 }

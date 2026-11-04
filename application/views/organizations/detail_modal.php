@@ -73,10 +73,20 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					</div>
 				</div>
 			</div>
-			<!-- <div class="modal-footer history-procedure-modal-footer">
+			<div class="modal-footer history-procedure-modal-footer">
+				<?php if ( ! empty($detail_config['canDelete'])): ?>
+					<button type="button" class="btn btn-outline-danger me-auto" id="organizationDetailDeleteBtn" data-mdb-ripple-init>
+						<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('common_delete')); ?>
+					</button>
+				<?php endif; ?>
+				<?php if ( ! empty($detail_config['canRestore'])): ?>
+					<button type="button" class="btn btn-success me-auto" id="organizationDetailRestoreBtn" data-mdb-ripple-init>
+						<i class="fas fa-rotate-left me-1"></i> <?php echo html_escape(app_line('common_restore')); ?>
+					</button>
+				<?php endif; ?>
 				<span class="text-muted small me-auto" id="organizationDetailFooterMeta"></span>
-				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init>Close</button>
-			</div> -->
+				<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_close')); ?></button>
+			</div>
 		</div>
 	</div>
 </div>

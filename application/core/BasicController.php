@@ -436,7 +436,7 @@ class BasicController extends AuthenticatedController {
 			$value = $this->input->post($field['name']);
 			$type = isset($field['type']) ? $field['type'] : 'text';
 
-			if (($type === 'number' || $type === 'date') && ($value === '' || $value === FALSE))
+			if (($type === 'number' || $type === 'date' || $type === 'select') && ($value === '' || $value === FALSE))
 			{
 				$value = NULL;
 			}
