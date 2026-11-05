@@ -17,7 +17,7 @@
 	const searchInput = document.getElementById('organizationsSearchInput');
 	const clearBtn = document.getElementById('organizationsClearBtn');
 	const locationClearBtn = document.getElementById('organizationLocationFilterClear');
-	const toolbarMeta = document.getElementById('organizationsToolbarMeta');
+	const exportBtn = document.getElementById('organizationsExportBtn');
 	const locationNodes = (config.detail && config.detail.locationNodes) || [];
 
 	if (typeof JqxGrid === 'undefined' || !document.getElementById('organizationsGrid')) {
@@ -52,17 +52,7 @@
 	}
 
 	function updateMeta(data) {
-		if (!toolbarMeta) {
-			return;
-		}
 
-		if (data && (data.total || 0) > 0) {
-			toolbarMeta.textContent = data.range_start + '–' + data.range_end + ' of ' + data.total;
-			toolbarMeta.classList.remove('d-none');
-		} else {
-			toolbarMeta.textContent = hasActiveFilter() ? config.emptySearchMessage : '';
-			toolbarMeta.classList.toggle('d-none', !hasActiveFilter());
-		}
 	}
 
 	function gridHeight() {
@@ -156,21 +146,32 @@
 	}));
 
 	function rowActionRenderer(row, column, value, defaultHtml, props, rowdata) {
-		const label = rowAction.type === 'restore' ? t('common_restore') : t('common_delete');
-		const buttonClass = rowAction.type === 'restore' ? 'btn-outline-success' : 'btn-outline-danger';
+		const id = escapeAttr(rowdata && rowdata.id);
+		const name = escapeAttr(rowdata && rowdata.name);
+		let html = '<div class="jqx-action-cell">';
 
-		return '<div class="jqx-action-cell">' +
-			'<button type="button" class="btn btn-sm ' + buttonClass + ' entity-row-action" data-id="' +
-			escapeAttr(rowdata && rowdata.id) + '" data-name="' + escapeAttr(rowdata && rowdata.name) + '">' +
-			escapeHtml(label) + '</button></div>';
+		if (detailEnabled) {
+			html += '<button type="button" class="btn btn-sm btn-outline-primary entity-row-detail" data-id="' +
+				id + '">' + escapeHtml(t('common_detail')) + '</button>';
+		}
+
+		if (rowAction.enabled) {
+			const label = rowAction.type === 'restore' ? t('common_restore') : t('common_delete');
+			const buttonClass = rowAction.type === 'restore' ? 'btn-outline-success' : 'btn-outline-danger';
+
+			html += '<button type="button" class="btn btn-sm ' + buttonClass + ' entity-row-action" data-id="' +
+				id + '" data-name="' + name + '">' + escapeHtml(label) + '</button>';
+		}
+
+		return html + '</div>';
 	}
 
-	if (rowAction.enabled) {
+	if (detailEnabled || rowAction.enabled) {
 		datafields.push({ name: '__actions', type: 'string' });
 		gridColumns.push({
 			text: '',
 			datafield: '__actions',
-			width: 120,
+			width: detailEnabled && rowAction.enabled ? 176 : 110,
 			sortable: false,
 			filterable: false,
 			cellsrenderer: rowActionRenderer,
@@ -184,6 +185,8 @@
 		pagesize: perPage,
 		pagesizeoptions: perPageOptions,
 		selectionmode: detailEnabled ? 'singlerow' : 'none',
+		enablebrowserselection: true,
+		clipboard: false,
 		height: gridHeight(),
 		emptyMessage: config.emptyMessage,
 		getParams: function () {
@@ -207,6 +210,31 @@
 
 	if (!grid) {
 		return;
+	}
+
+	if (exportBtn && config.exportUrl) {
+		exportBtn.addEventListener('click', function () {
+			const params = new URLSearchParams();
+
+			if (currentSearch) {
+				params.set('q', currentSearch);
+			}
+
+			if (currentLocationId) {
+				params.set('location_id', currentLocationId);
+			}
+
+			const sortInfo = $('#organizationsGrid').jqxGrid('getsortinformation');
+			const direction = sortInfo && sortInfo.sortdirection;
+
+			if (sortInfo && sortInfo.sortcolumn && direction && (direction.ascending || direction.descending)) {
+				params.set('sort', sortInfo.sortcolumn);
+				params.set('dir', direction.ascending ? 'asc' : 'desc');
+			}
+
+			const query = params.toString();
+			window.location.href = config.exportUrl + (query ? '?' + query : '');
+		});
 	}
 
 	function locationChildren(parentId) {
@@ -321,6 +349,22 @@
 		}
 	});
 
+	grid.$el.on('mousedown', '.entity-row-detail, .entity-row-action', function (event) {
+		event.stopPropagation();
+	});
+
+	grid.$el.on('click', '.entity-row-detail', function (event) {
+		event.preventDefault();
+		event.stopPropagation();
+		const id = this.getAttribute('data-id');
+
+		if (id) {
+			document.dispatchEvent(new CustomEvent('organizationRowSelected', {
+				detail: { id: id },
+			}));
+		}
+	});
+
 	grid.$el.on('click', '.entity-row-action', function (event) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -399,40 +443,6 @@
 			}
 
 			showToast(error.message || t('org_restore_failed'), 'error');
-		});
-	}
-
-	if (detailEnabled) {
-		grid.$el.addClass('entity-list-grid-clickable');
-		grid.$el.on('mousedown', '.entity-row-action', function (event) {
-			event.stopPropagation();
-		});
-
-		grid.$el.on('rowdoubleclick', function (event) {
-			const args = event.args || {};
-			const original = args.originalEvent;
-			const target = original && original.target
-				? (original.target.nodeType === 3 ? original.target.parentElement : original.target)
-				: null;
-
-			if (target && target.closest && target.closest('.entity-row-action')) {
-				return;
-			}
-
-			const row = args.row && args.row.bounddata ? args.row.bounddata : args.row;
-			let organizationId = row && row.id;
-
-			if (!organizationId) {
-				const index = args.index !== undefined ? args.index : args.boundIndex;
-				const rowdata = grid.$el.jqxGrid('getrowdata', index);
-				organizationId = rowdata && rowdata.id;
-			}
-
-			if (organizationId) {
-				document.dispatchEvent(new CustomEvent('organizationRowSelected', {
-					detail: { id: organizationId },
-				}));
-			}
 		});
 	}
 

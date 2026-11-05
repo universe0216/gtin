@@ -7,13 +7,14 @@ class Organization_model extends Basic_model {
 
 	protected $table = 'organizations';
 	protected $searchable_columns = array(
-		'name',
-		'reg_number',
-		'gs1_prefix',
-		'parent_org',
-		'phone',
-		'c_code',
-		'address',
+		'organizations.name',
+		'organizations.reg_number',
+		'organizations.gs1_prefix',
+		'organizations.parent_org',
+		'organizations.phone',
+		'organizations.c_code',
+		'organizations.address',
+		'locations.name',
 	);
 	protected $sortable_columns = array(
 		'name'        => 'organizations.name',
@@ -27,7 +28,16 @@ class Organization_model extends Basic_model {
 		'c_code'      => 'organizations.c_code',
 		'currency'    => 'organizations.currency',
 		'address'     => 'organizations.address',
+		'location_id' => 'locations.name',
 	);
+
+	protected function prepare_list_query()
+	{
+		$this->db
+			->select($this->table.'.*, locations.name AS location_name', FALSE)
+			->from($this->table)
+			->join('locations', 'locations.id = '.$this->table.'.location_id', 'left');
+	}
 
 	protected function apply_list_filters(array $filters)
 	{

@@ -3,6 +3,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 require_once APPPATH.'core/AuthenticatedController.php';
 
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xls;
+
 class BasicController extends AuthenticatedController {
 
 	public $model;
@@ -457,5 +462,107 @@ class BasicController extends AuthenticatedController {
 		}
 
 		return $data;
+	}
+
+	public function export()
+	{
+		$this->auth->require_permission($this->permission_view);
+
+		if ( ! $this->model)
+		{
+			show_error(app_line('common_model_missing'), 500);
+		}
+
+		if ( ! class_exists(Spreadsheet::class))
+		{
+			show_error(app_line('books_spreadsheet_missing'), 500);
+		}
+
+		$params = $this->list_query_params();
+		$filters = array();
+
+		if ( ! empty($params['location_ids']) && is_array($params['location_ids']))
+		{
+			$filters['location_ids'] = $params['location_ids'];
+		}
+
+		$records = $this->model->get_filtered($params['search'], $params['sort'], $filters);
+		$columns = $this->export_columns();
+
+		$this->load->library('spreadsheet_value_binder');
+		Cell::setValueBinder(new Spreadsheet_value_binder());
+
+		$spreadsheet = new Spreadsheet();
+		$sheet = $spreadsheet->getActiveSheet();
+		$sheet->setTitle($this->export_sheet_title());
+
+		foreach ($columns as $index => $column)
+		{
+			$sheet->setCellValueExplicitByColumnAndRow($index + 1, 1, $column['label'], DataType::TYPE_STRING);
+		}
+
+		foreach ($records as $row_index => $record)
+		{
+			foreach ($columns as $column_index => $column)
+			{
+				$value = $this->export_value($column['key'], $record);
+				$sheet->setCellValueExplicitByColumnAndRow(
+					$column_index + 1,
+					$row_index + 2,
+					$value,
+					DataType::TYPE_STRING
+				);
+			}
+		}
+
+		if ($columns)
+		{
+			$sheet->getStyleByColumnAndRow(1, 1, count($columns), 1)->getFont()->setBold(TRUE);
+		}
+
+		$filename = $this->export_filename();
+
+		header('Content-Type: application/vnd.ms-excel');
+		header('Content-Disposition: attachment; filename="'.$filename.'"');
+		header('Cache-Control: max-age=0');
+
+		$writer = new Xls($spreadsheet);
+		$writer->setPreCalculateFormulas(FALSE);
+		$writer->save('php://output');
+		$spreadsheet->disconnectWorksheets();
+		exit;
+	}
+
+	protected function export_value($field, array $record)
+	{
+		return isset($record[$field]) ? (string) $record[$field] : '';
+	}
+
+	protected function export_columns()
+	{
+		$columns = array();
+
+		foreach ($this->model->list_fields() as $field)
+		{
+			$columns[] = array(
+				'key'   => $field,
+				'label' => $this->localized_line('col_'.$field, $field),
+			);
+		}
+
+		return $columns;
+	}
+
+	protected function export_sheet_title()
+	{
+		$title = $this->localized_title();
+		$title = str_replace(array('\\', '/', '?', '*', '[', ']', ':'), ' ', $title);
+
+		return substr($title, 0, 31);
+	}
+
+	protected function export_filename()
+	{
+		return $this->entity.'-'.date('Y-m-d').'.xls';
 	}
 }

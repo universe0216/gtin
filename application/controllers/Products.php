@@ -23,6 +23,7 @@ class Products extends BasicController {
 		array('key' => 'price', 'label' => 'Price'),
 		array('key' => 'reg_date', 'label' => 'Registration Date'),
 		array('key' => 'test_status', 'label' => 'Test Status'),
+		array('key' => 'processor_name', 'label' => 'Processor'),
 	);
 	protected $detail_fields = array(
 		array('name' => 'name', 'label' => 'Name', 'type' => 'text'),

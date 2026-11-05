@@ -25,6 +25,7 @@ class Product_archieve_model extends Product_model {
 		'barcode_2d'        => 'products_archieve.barcode_2d',
 		'package_type'      => 'products_archieve.package_type',
 		'organization_name' => 'COALESCE(organizations.name, archived_org.name)',
+		'processor_name'    => 'products_archieve.processor_name',
 		'price'             => 'products_archieve.price',
 		'reg_date'          => 'products_archieve.reg_date',
 		'test_date'         => 'products_archieve.test_date',

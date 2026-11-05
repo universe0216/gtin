@@ -90,7 +90,7 @@
 			'pageable', 'pagesize', 'pagesizeoptions', 'sortable', 'filterable',
 			'showfilterrow', 'altrows', 'columnsresize', 'rowsheight',
 			'columnsheight', 'autorowheight', 'editable', 'selectionmode',
-			'pinnedcolumns', 'columnsautoresize', 'enablebrowserselection',
+			'pinnedcolumns', 'columnsautoresize', 'enablebrowserselection', 'clipboard',
 		].forEach(function (key) {
 			if (opts[key] !== undefined) {
 				settings[key] = opts[key];

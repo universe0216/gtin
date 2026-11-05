@@ -1587,13 +1587,18 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 }
 
 .procedure-detail-info-value {
+	box-sizing: border-box;
 	min-width: 0;
-	padding: 0.3rem 0.75rem;
-	font-size: 0.95rem;
+	min-height: calc(1.5 * 0.775rem + 4.5px + 3.68px + 2px);
+	padding: 4.5px 0.75rem 3.68px;
+	font-family: inherit;
+	font-size: 0.775rem;
+	font-weight: 400;
+	line-height: 1.5;
 	color: #e2e8f0;
 	word-break: break-word;
 	border: 1px solid var(--app-border-subtle);
-	border-radius: 0.375rem;
+	border-radius: var(--mdb-border-radius-sm);
 	background-color: var(--app-surface-raised);
 }
 
@@ -1619,6 +1624,11 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	background-color: rgba(15, 23, 42, 0.6);
 	border-color: rgba(148, 163, 184, 0.25);
 	color: #e2e8f0;
+}
+
+textarea.procedure-detail-info-input {
+	min-height: 4.5rem;
+	resize: vertical;
 }
 
 .procedure-detail-info-input:focus {
@@ -2003,6 +2013,13 @@ select.procedure-detail-info-input option {
 	color: #e7ecf3;
 }
 
+#productsGrid .jqx-grid-cell,
+#organizationsGrid .jqx-grid-cell,
+#procedureSimilarGrid .jqx-grid-cell {
+	-webkit-user-select: text;
+	user-select: text;
+}
+
 .jqx-grid-cell.jqx-grid-cell-alt {
 	background-color: rgba(148, 163, 184, 0.04);
 }
@@ -2070,6 +2087,11 @@ select.procedure-detail-info-input option {
 	align-items: center;
 	height: 100%;
 	padding: 0 0.5rem;
+}
+
+.jqx-action-cell .btn {
+	--mdb-btn-padding-x: 0.65rem;
+	white-space: nowrap;
 }
 
 .jqx-action-btn {

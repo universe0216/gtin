@@ -7,6 +7,7 @@ class Location_model extends Basic_model {
 
 	protected $table = 'locations';
 	protected $tree_nodes = NULL;
+	protected $path_index = NULL;
 
 	public function list_for_tree()
 	{
@@ -195,6 +196,58 @@ class Location_model extends Basic_model {
 		$walk($raw);
 
 		return $ids;
+	}
+
+	public function path_name($id)
+	{
+		$id = (int) $id;
+
+		if ($id < 1)
+		{
+			return '';
+		}
+
+		$this->load_path_index();
+
+		if ( ! isset($this->path_index[$id]))
+		{
+			return '';
+		}
+
+		$names = array();
+		$seen = array();
+		$current = $id;
+
+		while ($current > 0 && isset($this->path_index[$current]) && ! isset($seen[$current]))
+		{
+			$seen[$current] = TRUE;
+			array_unshift($names, $this->path_index[$current]['name']);
+			$current = (int) $this->path_index[$current]['parent_id'];
+		}
+
+		return implode(' ', $names);
+	}
+
+	protected function load_path_index()
+	{
+		if ($this->path_index !== NULL)
+		{
+			return;
+		}
+
+		$this->path_index = array();
+		$rows = $this->db
+			->select('id, parent_id, name')
+			->get($this->table)
+			->result_array();
+
+		foreach ($rows as $row)
+		{
+			$this->path_index[(int) $row['id']] = array(
+				'name'      => $row['name'],
+				'parent_id' => $row['parent_id'] === NULL ? 0 : (int) $row['parent_id'],
+			);
+		}
 	}
 
 	public function present_row(array $row)

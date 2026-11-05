@@ -46,6 +46,21 @@ class Basic_model extends CI_Model {
 			->result_array();
 	}
 
+	public function list_fields()
+	{
+		return $this->db->list_fields($this->table);
+	}
+
+	public function get_filtered($search = '', $sort = array(), array $filters = array())
+	{
+		$this->prepare_list_query();
+		$this->apply_search_filters($search);
+		$this->apply_list_filters($filters);
+		$this->apply_list_order($sort);
+
+		return $this->db->get()->result_array();
+	}
+
 	public function get_sortable_columns()
 	{
 		return $this->sortable_columns;

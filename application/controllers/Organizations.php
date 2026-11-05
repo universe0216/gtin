@@ -339,6 +339,33 @@ class Organizations extends BasicController {
 		return $this->location_model->filter_ids($this->input->get('location_id'));
 	}
 
+	protected function export_value($field, array $record)
+	{
+		if ($field === 'location_id')
+		{
+			return $this->location_model->path_name($record['location_id'] ?? 0);
+		}
+
+		if ($field === 'currency')
+		{
+			$currency = (string) ($record['currency'] ?? '');
+
+			if ($currency === '1')
+			{
+				return app_line('currency_foreign');
+			}
+
+			if ($currency === '2')
+			{
+				return app_line('currency_domestic');
+			}
+
+			return '';
+		}
+
+		return parent::export_value($field, $record);
+	}
+
 	protected function get_add_label()
 	{
 		return app_line('add_organizations');

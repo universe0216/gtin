@@ -295,6 +295,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				<span class="procedure-detail-footer-reason me-auto" id="procedureDetailReason" hidden></span>
 				<span class="procedure-assignable-barcode text-muted small me-auto" id="assignable_barcode"></span>
 				<div class="d-flex flex-wrap gap-2">
+					<button type="button" class="btn btn-outline-warning" id="procedureDetailResetBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_reset')); ?></button>
 					<button type="button" class="btn btn-success" id="procedureDetailAcceptBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_accept')); ?></button>
 					<button type="button" class="btn btn-outline-danger" id="procedureDetailRejectBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_reject')); ?></button>
 				</div>

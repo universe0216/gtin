@@ -6,6 +6,16 @@ require_once APPPATH.'models/Organization_model.php';
 class Organization_archieve_model extends Organization_model {
 
 	protected $table = 'organization_archieve';
+	protected $searchable_columns = array(
+		'organization_archieve.name',
+		'organization_archieve.reg_number',
+		'organization_archieve.gs1_prefix',
+		'organization_archieve.parent_org',
+		'organization_archieve.phone',
+		'organization_archieve.c_code',
+		'organization_archieve.address',
+		'locations.name',
+	);
 	protected $sortable_columns = array(
 		'name'        => 'organization_archieve.name',
 		'reg_number'  => 'organization_archieve.reg_number',
@@ -17,6 +27,7 @@ class Organization_archieve_model extends Organization_model {
 		'phone'       => 'organization_archieve.phone',
 		'c_code'      => 'organization_archieve.c_code',
 		'currency'    => 'organization_archieve.currency',
+		'location_id' => 'locations.name',
 		'address'     => 'organization_archieve.address',
 		'deleted_at'  => 'organization_archieve.deleted_at',
 	);

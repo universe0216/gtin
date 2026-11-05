@@ -39,7 +39,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					<button type="button" class="btn btn-outline-secondary d-none" id="organizationsClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
 				</div>
 			</form>
-			<p class="text-muted small mb-0 entity-list-toolbar-meta d-none" id="organizationsToolbarMeta"></p>
+			<button type="button" class="btn btn-sm btn-primary" id="organizationsExportBtn" data-mdb-ripple-init>
+				<i class="fas fa-file-excel me-1"></i> <?php echo html_escape(app_line('common_download_excel')); ?>
+			</button>
 		</div>
 
 		<div id="organizationsGrid"></div>
@@ -57,6 +59,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		'perPageOptions'     => array_values($list_per_page_options),
 		'emptyMessage'       => $list_empty_message,
 		'emptySearchMessage' => $list_empty_search_message,
+		'exportUrl'          => site_url($entity.'/export'),
 		'detail'             => $detail_config ?? NULL,
 	)); ?>;
 </script>

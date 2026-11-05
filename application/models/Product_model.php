@@ -24,6 +24,7 @@ class Product_model extends Basic_model {
 		'barcode_2d'        => 'products.barcode_2d',
 		'package_type'      => 'products.package_type',
 		'organization_name' => 'organizations.name',
+		'processor_name'    => 'products.processor_name',
 		'price'             => 'products.price',
 		'reg_date'          => 'products.reg_date',
 		'test_date'         => 'products.test_date',

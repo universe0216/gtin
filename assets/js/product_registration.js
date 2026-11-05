@@ -14,6 +14,35 @@
 		barcode_2d_type: ['type of 2d barcode'],
 		barcode_2d: ['2d barcode'],
 	};
+	const PRODUCT_FIELD_COLUMNS = {
+		product_name: ['product name'],
+		standard: ['standard'],
+		size_of_brand: ['size of brand'],
+		package_type: ['package type'],
+		brand: ['brand'],
+		effective_period: ['perios before expired', 'period before expired'],
+		effect: ['effect'],
+		usage: ['usage'],
+		price: ['price'],
+		notes: ['notes', 'description'],
+	};
+	const PRODUCT_FIELD_LIMITS = {
+		product_name: 255,
+		standard: 100,
+		size_of_brand: 255,
+		package_type: 100,
+		brand: 255,
+		effective_period: 255,
+		effect: 65535,
+		usage: 65535,
+		price: 255,
+		notes: 65535,
+	};
+	const PRODUCT_FIELD_MULTILINE = {
+		effect: true,
+		usage: true,
+		notes: true,
+	};
 	const BARCODE_1D_TYPES = ['EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ITF-14', 'GS1-128', 'Code 128', 'Code 39'];
 	const BARCODE_2D_TYPES = ['QR', 'Data Matrix', 'GS1 DataMatrix', 'PDF417', 'Aztec'];
 
@@ -56,6 +85,7 @@
 	const confirmRejectBtn = document.getElementById('procedureConfirmRejectBtn');
 	const productDetailRejectBtn = document.getElementById('procedureDetailRejectBtn');
 	const productDetailAcceptBtn = document.getElementById('procedureDetailAcceptBtn');
+	const productDetailResetBtn = document.getElementById('procedureDetailResetBtn');
 	const similarSearchInput = document.getElementById('procedureSimilarSearch');
 	const similarClearBtn = document.getElementById('procedureSimilarClearBtn');
 	const similarOrgLabel = document.getElementById('procedureSimilarOrg');
@@ -141,12 +171,12 @@
 		return -1;
 	}
 
-	function barcodeFieldForColumn(column) {
+	function fieldForColumn(column, fieldMap) {
 		const name = normalizeColumnName(column);
-		const fields = Object.keys(BARCODE_FIELD_COLUMNS);
+		const fields = Object.keys(fieldMap);
 
 		for (let i = 0; i < fields.length; i++) {
-			const aliases = BARCODE_FIELD_COLUMNS[fields[i]];
+			const aliases = fieldMap[fields[i]];
 
 			for (let aliasIndex = 0; aliasIndex < aliases.length; aliasIndex++) {
 				if (name === aliases[aliasIndex]) {
@@ -156,6 +186,18 @@
 		}
 
 		return '';
+	}
+
+	function barcodeFieldForColumn(column) {
+		return fieldForColumn(column, BARCODE_FIELD_COLUMNS);
+	}
+
+	function productFieldForColumn(column) {
+		return fieldForColumn(column, PRODUCT_FIELD_COLUMNS);
+	}
+
+	function fieldColumnAliases(field) {
+		return BARCODE_FIELD_COLUMNS[field] || PRODUCT_FIELD_COLUMNS[field] || [];
 	}
 
 	function getBarcodeCellIndex(columns) {
@@ -430,9 +472,16 @@
 		updateDetailNavButtons();
 	}
 
+	function canResetActiveRow() {
+		const tab = getActiveTab();
+
+		return !!(tab && tab.status !== 'completed' && activeDetail);
+	}
+
 	function updateReviewButtonState() {
 		const rejectable = canReviewActiveRow();
 		const acceptable = canAcceptActiveRow();
+		const resettable = canResetActiveRow();
 
 		if (productDetailRejectBtn) {
 			productDetailRejectBtn.disabled = !rejectable;
@@ -442,6 +491,11 @@
 		if (productDetailAcceptBtn) {
 			productDetailAcceptBtn.disabled = !acceptable;
 			productDetailAcceptBtn.classList.toggle('d-none', !acceptable);
+		}
+
+		if (productDetailResetBtn) {
+			productDetailResetBtn.disabled = !resettable;
+			productDetailResetBtn.classList.toggle('d-none', !resettable);
 		}
 	}
 
@@ -596,6 +650,21 @@
 		tab.rows[rowIndex].message = reason;
 		refreshGridRow(regId, rowIndex);
 		syncModalHeaderForRow(regId, rowIndex);
+	}
+
+	function markRowPending(regId, rowIndex) {
+		const tab = tabData.get(String(regId));
+
+		if (!tab || !tab.rows[rowIndex]) {
+			return;
+		}
+
+		tab.rows[rowIndex].item_status = 'pending';
+		tab.rows[rowIndex].message = '';
+		refreshGridRow(regId, rowIndex);
+		syncModalHeaderForRow(regId, rowIndex);
+		updateAssignableBarcodeDisplay();
+		updateReviewButtonState();
 	}
 
 	function markRowAccepted(regId, rowIndex) {
@@ -812,6 +881,74 @@
 			if (input) {
 				input.focus();
 			}
+		});
+	}
+
+	function clearOpenBarcodeFields(regId, itemId) {
+		Object.keys(BARCODE_FIELD_COLUMNS).forEach(function (field) {
+			const key = String(itemId) + ':' + field;
+			clearTimeout(barcodeSaveTimers.get(key));
+			barcodeSaveTimers.delete(key);
+			applyBarcodeFieldLocally(regId, itemId, field, '');
+
+			const input = barcodeFieldInput(field);
+
+			if (input && input.getAttribute('data-item-id') === String(itemId)) {
+				input.value = '';
+				input.setAttribute('data-saved-value', '');
+				input.classList.remove('is-invalid');
+			}
+		});
+
+		if (procedureBarcodeInput) {
+			procedureBarcodeInput.value = '';
+			renderBarcodePreview('');
+		}
+	}
+
+	function resetProduct() {
+		if (!activeDetail || !canResetActiveRow()) {
+			return;
+		}
+
+		const regId = activeDetail.regId;
+		const rowIndex = activeDetail.rowIndex;
+		const row = getActiveRow();
+		const itemId = row ? row.id : null;
+
+		if (!itemId) {
+			showToast(t('reg_reset_failed'), 'error');
+			return;
+		}
+
+		showConfirm({
+			title: t('common_reset'),
+			message: t('reg_reset_confirm'),
+			confirmLabel: t('common_reset'),
+			confirmClass: 'btn btn-warning',
+		}).then(function () {
+			if (productDetailResetBtn) {
+				productDetailResetBtn.disabled = true;
+			}
+
+			barcodeSaveQueue = barcodeSaveQueue.then(function () {
+				return fetchApi(baseUrl + '/reset_item/' + itemId, { method: 'POST' });
+			}).then(function (result) {
+				clearOpenBarcodeFields(regId, itemId);
+				markRowPending(regId, rowIndex);
+				setRegistrationStatus(regId, result.data && result.data.registration_status);
+				showToast(result.message || t('reg_reset_success'), 'success');
+			}).catch(function (error) {
+				showToast(error.message || t('reg_reset_failed'), 'error');
+			}).finally(function () {
+				updateReviewButtonState();
+			});
+		}).catch(function (error) {
+			if (isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('reg_reset_failed'), 'error');
 		});
 	}
 
@@ -1141,6 +1278,8 @@
 		if (!similarGrid) {
 			similarGrid = JqxGrid.remote('#procedureSimilarGrid', {
 				url: baseUrl + '/organization_products',
+				enablebrowserselection: true,
+				clipboard: false,
 				pagesize: 10,
 				pagesizeoptions: ['10', '20', '50'],
 				height: similarGridHeight(),
@@ -1460,6 +1599,27 @@
 		'</select>';
 	}
 
+	function renderProductFieldControl(field, value, editable, itemId, regId) {
+		const inputId = 'procedureProductField_' + field;
+		const maxLength = PRODUCT_FIELD_LIMITS[field] || 255;
+		const disabled = editable ? '' : ' disabled';
+		const dataAttrs =
+			' id="' + inputId + '"' +
+			' data-barcode-field="' + field + '"' +
+			' data-item-id="' + escapeAttr(itemId) + '"' +
+			' data-reg-id="' + escapeAttr(regId) + '"' +
+			' data-saved-value="' + escapeAttr(value) + '"' +
+			' maxlength="' + maxLength + '"' +
+			disabled;
+		const classes = 'form-control form-control-sm procedure-detail-info-input';
+
+		if (PRODUCT_FIELD_MULTILINE[field]) {
+			return '<textarea rows="3" class="' + classes + '"' + dataAttrs + '>' + escapeHtml(value) + '</textarea>';
+		}
+
+		return '<input type="text" class="' + classes + '"' + dataAttrs + ' value="' + escapeAttr(value) + '">';
+	}
+
 	const barcodeSaveTimers = new Map();
 	let barcodeSaveQueue = Promise.resolve();
 
@@ -1478,7 +1638,7 @@
 			return;
 		}
 
-		const cellIndex = findColumnIndex(tab.columns || [], BARCODE_FIELD_COLUMNS[field] || []);
+		const cellIndex = findColumnIndex(tab.columns || [], fieldColumnAliases(field));
 
 		if (cellIndex < 0) {
 			return;
@@ -1492,6 +1652,11 @@
 
 		cells[cellIndex] = value;
 		tab.rows[rowIndex].cells = cells;
+
+		if (field === 'product_name') {
+			tab.rows[rowIndex].name = value;
+		}
+
 		refreshGridRow(regId, rowIndex);
 	}
 
@@ -1656,6 +1821,7 @@
 				label: column,
 				value: cells[index] ?? '',
 				field: barcodeFieldForColumn(column),
+				productField: productFieldForColumn(column),
 			});
 		});
 
@@ -1667,11 +1833,20 @@
 		);
 
 		const fieldsHtml = fields.map(function (field) {
-			const control = field.field
-				? renderBarcodeFieldControl(field.field, field.value, editable, payload.id, activeDetail ? activeDetail.regId : '')
-				: '<span class="procedure-detail-info-value">' + escapeHtml(field.value) + '</span>';
-			const labelTag = field.field ? 'label' : 'span';
-			const labelFor = field.field ? ' for="procedureBarcodeField_' + field.field + '"' : '';
+			const regId = activeDetail ? activeDetail.regId : '';
+			let control = '<span class="procedure-detail-info-value">' + escapeHtml(field.value) + '</span>';
+			let labelTag = 'span';
+			let labelFor = '';
+
+			if (field.field) {
+				control = renderBarcodeFieldControl(field.field, field.value, editable, payload.id, regId);
+				labelTag = 'label';
+				labelFor = ' for="procedureBarcodeField_' + field.field + '"';
+			} else if (field.productField) {
+				control = renderProductFieldControl(field.productField, field.value, editable, payload.id, regId);
+				labelTag = 'label';
+				labelFor = ' for="procedureProductField_' + field.productField + '"';
+			}
 
 			return '<div class="procedure-detail-info-item">' +
 				'<' + labelTag + ' class="procedure-detail-info-label"' + labelFor + '>' + escapeHtml(field.label) + '</' + labelTag + '>' +
@@ -3051,6 +3226,10 @@
 
 	if (productDetailAcceptBtn) {
 		productDetailAcceptBtn.addEventListener('click', acceptProduct);
+	}
+
+	if (productDetailResetBtn) {
+		productDetailResetBtn.addEventListener('click', resetProduct);
 	}
 
 	if (rejectReasonInput) {
