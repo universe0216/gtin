@@ -17,7 +17,7 @@ class Organizations extends BasicController {
 	protected $list_empty_message = 'No organizations found.';
 	protected $list_empty_search_message = 'No organizations match your search.';
 	protected $list_columns = array(
-		array('key' => 'name', 'label' => 'Name'),
+		array('key' => 'name', 'label' => 'Name', 'pinned' => TRUE),
 		array('key' => 'reg_number', 'label' => 'Registration Number'),
 		array('key' => 'gs1_prefix', 'label' => 'GS1 Prefix'),
 		array('key' => 'parent_org', 'label' => 'Parent Organization'),

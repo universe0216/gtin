@@ -11,11 +11,15 @@ $admin_children = array(
 	'categories' => array('label' => app_line('nav_categories'), 'url' => site_url('categories')),
 );
 
-$nav_items = array(
-	'product_registration' => array('label' => app_line('nav_product_registration'), 'url' => site_url('product_registration'), 'permission' => NULL),
-	'registration_data'    => array('label' => app_line('nav_registration_data'), 'url' => site_url('registration_data'), 'permission' => NULL),
-	'organizations' => array('label' => app_line('nav_organizations'), 'url' => site_url('organizations'), 'permission' => 'organization.view'),
-	'products'      => array('label' => app_line('nav_products'), 'url' => site_url('products'), 'permission' => 'product.view'),
+$production_children = array(
+	'products'              => array('label' => app_line('nav_list_productions'), 'url' => site_url('products'), 'permission' => 'product.view'),
+	'product_registration'  => array('label' => app_line('nav_register_products'), 'url' => site_url('product_registration')),
+	'registration_data'     => array('label' => app_line('nav_manage_processing_data'), 'url' => site_url('registration_data')),
+);
+
+$organization_children = array(
+	'organizations'              => array('label' => app_line('nav_list_organizations'), 'url' => site_url('organizations'), 'permission' => 'organization.view'),
+	'organization_registration'  => array('label' => app_line('nav_register_organizations'), 'url' => site_url('organization_registration'), 'permission' => 'organization.edit'),
 );
 
 $history_children = array(
@@ -29,8 +33,15 @@ $books_children = array(
 	'books_gtin_country_code' => array('label' => app_line('nav_gtin_country_code'), 'url' => site_url('books/gtin_country_code')),
 );
 
+$tools_children = array(
+	'tools_verify_checksum' => array('label' => app_line('nav_verify_checksum'), 'url' => site_url('tools/verify_checksum')),
+);
+
+$production_active = isset($production_children[$nav_active]);
+$organization_active = isset($organization_children[$nav_active]);
 $history_active = isset($history_children[$nav_active]);
 $books_active = isset($books_children[$nav_active]);
+$tools_active = isset($tools_children[$nav_active]);
 $admin_active = isset($admin_children[$nav_active]);
 $show_admin = $CI->auth->is_admin();
 ?>
@@ -51,16 +62,72 @@ $show_admin = $CI->auth->is_admin();
 		<div class="collapse navbar-collapse" id="mainNavbar">
 			<ul class="navbar-nav ms-auto align-items-lg-center">
 				
-				<?php foreach ($nav_items as $key => $item): ?>
-					<?php if ($item['permission'] === NULL || $CI->auth->can($item['permission'])): ?>
-						<li class="nav-item">
-							<a
-								class="nav-link<?php echo ($nav_active === $key) ? ' active fw-semibold' : ''; ?>"
-								href="<?php echo $item['url']; ?>"
-							><?php echo html_escape($item['label']); ?></a>
-						</li>
-					<?php endif; ?>
-				<?php endforeach; ?>
+				<?php
+					$show_productions = FALSE;
+					foreach ($production_children as $item) {
+						if ( ! isset($item['permission']) || $CI->auth->can($item['permission'])) {
+							$show_productions = TRUE;
+							break;
+						}
+					}
+				?>
+				<?php if ($show_productions): ?>
+				<li class="nav-item dropdown">
+					<a
+						class="nav-link dropdown-toggle<?php echo $production_active ? ' active fw-semibold' : ''; ?>"
+						href="#"
+						id="productionsDropdown"
+						role="button"
+						data-mdb-dropdown-init
+						aria-expanded="false"
+					><?php echo html_escape(app_line('nav_productions')); ?></a>
+					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="productionsDropdown">
+						<?php foreach ($production_children as $key => $item): ?>
+							<?php if ( ! isset($item['permission']) || $CI->auth->can($item['permission'])): ?>
+							<li>
+								<a
+									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"
+									href="<?php echo $item['url']; ?>"
+								><?php echo html_escape($item['label']); ?></a>
+							</li>
+							<?php endif; ?>
+						<?php endforeach; ?>
+					</ul>
+				</li>
+				<?php endif; ?>
+				<?php
+					$show_organizations = FALSE;
+					foreach ($organization_children as $item) {
+						if ( ! isset($item['permission']) || $CI->auth->can($item['permission'])) {
+							$show_organizations = TRUE;
+							break;
+						}
+					}
+				?>
+				<?php if ($show_organizations): ?>
+				<li class="nav-item dropdown">
+					<a
+						class="nav-link dropdown-toggle<?php echo $organization_active ? ' active fw-semibold' : ''; ?>"
+						href="#"
+						id="organizationsDropdown"
+						role="button"
+						data-mdb-dropdown-init
+						aria-expanded="false"
+					><?php echo html_escape(app_line('nav_organizations')); ?></a>
+					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="organizationsDropdown">
+						<?php foreach ($organization_children as $key => $item): ?>
+							<?php if ( ! isset($item['permission']) || $CI->auth->can($item['permission'])): ?>
+							<li>
+								<a
+									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"
+									href="<?php echo $item['url']; ?>"
+								><?php echo html_escape($item['label']); ?></a>
+							</li>
+							<?php endif; ?>
+						<?php endforeach; ?>
+					</ul>
+				</li>
+				<?php endif; ?>
 				<li class="nav-item dropdown">
 					<a
 						class="nav-link dropdown-toggle<?php echo $history_active ? ' active fw-semibold' : ''; ?>"
@@ -94,6 +161,26 @@ $show_admin = $CI->auth->is_admin();
 					><?php echo html_escape(app_line('nav_books')); ?></a>
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="booksDropdown">
 						<?php foreach ($books_children as $key => $item): ?>
+							<li>
+								<a
+									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"
+									href="<?php echo $item['url']; ?>"
+								><?php echo html_escape($item['label']); ?></a>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</li>
+				<li class="nav-item dropdown">
+					<a
+						class="nav-link dropdown-toggle<?php echo $tools_active ? ' active fw-semibold' : ''; ?>"
+						href="#"
+						id="toolsDropdown"
+						role="button"
+						data-mdb-dropdown-init
+						aria-expanded="false"
+					><?php echo html_escape(app_line('nav_tools')); ?></a>
+					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="toolsDropdown">
+						<?php foreach ($tools_children as $key => $item): ?>
 							<li>
 								<a
 									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"

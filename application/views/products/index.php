@@ -36,7 +36,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					<button type="button" class="btn btn-outline-secondary d-none" id="productsClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
 				</div>
 			</form>
-			<button type="button" class="btn btn-sm btn-primary" id="productsExportBtn" data-mdb-ripple-init>
+			<?php if ($entity === 'products' && ! empty($can_edit)): ?>
+				<button type="button" class="btn btn-sm btn-outline-danger d-none" id="productsDeleteSelectedBtn" data-mdb-ripple-init>
+					<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('product_delete_selected')); ?>
+				</button>
+			<?php endif; ?>
+			<button type="button" class="btn btn-sm btn-outline-primary" id="productsExportBtn" data-mdb-ripple-init>
 				<i class="fas fa-file-excel me-1"></i> <?php echo html_escape(app_line('common_download_excel')); ?>
 			</button>
 		</div>

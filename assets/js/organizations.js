@@ -63,7 +63,7 @@
 			return 420;
 		}
 
-		return Math.max(240, panel.clientHeight - (toolbar ? toolbar.offsetHeight : 0) - 8);
+		return Math.max(240, panel.clientHeight - (toolbar ? toolbar.offsetHeight : 0) - 8) - 15;
 	}
 
 	function indexRenderer(row) {
@@ -125,6 +125,10 @@
 			width: columnWidths[column.key] || 160,
 		};
 
+		if (column.pinned) {
+			gridColumn.pinned = true;
+		}
+
 		if (column.key === 'currency') {
 			gridColumn.cellsrenderer = currencyRenderer;
 			gridColumn.cellclassname = function (row, columnfield, value) {
@@ -142,40 +146,45 @@
 			};
 		}
 
+		if (column.key === 'name' && (detailEnabled || rowAction.enabled)) {
+			gridColumn.cellsrenderer = nameCellRenderer;
+		}
+
 		return gridColumn;
 	}));
 
-	function rowActionRenderer(row, column, value, defaultHtml, props, rowdata) {
+	function nameActionButton(buttonClass, actionClass, icon, label, id, name) {
+		return '<button type="button" class="btn btn-sm ' + buttonClass + ' products-name-icon ' + actionClass +
+			'" data-id="' + id + '"' +
+			(name === undefined ? '' : ' data-name="' + name + '"') +
+			' title="' + escapeAttr(label) + '" aria-label="' + escapeAttr(label) + '">' +
+			'<i class="fas ' + icon + '" aria-hidden="true"></i></button>';
+	}
+
+	function nameCellRenderer(row, column, value, defaultHtml, props, rowdata) {
 		const id = escapeAttr(rowdata && rowdata.id);
 		const name = escapeAttr(rowdata && rowdata.name);
-		let html = '<div class="jqx-action-cell">';
+		let actions = '';
 
 		if (detailEnabled) {
-			html += '<button type="button" class="btn btn-sm btn-outline-primary entity-row-detail" data-id="' +
-				id + '">' + escapeHtml(t('common_detail')) + '</button>';
+			actions += nameActionButton('btn-outline-primary', 'entity-row-detail', 'fa-eye', t('common_detail'), id);
 		}
 
 		if (rowAction.enabled) {
-			const label = rowAction.type === 'restore' ? t('common_restore') : t('common_delete');
-			const buttonClass = rowAction.type === 'restore' ? 'btn-outline-success' : 'btn-outline-danger';
+			const restore = rowAction.type === 'restore';
 
-			html += '<button type="button" class="btn btn-sm ' + buttonClass + ' entity-row-action" data-id="' +
-				id + '" data-name="' + name + '">' + escapeHtml(label) + '</button>';
+			actions += nameActionButton(
+				restore ? 'btn-outline-success' : 'btn-outline-danger',
+				'entity-row-action',
+				restore ? 'fa-rotate-left' : 'fa-trash',
+				restore ? t('common_restore') : t('common_delete'),
+				id,
+				name
+			);
 		}
 
-		return html + '</div>';
-	}
-
-	if (detailEnabled || rowAction.enabled) {
-		datafields.push({ name: '__actions', type: 'string' });
-		gridColumns.push({
-			text: '',
-			datafield: '__actions',
-			width: detailEnabled && rowAction.enabled ? 176 : 110,
-			sortable: false,
-			filterable: false,
-			cellsrenderer: rowActionRenderer,
-		});
+		return '<div class="products-name-cell"><span class="products-name-text">' + escapeHtml(value) +
+			'</span><div class="products-name-actions">' + actions + '</div></div>';
 	}
 
 	const grid = JqxGrid.remote('#organizationsGrid', {
@@ -348,6 +357,40 @@
 			locationTree.jqxTree('height', locationTreeHeight());
 		}
 	});
+
+	if (detailEnabled || rowAction.enabled) {
+		grid.$el.on('mouseover', '.jqx-grid-content .jqx-grid-cell', function () {
+			const row = this.closest('.jqx-grid-row-csp, [role="row"]');
+
+			if (!row) {
+				return;
+			}
+
+			const current = grid.$el[0].querySelector('.products-row-hover');
+
+			if (current === row) {
+				return;
+			}
+
+			if (current) {
+				current.classList.remove('products-row-hover');
+			}
+
+			row.classList.add('products-row-hover');
+		});
+
+		const gridContent = document.querySelector('#organizationsGrid .jqx-grid-content');
+
+		if (gridContent) {
+			gridContent.addEventListener('mouseleave', function () {
+				const current = gridContent.querySelector('.products-row-hover');
+
+				if (current) {
+					current.classList.remove('products-row-hover');
+				}
+			});
+		}
+	}
 
 	grid.$el.on('mousedown', '.entity-row-detail, .entity-row-action', function (event) {
 		event.stopPropagation();

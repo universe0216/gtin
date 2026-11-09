@@ -18,6 +18,7 @@
 	const clearBtn = document.getElementById('productsClearBtn');
 	const locationClearBtn = document.getElementById('productsLocationClear');
 	const exportBtn = document.getElementById('productsExportBtn');
+	const deleteSelectedBtn = document.getElementById('productsDeleteSelectedBtn');
 	const locationNodes = config.locationNodes || [];
 	const modalEl = document.getElementById('productDetailModal');
 	const modalTitle = document.getElementById('productDetailModalLabel');
@@ -54,6 +55,8 @@
 	let detailModal = null;
 	let detailRequest = null;
 	let currentProductId = null;
+	const bulkDeleteEnabled = !!(deleteSelectedBtn && rowAction.enabled && rowAction.type === 'delete' && detail.deleteUrl);
+	const selectedIds = new Set();
 
 	function gridHeight() {
 		const panel = document.querySelector('#productsPage .entity-list-panel');
@@ -63,7 +66,7 @@
 			return 420;
 		}
 
-		return Math.max(240, panel.clientHeight - (toolbar ? toolbar.offsetHeight : 0) - 8);
+		return Math.max(240, panel.clientHeight - (toolbar ? toolbar.offsetHeight : 0) - 8) - 20;
 	}
 
 	function indexRenderer(row) {
@@ -78,7 +81,20 @@
 			}
 		}
 
-		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + number + '</div>';
+		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px; text-align: center;">' + number + '</div>';
+	}
+
+	function selectRenderer(row, column, value, defaultHtml, props, rowdata) {
+		const id = escapeAttr(rowdata && rowdata.id);
+		const checked = selectedIds.has(String(rowdata && rowdata.id)) ? ' checked' : '';
+
+		return '<div class="products-select-cell"><input type="checkbox" class="form-check-input products-row-check" data-id="' +
+			id + '"' + checked + ' aria-label="' + escapeAttr(t('product_select_row')) + '"></div>';
+	}
+
+	function selectHeaderRenderer() {
+		return '<div class="products-select-cell"><input type="checkbox" class="form-check-input products-row-check-all" aria-label="' +
+			escapeAttr(t('product_select_page')) + '"></div>';
 	}
 
 	const datafields = [
@@ -96,48 +112,74 @@
 			pinned: true,
 			sortable: false,
 			filterable: false,
-			cellsalign: 'right',
+			cellsalign: 'center',
 			align: 'right',
 			cellsrenderer: indexRenderer,
 		},
 	].concat(columns.map(function (column) {
-		return {
+		const gridColumn = {
 			text: column.label,
 			datafield: column.key,
 			width: columnWidths[column.key] || 160,
 		};
+
+		if (column.pinned) {
+			gridColumn.pinned = true;
+		}
+
+		if (column.key === 'name' && (detailEnabled || rowAction.enabled)) {
+			gridColumn.cellsrenderer = nameCellRenderer;
+		}
+
+		return gridColumn;
 	}));
 
-	function rowActionRenderer(row, column, value, defaultHtml, props, rowdata) {
+	function nameActionButton(buttonClass, actionClass, icon, label, id, name) {
+		return '<button type="button" class="btn btn-sm ' + buttonClass + ' products-name-icon ' + actionClass +
+			'" data-id="' + id + '"' +
+			(name === undefined ? '' : ' data-name="' + name + '"') +
+			' title="' + escapeAttr(label) + '" aria-label="' + escapeAttr(label) + '">' +
+			'<i class="fas ' + icon + '" aria-hidden="true"></i></button>';
+	}
+
+	function nameCellRenderer(row, column, value, defaultHtml, props, rowdata) {
 		const id = escapeAttr(rowdata && rowdata.id);
 		const name = escapeAttr(rowdata && rowdata.name);
-		let html = '<div class="jqx-action-cell">';
+		let actions = '';
 
 		if (detailEnabled) {
-			html += '<button type="button" class="btn btn-sm btn-outline-primary entity-row-detail" data-id="' +
-				id + '">' + escapeHtml(t('common_detail')) + '</button>';
+			actions += nameActionButton('btn-outline-primary', 'entity-row-detail', 'fa-eye', t('common_detail'), id);
 		}
 
 		if (rowAction.enabled) {
-			const label = rowAction.type === 'restore' ? t('common_restore') : t('common_delete');
-			const buttonClass = rowAction.type === 'restore' ? 'btn-outline-success' : 'btn-outline-danger';
+			const restore = rowAction.type === 'restore';
 
-			html += '<button type="button" class="btn btn-sm ' + buttonClass + ' entity-row-action" data-id="' +
-				id + '" data-name="' + name + '">' + escapeHtml(label) + '</button>';
+			actions += nameActionButton(
+				restore ? 'btn-outline-success' : 'btn-outline-danger',
+				'entity-row-action',
+				restore ? 'fa-rotate-left' : 'fa-trash',
+				restore ? t('common_restore') : t('common_delete'),
+				id,
+				name
+			);
 		}
 
-		return html + '</div>';
+		return '<div class="products-name-cell"><span class="products-name-text">' + escapeHtml(value) +
+			'</span><div class="products-name-actions">' + actions + '</div></div>';
 	}
 
-	if (detailEnabled || rowAction.enabled) {
-		datafields.push({ name: '__actions', type: 'string' });
-		gridColumns.push({
+	if (bulkDeleteEnabled) {
+		datafields.push({ name: '__select', type: 'string' });
+		gridColumns.unshift({
 			text: '',
-			datafield: '__actions',
-			width: detailEnabled && rowAction.enabled ? 176 : 110,
+			datafield: '__select',
+			width: 42,
+			pinned: true,
 			sortable: false,
 			filterable: false,
-			cellsrenderer: rowActionRenderer,
+			menu: false,
+			renderer: selectHeaderRenderer,
+			cellsrenderer: selectRenderer,
 		});
 	}
 
@@ -147,7 +189,7 @@
 		datafields: datafields,
 		pagesize: perPage,
 		pagesizeoptions: perPageOptions,
-		selectionmode: detailEnabled ? 'singlerow' : 'none',
+		selectionmode: bulkDeleteEnabled ? 'none' : (detailEnabled ? 'singlerow' : 'none'),
 		enablebrowserselection: true,
 		clipboard: false,
 		height: gridHeight(),
@@ -197,6 +239,138 @@
 			const query = params.toString();
 			window.location.href = config.exportUrl + (query ? '?' + query : '');
 		});
+	}
+
+	function currentPageIds() {
+		const rows = grid.$el.jqxGrid('getrows') || [];
+
+		return rows.map(function (row) {
+			return row && row.id != null ? String(row.id) : '';
+		}).filter(Boolean);
+	}
+
+	function syncBulkDeleteButton() {
+		if (!deleteSelectedBtn) {
+			return;
+		}
+
+		deleteSelectedBtn.classList.toggle('d-none', selectedIds.size < 2);
+	}
+
+	function syncHeaderCheckbox() {
+		const header = document.querySelector('#productsGrid .products-row-check-all');
+
+		if (!header) {
+			return;
+		}
+
+		const ids = currentPageIds();
+		const selectedOnPage = ids.filter(function (id) {
+			return selectedIds.has(id);
+		}).length;
+
+		header.checked = ids.length > 0 && selectedOnPage === ids.length;
+		header.indeterminate = selectedOnPage > 0 && selectedOnPage < ids.length;
+	}
+
+	function clearRowSelection() {
+		selectedIds.clear();
+		syncBulkDeleteButton();
+		document.querySelectorAll('#productsGrid .products-row-check').forEach(function (box) {
+			box.checked = false;
+		});
+		syncHeaderCheckbox();
+	}
+
+	if (bulkDeleteEnabled) {
+		const gridEl = document.getElementById('productsGrid');
+
+		function stopCheckboxEvent(event) {
+			if (event.target.closest && event.target.closest('.products-row-check, .products-row-check-all')) {
+				event.stopPropagation();
+			}
+		}
+
+		gridEl.addEventListener('mousedown', stopCheckboxEvent, true);
+		gridEl.addEventListener('click', stopCheckboxEvent, true);
+
+		grid.$el.on('change', '.products-row-check', function () {
+			const id = this.getAttribute('data-id');
+
+			if (!id) {
+				return;
+			}
+
+			if (this.checked) {
+				selectedIds.add(id);
+			} else {
+				selectedIds.delete(id);
+			}
+
+			syncHeaderCheckbox();
+			syncBulkDeleteButton();
+		});
+
+		grid.$el.on('change', '.products-row-check-all', function () {
+			const ids = currentPageIds();
+			const checked = this.checked;
+
+			ids.forEach(function (id) {
+				if (checked) {
+					selectedIds.add(id);
+				} else {
+					selectedIds.delete(id);
+				}
+			});
+
+			grid.$el.find('.products-row-check').each(function () {
+				this.checked = selectedIds.has(this.getAttribute('data-id'));
+			});
+			this.indeterminate = false;
+			syncBulkDeleteButton();
+		});
+
+		grid.$el.on('bindingcomplete', function () {
+			clearRowSelection();
+		});
+
+		deleteSelectedBtn.addEventListener('click', function () {
+			deleteSelectedProducts();
+		});
+	}
+
+	if (detailEnabled || rowAction.enabled) {
+		grid.$el.on('mouseover', '.jqx-grid-content .jqx-grid-cell', function () {
+			const row = this.closest('.jqx-grid-row-csp, [role="row"]');
+
+			if (!row) {
+				return;
+			}
+
+			const current = grid.$el[0].querySelector('.products-row-hover');
+
+			if (current === row) {
+				return;
+			}
+
+			if (current) {
+				current.classList.remove('products-row-hover');
+			}
+
+			row.classList.add('products-row-hover');
+		});
+
+		const gridContent = document.querySelector('#productsGrid .jqx-grid-content');
+
+		if (gridContent) {
+			gridContent.addEventListener('mouseleave', function () {
+				const current = gridContent.querySelector('.products-row-hover');
+
+				if (current) {
+					current.classList.remove('products-row-hover');
+				}
+			});
+		}
 	}
 
 	grid.$el.on('mousedown', '.entity-row-detail, .entity-row-action', function (event) {
@@ -540,13 +714,31 @@
 
 		fields.forEach(function (field) {
 			const inputId = 'productDetailField_' + field.name;
-			const value = escapeHtml(fieldValue(data, field));
+			const rawValue = fieldValue(data, field);
+			const value = escapeHtml(rawValue);
 			const locked = !canEditProduct || field.readonly;
 			const nameAttr = locked ? '' : ' name="' + escapeAttr(field.name) + '"';
 			const readOnlyAttr = locked ? ' readonly' : '';
 			let control = '';
 
-			if (field.type === 'textarea') {
+			if (field.type === 'select') {
+				const options = (field.options || []).slice();
+
+				if (rawValue && options.indexOf(rawValue) === -1) {
+					options.unshift(rawValue);
+				}
+
+				const optionHtml = options.map(function (option) {
+					const selected = option === rawValue ? ' selected' : '';
+
+					return '<option value="' + escapeAttr(option) + '"' + selected + '>' + escapeHtml(option) + '</option>';
+				}).join('');
+
+				control = '<select class="form-select form-select-sm" id="' + inputId + '"' + nameAttr + (locked ? ' disabled' : '') + '>' +
+					'<option value=""></option>' +
+					optionHtml +
+				'</select>';
+			} else if (field.type === 'textarea') {
 				control = '<textarea class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' rows="3"' + readOnlyAttr + '>' + value + '</textarea>';
 			} else {
 				const type = field.type === 'date' ? 'date' : 'text';
@@ -715,6 +907,51 @@
 	if (downloadBtn) {
 		downloadBtn.addEventListener('click', function () {
 			downloadProduct(downloadBtn);
+		});
+	}
+
+	function deleteSelectedProducts() {
+		const ids = Array.from(selectedIds);
+
+		if (!bulkDeleteEnabled || ids.length < 2) {
+			return;
+		}
+
+		const url = detail.deleteUrl.replace(/\/delete\/?$/, '/delete_selected');
+		const body = new FormData();
+
+		ids.forEach(function (id) {
+			body.append('ids[]', id);
+		});
+
+		deleteSelectedBtn.disabled = true;
+
+		showConfirm({
+			title: t('common_delete'),
+			message: t('product_delete_selected_confirm', { count: ids.length }),
+			confirmLabel: t('product_delete_selected'),
+		}).then(function () {
+			return fetchApi(url, { method: 'POST', body: body });
+		}).then(function (result) {
+			const removed = result.deleted || ids.length;
+
+			if (detailModal && selectedIds.has(String(currentProductId))) {
+				detailModal.hide();
+			}
+
+			clearRowSelection();
+			showToast(result.message || t('product_deleted'), 'success');
+			grid.reload();
+
+			return removed;
+		}).catch(function (error) {
+			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('product_delete_failed'), 'error');
+		}).finally(function () {
+			deleteSelectedBtn.disabled = false;
 		});
 	}
 

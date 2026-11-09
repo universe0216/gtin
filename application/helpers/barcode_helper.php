@@ -99,6 +99,59 @@ function barcode_gs1_check_valid($value)
 }
 
 /**
+ * Expand a 7-digit UPC-E body (number system plus six digits) to 11 UPC-A digits.
+ */
+function barcode_upc_e_expand($body)
+{
+	if ( ! preg_match('/^[01]\d{6}$/', (string) $body))
+	{
+		return NULL;
+	}
+
+	$number_system = $body[0];
+	$compressed = substr($body, 1, 6);
+	$last = $compressed[5];
+
+	if ($last === '0' || $last === '1' || $last === '2')
+	{
+		$manufacturer = substr($compressed, 0, 2).$last.'00';
+		$product = '00'.substr($compressed, 2, 3);
+	}
+	elseif ($last === '3')
+	{
+		$manufacturer = substr($compressed, 0, 3).'00';
+		$product = '000'.substr($compressed, 3, 2);
+	}
+	elseif ($last === '4')
+	{
+		$manufacturer = substr($compressed, 0, 4).'0';
+		$product = '0000'.$compressed[4];
+	}
+	else
+	{
+		$manufacturer = substr($compressed, 0, 5);
+		$product = '0000'.$last;
+	}
+
+	return $number_system.$manufacturer.$product;
+}
+
+/**
+ * Check digit for a 7-digit UPC-E body.
+ */
+function barcode_upc_e_check_digit($body)
+{
+	$expanded = barcode_upc_e_expand($body);
+
+	if ($expanded === NULL)
+	{
+		return NULL;
+	}
+
+	return barcode_gs1_check_digit($expanded);
+}
+
+/**
  * UPC-E is 8 digits: number system 0 or 1, six compressed digits, and a check digit.
  */
 function barcode_upc_e_valid($value)
@@ -108,33 +161,42 @@ function barcode_upc_e_valid($value)
 		return FALSE;
 	}
 
-	$number_system = $value[0];
-	$body = substr($value, 1, 6);
-	$check = $value[7];
-	$last = $body[5];
+	$check = barcode_upc_e_check_digit(substr($value, 0, 7));
 
-	if ($last === '0' || $last === '1' || $last === '2')
+	return $check !== NULL && $check === $value[7];
+}
+
+/**
+ * Last digit for a barcode body that omits that digit.
+ */
+function barcode_checksum($type, $body)
+{
+	$key = barcode_normalize_1d_type($type);
+	$body = preg_replace('/\D/', '', (string) $body);
+	$lengths = array(
+		'ean13'  => 12,
+		'ean8'   => 7,
+		'upca'   => 11,
+		'upce'   => 7,
+		'itf14'  => 13,
+	);
+
+	if ($key === 'gs1128')
 	{
-		$manufacturer = substr($body, 0, 2).$last.'00';
-		$product = '00'.substr($body, 2, 3);
-	}
-	elseif ($last === '3')
-	{
-		$manufacturer = substr($body, 0, 3).'00';
-		$product = '000'.substr($body, 3, 2);
-	}
-	elseif ($last === '4')
-	{
-		$manufacturer = substr($body, 0, 4).'0';
-		$product = '0000'.$body[4];
-	}
-	else
-	{
-		$manufacturer = substr($body, 0, 5);
-		$product = '0000'.$last;
+		return $body === '' ? NULL : barcode_gs1_check_digit($body);
 	}
 
-	return barcode_gs1_check_digit($number_system.$manufacturer.$product) === $check;
+	if ( ! isset($lengths[$key]) || strlen($body) !== $lengths[$key])
+	{
+		return NULL;
+	}
+
+	if ($key === 'upce')
+	{
+		return barcode_upc_e_check_digit($body);
+	}
+
+	return barcode_gs1_check_digit($body);
 }
 
 /**

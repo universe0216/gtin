@@ -16,6 +16,7 @@ html[data-mdb-theme="dark"] {
 	--mdb-input-focus-border-color: #5b9aff;
 	--mdb-input-focus-label-color: #93c5fd;
 	--mdb-table-bg: var(--app-surface);
+	--jqx-grid-column-height: var(--jqx-grid-row-height);
 }
 
 html[data-mdb-theme="dark"] body {
@@ -82,6 +83,15 @@ html[data-mdb-theme="dark"] body {
 	border: 1px solid var(--app-border);
 	border-radius: 0.5rem;
 	overflow: hidden;
+}
+
+.tools-checksum-panel {
+	max-width: 36rem;
+}
+
+#checksumDigit[readonly] {
+	font-size: 1.25rem;
+	letter-spacing: 0.08em;
 }
 
 .table td {
@@ -689,6 +699,30 @@ body.modal-open .modal-backdrop.app-alert-backdrop {
 		height: 16rem;
 		flex: 0 0 auto;
 	}
+}
+
+#productsGrid .products-select-cell,
+#organizationProductsGrid .products-select-cell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	min-height: 1.5rem;
+}
+
+#productsGrid .products-select-cell .form-check-input,
+#organizationProductsGrid .products-select-cell .form-check-input {
+	position: relative;
+	z-index: 2;
+	margin: 0;
+	cursor: pointer;
+}
+
+#productsGrid .jqx-grid-column-header:has(.products-row-check-all) .jqx-grid-iconscontainer,
+#productsGrid .jqx-grid-column-header:has(.products-row-check-all) .jqx-grid-iconscontainer-csp,
+#organizationProductsGrid .jqx-grid-column-header:has(.products-row-check-all) .jqx-grid-iconscontainer,
+#organizationProductsGrid .jqx-grid-column-header:has(.products-row-check-all) .jqx-grid-iconscontainer-csp {
+	pointer-events: none;
 }
 
 #productsPage #productsGrid,
@@ -2092,6 +2126,63 @@ select.procedure-detail-info-input option {
 .jqx-action-cell .btn {
 	--mdb-btn-padding-x: 0.65rem;
 	white-space: nowrap;
+}
+
+#productsGrid .products-name-cell,
+#organizationsGrid .products-name-cell {
+	display: flex;
+	align-items: center;
+	height: 100%;
+	min-width: 0;
+	padding-left: 8px;
+}
+
+#productsGrid .products-name-text,
+#organizationsGrid .products-name-text {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#productsGrid .products-name-actions,
+#organizationsGrid .products-name-actions {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 0.2rem;
+	margin-left: auto;
+	padding-left: 0.35rem;
+	opacity: 0;
+	pointer-events: none;
+}
+
+#productsGrid .products-row-hover .products-name-actions,
+#organizationsGrid .products-row-hover .products-name-actions {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+#productsGrid .products-row-hover .products-name-text,
+#organizationsGrid .products-row-hover .products-name-text {
+	padding-right: 0.15rem;
+}
+
+#productsGrid .products-name-icon.btn,
+#organizationsGrid .products-name-icon.btn {
+	--mdb-btn-padding-x: 0;
+	--mdb-btn-padding-y: 0;
+	--mdb-btn-line-height: 1;
+	--mdb-btn-font-size: 0.7rem;
+	width: 1.5rem;
+	height: 1.5rem;
+	min-width: 1.5rem;
+	min-height: 1.5rem;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .jqx-action-btn {

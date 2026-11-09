@@ -14,15 +14,17 @@ class Products extends BasicController {
 	protected $list_empty_message = 'No products found.';
 	protected $list_empty_search_message = 'No products match your search.';
 	protected $list_columns = array(
-		array('key' => 'name', 'label' => 'Name'),
+		array('key' => 'name', 'label' => 'Name', 'pinned' => TRUE),
+		array('key' => 'organization_name', 'label' => 'Organization'),
 		array('key' => 'brand', 'label' => 'Brand'),
 		array('key' => 'standard_number', 'label' => 'Standard Number'),
 		array('key' => 'barcode_1d', 'label' => 'Barcode'),
+		array('key' => 'barcode_1d_type', 'label' => 'Barcode Type'),
+		array('key' => 'barcode_2d', 'label' => '2D Barcode'),
+		array('key' => 'barcode_2d_type', 'label' => '2D Barcode Type'),
 		array('key' => 'package_type', 'label' => 'Package Type'),
-		array('key' => 'organization_name', 'label' => 'Organization'),
 		array('key' => 'price', 'label' => 'Price'),
 		array('key' => 'reg_date', 'label' => 'Registration Date'),
-		array('key' => 'test_status', 'label' => 'Test Status'),
 		array('key' => 'processor_name', 'label' => 'Processor'),
 	);
 	protected $detail_fields = array(
@@ -30,11 +32,21 @@ class Products extends BasicController {
 		array('name' => 'brand', 'label' => 'Brand', 'type' => 'text'),
 		array('name' => 'standard_number', 'label' => 'Standard Number', 'type' => 'text'),
 		array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text', 'readonly' => TRUE),
-		array('name' => 'package_type', 'label' => 'Package Type', 'type' => 'text'),
+		array(
+			'name'    => 'barcode_1d_type',
+			'label'   => 'Barcode Type',
+			'type'    => 'select',
+			'options' => array('EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ITF-14', 'GS1-128', 'Code 128', 'Code 39'),
+		),
 		array('name' => 'barcode_1d', 'label' => 'Barcode', 'type' => 'text'),
-		array('name' => 'barcode_1d_type', 'label' => 'Barcode Type', 'type' => 'text'),
+		array(
+			'name'    => 'barcode_2d_type',
+			'label'   => '2D Barcode Type',
+			'type'    => 'select',
+			'options' => array('QR', 'Data Matrix', 'GS1 DataMatrix', 'PDF417', 'Aztec'),
+		),
 		array('name' => 'barcode_2d', 'label' => '2D Barcode', 'type' => 'text'),
-		array('name' => 'barcode_2d_type', 'label' => '2D Barcode Type', 'type' => 'text'),
+		array('name' => 'package_type', 'label' => 'Package Type', 'type' => 'text'),
 		array('name' => 'price', 'label' => 'Price', 'type' => 'text'),
 		array('name' => 'effective_period', 'label' => 'Effective Period', 'type' => 'text'),
 		array('name' => 'reg_date', 'label' => 'Registration Date', 'type' => 'date'),
@@ -331,6 +343,83 @@ class Products extends BasicController {
 
 		$this->load->helper('download');
 		force_download($archive['filename'], $archive['binary']);
+	}
+
+	public function delete_selected()
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$this->auth->require_permission($this->permission_edit);
+		$raw_ids = $this->input->post('ids');
+
+		if ( ! is_array($raw_ids))
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('product_delete_selected_none')), 422);
+		}
+
+		$ids = array();
+
+		foreach ($raw_ids as $raw_id)
+		{
+			$id = (int) $raw_id;
+
+			if ($id > 0)
+			{
+				$ids[$id] = $id;
+			}
+		}
+
+		$ids = array_values($ids);
+
+		if (count($ids) < 2)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('product_delete_selected_none')), 422);
+		}
+
+		if (count($ids) > 100)
+		{
+			$ids = array_slice($ids, 0, 100);
+		}
+
+		$this->load->library('catalog_archieve');
+		$deleted = 0;
+		$failed = 0;
+
+		foreach ($ids as $id)
+		{
+			$result = $this->catalog_archieve->archive_product($id);
+
+			if ( ! empty($result['ok']))
+			{
+				$deleted++;
+			}
+			else
+			{
+				$failed++;
+			}
+		}
+
+		if ($deleted < 1)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_delete_failed'),
+			), 500);
+		}
+
+		$message = $failed > 0
+			? app_line('product_delete_selected_partial', $deleted, $failed)
+			: app_line('product_delete_selected_done', $deleted);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => $message,
+			'deleted' => $deleted,
+			'failed'  => $failed,
+		));
 	}
 
 	public function delete($id = NULL)

@@ -63,6 +63,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 									>
 									<button type="button" class="btn btn-outline-secondary d-none" id="organizationProductsClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
 								</div>
+								<?php if ( ! empty($detail_config['canDeleteProduct'])): ?>
+									<button type="button" class="btn btn-sm btn-danger d-none" id="organizationProductsDeleteSelectedBtn" data-mdb-ripple-init>
+										<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('product_delete_selected')); ?>
+									</button>
+								<?php endif; ?>
 								<p class="text-muted small mb-0 d-none" id="organizationProductsMeta"></p>
 							</div>
 

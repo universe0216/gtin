@@ -30,6 +30,11 @@ class Products_archieve extends Products {
 		show_404();
 	}
 
+	public function delete_selected()
+	{
+		show_404();
+	}
+
 	public function download($id = NULL)
 	{
 		show_404();

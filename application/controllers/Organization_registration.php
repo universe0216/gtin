@@ -30,7 +30,7 @@ class Organization_registration extends AuthenticatedController {
 
 		$data = array(
 			'title'      => 'Organization Registration',
-			'nav_active' => 'organizations',
+			'nav_active' => 'organization_registration',
 			'tabs'       => $tabs,
 		);
 
