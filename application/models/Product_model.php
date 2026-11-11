@@ -22,12 +22,28 @@ class Product_model extends Basic_model {
 		'barcode_1d'        => 'products.barcode_1d',
 		'barcode_1d_type'   => 'products.barcode_1d_type',
 		'barcode_2d'        => 'products.barcode_2d',
+		'barcode_2d_type'   => 'products.barcode_2d_type',
 		'package_type'      => 'products.package_type',
 		'organization_name' => 'organizations.name',
 		'processor_name'    => 'products.processor_name',
 		'price'             => 'products.price',
 		'reg_date'          => 'products.reg_date',
 		'test_date'         => 'products.test_date',
+		'test_status'       => 'products.test_status',
+	);
+	protected $filterable_columns = array(
+		'name'              => 'products.name',
+		'brand'             => 'products.brand',
+		'standard_number'   => 'products.standard_number',
+		'barcode_1d'        => 'products.barcode_1d',
+		'barcode_1d_type'   => 'products.barcode_1d_type',
+		'barcode_2d'        => 'products.barcode_2d',
+		'barcode_2d_type'   => 'products.barcode_2d_type',
+		'package_type'      => 'products.package_type',
+		'organization_name' => 'organizations.name',
+		'processor_name'    => 'products.processor_name',
+		'price'             => 'products.price',
+		'reg_date'          => 'products.reg_date',
 		'test_status'       => 'products.test_status',
 	);
 
@@ -99,7 +115,9 @@ class Product_model extends Basic_model {
 	protected function prepare_organization_products_query($organization_id)
 	{
 		$this->db
+			->select('products.*, organizations.name AS organization_name')
 			->from($this->table)
+			->join('organizations', 'organizations.id = products.org_id', 'left')
 			->where('products.org_id', (int) $organization_id);
 	}
 

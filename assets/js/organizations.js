@@ -13,9 +13,7 @@
 	const detailEnabled = !!(config.detail && config.detail.enabled);
 	const rowAction = (config.detail && config.detail.rowAction) || {};
 
-	const searchForm = document.getElementById('organizationsSearchForm');
-	const searchInput = document.getElementById('organizationsSearchInput');
-	const clearBtn = document.getElementById('organizationsClearBtn');
+	const expiryFilter = document.getElementById('organizationsExpiryFilter');
 	const locationClearBtn = document.getElementById('organizationLocationFilterClear');
 	const exportBtn = document.getElementById('organizationsExportBtn');
 	const locationNodes = (config.detail && config.detail.locationNodes) || [];
@@ -36,11 +34,93 @@
 		expiry_date: 150,
 	};
 
-	let currentSearch = '';
+	let currentExpiryStatus = '';
 	let currentLocationId = '';
+	let currentColumnFilters = {};
 
 	function hasActiveFilter() {
-		return currentSearch !== '' || currentLocationId !== '';
+		return currentExpiryStatus !== '' || currentLocationId !== '' || Object.keys(currentColumnFilters).length > 0;
+	}
+
+	function todayDateValue() {
+		const now = new Date();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+
+		return now.getFullYear() + '-' + month + '-' + day;
+	}
+
+	function normalizeExpiryDate(value) {
+		const raw = String(value == null ? '' : value).trim();
+
+		return raw.length >= 10 ? raw.slice(0, 10) : '';
+	}
+
+	function isExpiredOrganization(rowdata) {
+		const expiry = normalizeExpiryDate(rowdata && rowdata.expiry_date);
+
+		return expiry !== '' && expiry < todayDateValue();
+	}
+
+	function organizationRowClass(row, columnfield, value, rowdata) {
+		const data = rowdata || ($('#organizationsGrid').jqxGrid('getrowdata', row) || {});
+
+		if (isExpiredOrganization(data)) {
+			return 'organization-grid-row-expired';
+		}
+
+		if (columnfield === 'currency') {
+			const code = String(value == null ? '' : value);
+
+			if (code === '1') {
+				return 'organization-currency-foreign';
+			}
+
+			if (code === '2') {
+				return 'organization-currency-domestic';
+			}
+		}
+
+		return '';
+	}
+
+	function readColumnFilters() {
+		const filters = {};
+		let info = [];
+
+		try {
+			info = $('#organizationsGrid').jqxGrid('getfilterinformation') || [];
+		} catch (error) {
+			return filters;
+		}
+
+		info.forEach(function (item) {
+			const field = item && item.filtercolumn;
+			const group = item && item.filter;
+
+			if (!field || !group || typeof group.getfilters !== 'function') {
+				return;
+			}
+
+			const parts = group.getfilters() || [];
+			let value = parts.length ? String(parts[0].value == null ? '' : parts[0].value).trim() : '';
+
+			if (field === 'currency') {
+				if (value === '1' || value === t('currency_foreign')) {
+					value = '1';
+				} else if (value === '2' || value === t('currency_domestic')) {
+					value = '2';
+				} else {
+					value = '';
+				}
+			}
+
+			if (value !== '') {
+				filters[field] = value;
+			}
+		});
+
+		return filters;
 	}
 
 	function syncLocationClear() {
@@ -117,12 +197,16 @@
 			cellsalign: 'right',
 			align: 'right',
 			cellsrenderer: indexRenderer,
+			cellclassname: organizationRowClass,
 		},
 	].concat(columns.map(function (column) {
 		const gridColumn = {
 			text: column.label,
 			datafield: column.key,
 			width: columnWidths[column.key] || 160,
+			filterable: true,
+			filtertype: 'input',
+			cellclassname: organizationRowClass,
 		};
 
 		if (column.pinned) {
@@ -130,20 +214,25 @@
 		}
 
 		if (column.key === 'currency') {
-			gridColumn.cellsrenderer = currencyRenderer;
-			gridColumn.cellclassname = function (row, columnfield, value) {
-				const code = String(value == null ? '' : value);
-
-				if (code === '1') {
-					return 'organization-currency-foreign';
-				}
-
-				if (code === '2') {
-					return 'organization-currency-domestic';
-				}
-
-				return '';
+			gridColumn.filtertype = 'list';
+			gridColumn.filteritems = [
+				{ label: t('currency_foreign'), value: '1' },
+				{ label: t('currency_domestic'), value: '2' },
+			];
+			gridColumn.createfilterwidget = function (columnInfo, columnElement, widget) {
+				widget.jqxDropDownList({
+					autoDropDownHeight: true,
+					placeHolder: ' ',
+					source: [
+						{ label: t('currency_foreign'), value: '1' },
+						{ label: t('currency_domestic'), value: '2' },
+					],
+					displayMember: 'label',
+					valueMember: 'value',
+					popupZIndex: 999999,
+				});
 			};
+			gridColumn.cellsrenderer = currencyRenderer;
 		}
 
 		if (column.key === 'name' && (detailEnabled || rowAction.enabled)) {
@@ -196,18 +285,25 @@
 		selectionmode: detailEnabled ? 'singlerow' : 'none',
 		enablebrowserselection: true,
 		clipboard: false,
+		filterable: true,
+		showfilterrow: true,
 		height: gridHeight(),
 		emptyMessage: config.emptyMessage,
 		getParams: function () {
 			const params = {};
 
-			if (currentSearch) {
-				params.q = currentSearch;
+			if (currentExpiryStatus) {
+				params.expiry_status = currentExpiryStatus;
 			}
 
 			if (currentLocationId) {
 				params.location_id = currentLocationId;
 			}
+
+			currentColumnFilters = readColumnFilters();
+			Object.keys(currentColumnFilters).forEach(function (key) {
+				params['filter[' + key + ']'] = currentColumnFilters[key];
+			});
 
 			return params;
 		},
@@ -225,13 +321,18 @@
 		exportBtn.addEventListener('click', function () {
 			const params = new URLSearchParams();
 
-			if (currentSearch) {
-				params.set('q', currentSearch);
+			if (currentExpiryStatus) {
+				params.set('expiry_status', currentExpiryStatus);
 			}
 
 			if (currentLocationId) {
 				params.set('location_id', currentLocationId);
 			}
+
+			currentColumnFilters = readColumnFilters();
+			Object.keys(currentColumnFilters).forEach(function (key) {
+				params.set('filter[' + key + ']', currentColumnFilters[key]);
+			});
 
 			const sortInfo = $('#organizationsGrid').jqxGrid('getsortinformation');
 			const direction = sortInfo && sortInfo.sortdirection;
@@ -408,6 +509,25 @@
 		}
 	});
 
+	if (detailEnabled) {
+		grid.$el.on('rowdoubleclick', function (event) {
+			const target = event.originalEvent && event.originalEvent.target;
+
+			if (target && target.closest && target.closest('.entity-row-detail, .entity-row-action')) {
+				return;
+			}
+
+			const rowIndex = event.args && event.args.rowindex;
+			const row = rowIndex == null ? null : grid.$el.jqxGrid('getrowdata', rowIndex);
+
+			if (row && row.id != null) {
+				document.dispatchEvent(new CustomEvent('organizationRowSelected', {
+					detail: { id: row.id },
+				}));
+			}
+		});
+	}
+
 	grid.$el.on('click', '.entity-row-action', function (event) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -494,42 +614,9 @@
 		grid.reload();
 	}
 
-	const scheduleSearch = debounce(applySearch, 300);
-
-	if (searchForm) {
-		searchForm.addEventListener('submit', function (event) {
-			event.preventDefault();
-			currentSearch = searchInput ? searchInput.value.trim() : '';
-
-			if (clearBtn) {
-				clearBtn.classList.toggle('d-none', currentSearch === '');
-			}
-
-			applySearch();
-		});
-	}
-
-	if (searchInput) {
-		searchInput.addEventListener('input', function () {
-			currentSearch = searchInput.value.trim();
-
-			if (clearBtn) {
-				clearBtn.classList.toggle('d-none', currentSearch === '');
-			}
-
-			scheduleSearch();
-		});
-	}
-
-	if (clearBtn) {
-		clearBtn.addEventListener('click', function () {
-			currentSearch = '';
-
-			if (searchInput) {
-				searchInput.value = '';
-			}
-
-			clearBtn.classList.add('d-none');
+	if (expiryFilter) {
+		expiryFilter.addEventListener('change', function () {
+			currentExpiryStatus = expiryFilter.value || '';
 			applySearch();
 		});
 	}

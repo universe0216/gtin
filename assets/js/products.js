@@ -13,27 +13,17 @@
 	const detail = config.detail || {};
 	const detailEnabled = !!(detail.enabled && detail.detailUrl);
 
-	const searchForm = document.getElementById('productsSearchForm');
-	const searchInput = document.getElementById('productsSearchInput');
-	const clearBtn = document.getElementById('productsClearBtn');
 	const locationClearBtn = document.getElementById('productsLocationClear');
 	const exportBtn = document.getElementById('productsExportBtn');
 	const deleteSelectedBtn = document.getElementById('productsDeleteSelectedBtn');
 	const locationNodes = config.locationNodes || [];
-	const modalEl = document.getElementById('productDetailModal');
-	const modalTitle = document.getElementById('productDetailModalLabel');
-	const detailForm = document.getElementById('productDetailForm');
-	const formWrap = document.getElementById('productDetailFormWrap');
-	const loadingEl = document.getElementById('productDetailLoading');
-	const alertEl = document.getElementById('productDetailAlert');
-	const downloadBtn = document.getElementById('productDetailDownloadBtn');
-	const saveBtn = document.getElementById('productDetailSaveBtn');
-	const canEditProduct = !!(detail.canEdit && detail.updateUrl);
-	const deleteBtn = document.getElementById('productDetailDeleteBtn');
-	const restoreBtn = document.getElementById('productDetailRestoreBtn');
 	const rowAction = detail.rowAction || {};
 
 	if (typeof JqxGrid === 'undefined' || !document.getElementById('productsGrid')) {
+		return;
+	}
+
+	if (typeof window.ProductDetailModal === 'undefined') {
 		return;
 	}
 
@@ -42,21 +32,23 @@
 		brand: 150,
 		standard_number: 170,
 		barcode_1d: 170,
+		barcode_1d_type: 140,
+		barcode_2d: 170,
+		barcode_2d_type: 150,
 		package_type: 150,
 		organization_name: 200,
 		processor_name: 160,
 		price: 120,
 		reg_date: 160,
 		test_status: 140,
+		deleted_at: 160,
 	};
 
-	let currentSearch = '';
 	let currentLocationId = '';
-	let detailModal = null;
-	let detailRequest = null;
-	let currentProductId = null;
+	let currentColumnFilters = {};
 	const bulkDeleteEnabled = !!(deleteSelectedBtn && rowAction.enabled && rowAction.type === 'delete' && detail.deleteUrl);
 	const selectedIds = new Set();
+	let productDetail = null;
 
 	function gridHeight() {
 		const panel = document.querySelector('#productsPage .entity-list-panel');
@@ -121,6 +113,8 @@
 			text: column.label,
 			datafield: column.key,
 			width: columnWidths[column.key] || 160,
+			filterable: true,
+			filtertype: 'input',
 		};
 
 		if (column.pinned) {
@@ -183,6 +177,35 @@
 		});
 	}
 
+	function readColumnFilters() {
+		const filters = {};
+		let info = [];
+
+		try {
+			info = $('#productsGrid').jqxGrid('getfilterinformation') || [];
+		} catch (error) {
+			return filters;
+		}
+
+		info.forEach(function (item) {
+			const field = item && item.filtercolumn;
+			const group = item && item.filter;
+
+			if (!field || !group || typeof group.getfilters !== 'function') {
+				return;
+			}
+
+			const parts = group.getfilters() || [];
+			const value = parts.length ? String(parts[0].value == null ? '' : parts[0].value).trim() : '';
+
+			if (value !== '') {
+				filters[field] = value;
+			}
+		});
+
+		return filters;
+	}
+
 	const grid = JqxGrid.remote('#productsGrid', {
 		url: apiUrl,
 		columns: gridColumns,
@@ -192,18 +215,21 @@
 		selectionmode: bulkDeleteEnabled ? 'none' : (detailEnabled ? 'singlerow' : 'none'),
 		enablebrowserselection: true,
 		clipboard: false,
+		filterable: true,
+		showfilterrow: true,
 		height: gridHeight(),
 		emptyMessage: config.emptyMessage,
 		getParams: function () {
 			const params = {};
 
-			if (currentSearch) {
-				params.q = currentSearch;
-			}
-
 			if (currentLocationId) {
 				params.location_id = currentLocationId;
 			}
+
+			currentColumnFilters = readColumnFilters();
+			Object.keys(currentColumnFilters).forEach(function (key) {
+				params['filter[' + key + ']'] = currentColumnFilters[key];
+			});
 
 			return params;
 		},
@@ -216,17 +242,36 @@
 		return;
 	}
 
+	productDetail = window.ProductDetailModal.create(detail, {
+		onChanged: function () {
+			grid.reload();
+		},
+	});
+
+	function openDetail(productId) {
+		productDetail.open(productId);
+	}
+
+	function deleteProduct(productId) {
+		productDetail.deleteProduct(productId);
+	}
+
+	function restoreProduct(productId) {
+		productDetail.restoreProduct(productId);
+	}
+
 	if (exportBtn && config.exportUrl) {
 		exportBtn.addEventListener('click', function () {
 			const params = new URLSearchParams();
 
-			if (currentSearch) {
-				params.set('q', currentSearch);
-			}
-
 			if (currentLocationId) {
 				params.set('location_id', currentLocationId);
 			}
+
+			currentColumnFilters = readColumnFilters();
+			Object.keys(currentColumnFilters).forEach(function (key) {
+				params.set('filter[' + key + ']', currentColumnFilters[key]);
+			});
 
 			const sortInfo = $('#productsGrid').jqxGrid('getsortinformation');
 			const direction = sortInfo && sortInfo.sortdirection;
@@ -386,6 +431,23 @@
 			openDetail(id);
 		}
 	});
+
+	if (detailEnabled) {
+		grid.$el.on('rowdoubleclick', function (event) {
+			const target = event.originalEvent && event.originalEvent.target;
+
+			if (target && target.closest && target.closest('.entity-row-detail, .entity-row-action, .products-row-check, .products-row-check-all')) {
+				return;
+			}
+
+			const rowIndex = event.args && event.args.rowindex;
+			const row = rowIndex == null ? null : grid.$el.jqxGrid('getrowdata', rowIndex);
+
+			if (row && row.id != null) {
+				openDetail(row.id);
+			}
+		});
+	}
 
 	window.addEventListener('resize', function () {
 		grid.$el.jqxGrid('height', gridHeight());
@@ -588,328 +650,6 @@
 
 	mountLocationFilter();
 
-	const scheduleSearch = debounce(applySearch, 300);
-
-	if (searchForm) {
-		searchForm.addEventListener('submit', function (event) {
-			event.preventDefault();
-			currentSearch = searchInput ? searchInput.value.trim() : '';
-
-			if (clearBtn) {
-				clearBtn.classList.toggle('d-none', currentSearch === '');
-			}
-
-			applySearch();
-		});
-	}
-
-	if (searchInput) {
-		searchInput.addEventListener('input', function () {
-			currentSearch = searchInput.value.trim();
-
-			if (clearBtn) {
-				clearBtn.classList.toggle('d-none', currentSearch === '');
-			}
-
-			scheduleSearch();
-		});
-	}
-
-	if (clearBtn) {
-		clearBtn.addEventListener('click', function () {
-			currentSearch = '';
-
-			if (searchInput) {
-				searchInput.value = '';
-			}
-
-			clearBtn.classList.add('d-none');
-			applySearch();
-		});
-	}
-
-	function initModal() {
-		if (typeof mdb === 'undefined' || !modalEl) {
-			return;
-		}
-
-		detailModal = mdb.Modal.getOrCreateInstance(modalEl);
-	}
-
-	function setDetailLoading(isLoading) {
-		if (loadingEl) {
-			loadingEl.classList.toggle('d-none', !isLoading);
-		}
-
-		if (formWrap) {
-			formWrap.classList.toggle('d-none', isLoading);
-		}
-	}
-
-	function hideDetailAlert() {
-		if (!alertEl) {
-			return;
-		}
-
-		alertEl.className = 'alert d-none';
-		alertEl.textContent = '';
-	}
-
-	function showDetailAlert(message) {
-		if (!alertEl) {
-			return;
-		}
-
-		alertEl.className = 'alert alert-danger';
-		alertEl.textContent = message;
-	}
-
-	function fieldValue(data, field) {
-		const value = data[field.name];
-
-		if (value === null || value === undefined) {
-			return '';
-		}
-
-		if (field.type === 'date') {
-			const text = String(value).trim();
-			return text.length >= 10 ? text.slice(0, 10) : text;
-		}
-
-		return String(value);
-	}
-
-	function detailActionButtons() {
-		return [downloadBtn, deleteBtn, restoreBtn, saveBtn];
-	}
-
-	function setDetailActionsDisabled(isDisabled) {
-		detailActionButtons().forEach(function (button) {
-			if (button) {
-				button.disabled = isDisabled;
-			}
-		});
-	}
-
-	function setDetailSaving(isSaving) {
-		if (!saveBtn) {
-			return;
-		}
-
-		saveBtn.disabled = isSaving;
-		const spinner = saveBtn.querySelector('.spinner-border');
-
-		if (spinner) {
-			spinner.classList.toggle('d-none', !isSaving);
-		}
-	}
-
-	function renderDetailForm(data) {
-		if (!formWrap) {
-			return;
-		}
-
-		const fields = detail.fields || [];
-		let html = '<div class="entity-detail-info-grid">';
-
-		fields.forEach(function (field) {
-			const inputId = 'productDetailField_' + field.name;
-			const rawValue = fieldValue(data, field);
-			const value = escapeHtml(rawValue);
-			const locked = !canEditProduct || field.readonly;
-			const nameAttr = locked ? '' : ' name="' + escapeAttr(field.name) + '"';
-			const readOnlyAttr = locked ? ' readonly' : '';
-			let control = '';
-
-			if (field.type === 'select') {
-				const options = (field.options || []).slice();
-
-				if (rawValue && options.indexOf(rawValue) === -1) {
-					options.unshift(rawValue);
-				}
-
-				const optionHtml = options.map(function (option) {
-					const selected = option === rawValue ? ' selected' : '';
-
-					return '<option value="' + escapeAttr(option) + '"' + selected + '>' + escapeHtml(option) + '</option>';
-				}).join('');
-
-				control = '<select class="form-select form-select-sm" id="' + inputId + '"' + nameAttr + (locked ? ' disabled' : '') + '>' +
-					'<option value=""></option>' +
-					optionHtml +
-				'</select>';
-			} else if (field.type === 'textarea') {
-				control = '<textarea class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' rows="3"' + readOnlyAttr + '>' + value + '</textarea>';
-			} else {
-				const type = field.type === 'date' ? 'date' : 'text';
-				control = '<input type="' + type + '" class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' value="' + value + '"' + readOnlyAttr + '>';
-			}
-
-			html +=
-				'<div class="entity-detail-info-item">' +
-					'<label class="entity-detail-info-label" for="' + inputId + '">' + escapeHtml(field.label) + '</label>' +
-					control +
-				'</div>';
-		});
-
-		html += '</div>';
-		formWrap.innerHTML = html;
-		setDetailActionsDisabled(false);
-	}
-
-	function openDetail(productId) {
-		if (!detailEnabled || !detailModal) {
-			return;
-		}
-
-		currentProductId = productId;
-		hideDetailAlert();
-		setDetailLoading(true);
-
-		setDetailActionsDisabled(true);
-
-		if (formWrap) {
-			formWrap.innerHTML = '';
-		}
-
-		if (modalTitle) {
-			modalTitle.textContent = t('title_products');
-		}
-
-		detailModal.show();
-
-		if (detailRequest && detailRequest.abort) {
-			detailRequest.abort();
-		}
-
-		const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-		detailRequest = controller;
-
-		fetchApi(detail.detailUrl.replace(/\/$/, '') + '/' + productId, {
-			signal: controller ? controller.signal : undefined,
-		}).then(function (result) {
-			const record = result.data || {};
-			currentProductId = record.id || productId;
-
-			if (modalTitle) {
-				modalTitle.textContent = record.name || t('title_products');
-			}
-
-			renderDetailForm(record);
-			setDetailLoading(false);
-		}).catch(function (error) {
-			if (error && error.name === 'AbortError') {
-				return;
-			}
-
-			setDetailLoading(false);
-			showDetailAlert(error.message || t('common_failed_load_records'));
-		});
-	}
-
-	function downloadFileName(disposition, fallback) {
-		const header = String(disposition || '');
-		const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
-		const plain = /filename="([^"]+)"/i.exec(header);
-
-		if (encoded) {
-			try {
-				return decodeURIComponent(encoded[1]);
-			} catch (error) {
-				return encoded[1];
-			}
-		}
-
-		if (plain) {
-			return plain[1];
-		}
-
-		return fallback;
-	}
-
-	function downloadProduct(button) {
-		if (!currentProductId || !detail.downloadUrl || button.disabled) {
-			return;
-		}
-
-		button.disabled = true;
-
-		fetch(detail.downloadUrl.replace(/\/$/, '') + '/' + currentProductId, {
-			credentials: 'same-origin',
-		}).then(function (response) {
-			const type = response.headers.get('content-type') || '';
-
-			if (type.indexOf('application/json') !== -1) {
-				return response.json().then(function (data) {
-					throw new Error((data && data.message) || t('product_download_failed'));
-				});
-			}
-
-			if (!response.ok) {
-				throw new Error(t('product_download_failed'));
-			}
-
-			return response.blob().then(function (blob) {
-				return {
-					blob: blob,
-					filename: downloadFileName(response.headers.get('content-disposition'), 'product.zip'),
-				};
-			});
-		}).then(function (file) {
-			const url = URL.createObjectURL(file.blob);
-			const link = document.createElement('a');
-			link.href = url;
-			link.download = file.filename;
-			document.body.appendChild(link);
-			link.click();
-			link.remove();
-			URL.revokeObjectURL(url);
-		}).catch(function (error) {
-			showToast(error.message || t('product_download_failed'), 'error');
-		}).finally(function () {
-			button.disabled = false;
-		});
-	}
-
-	if (detailForm) {
-		detailForm.addEventListener('submit', function (event) {
-			event.preventDefault();
-
-			if (!canEditProduct || !currentProductId || !saveBtn || saveBtn.disabled) {
-				return;
-			}
-
-			hideDetailAlert();
-			setDetailSaving(true);
-
-			fetchApi(detail.updateUrl.replace(/\/$/, '') + '/' + currentProductId, {
-				method: 'POST',
-				body: new FormData(detailForm),
-			}).then(function (result) {
-				const record = result.data || {};
-				currentProductId = record.id || currentProductId;
-
-				if (modalTitle) {
-					modalTitle.textContent = record.name || t('title_products');
-				}
-
-				renderDetailForm(record);
-				grid.reload();
-				showToast(result.message || t('common_record_updated'), 'success');
-			}).catch(function (error) {
-				showDetailAlert(error.message || t('common_failed_update'));
-			}).finally(function () {
-				setDetailSaving(false);
-			});
-		});
-	}
-
-	if (downloadBtn) {
-		downloadBtn.addEventListener('click', function () {
-			downloadProduct(downloadBtn);
-		});
-	}
-
 	function deleteSelectedProducts() {
 		const ids = Array.from(selectedIds);
 
@@ -933,17 +673,13 @@
 		}).then(function () {
 			return fetchApi(url, { method: 'POST', body: body });
 		}).then(function (result) {
-			const removed = result.deleted || ids.length;
-
-			if (detailModal && selectedIds.has(String(currentProductId))) {
-				detailModal.hide();
+			if (selectedIds.has(String(productDetail.currentId()))) {
+				productDetail.hide();
 			}
 
 			clearRowSelection();
 			showToast(result.message || t('product_deleted'), 'success');
 			grid.reload();
-
-			return removed;
 		}).catch(function (error) {
 			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
 				return;
@@ -954,95 +690,4 @@
 			deleteSelectedBtn.disabled = false;
 		});
 	}
-
-	function deleteProduct(productId, productName) {
-		if (!productId || !detail.deleteUrl) {
-			return;
-		}
-
-		showConfirm({
-			title: t('common_delete'),
-			message: t('product_delete_confirm'),
-			confirmLabel: t('common_delete'),
-		}).then(function () {
-			return fetchApi(detail.deleteUrl.replace(/\/$/, '') + '/' + productId, { method: 'POST' });
-		}).then(function (result) {
-			showToast(result.message || t('product_deleted'), 'success');
-
-			if (String(currentProductId) === String(productId) && detailModal) {
-				detailModal.hide();
-			}
-
-			grid.reload();
-		}).catch(function (error) {
-			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
-				return;
-			}
-
-			showToast(error.message || t('product_delete_failed'), 'error');
-		});
-	}
-
-	function restoreProduct(productId) {
-		if (!productId || !detail.restoreUrl) {
-			return;
-		}
-
-		const previewUrl = (detail.restorePreviewUrl || (detail.rowAction && detail.rowAction.previewUrl) || '').replace(/\/$/, '');
-		const restoreUrl = detail.restoreUrl.replace(/\/$/, '') + '/' + productId;
-
-		fetchApi(previewUrl + '/' + productId).then(function (preview) {
-			const data = preview.data || {};
-			const message = data.needs_organization
-				? t('product_restore_with_org', { name: data.organization_name || '' })
-				: t('product_restore_confirm');
-
-			return showConfirm({
-				title: t('common_restore'),
-				message: message,
-				confirmLabel: t('common_restore'),
-				confirmClass: 'btn btn-success',
-			}).then(function () {
-				const body = new FormData();
-
-				if (data.needs_organization) {
-					body.append('restore_organization', '1');
-				}
-
-				return fetchApi(restoreUrl, { method: 'POST', body: body });
-			});
-		}).then(function (result) {
-			if (!result) {
-				return;
-			}
-
-			showToast(result.message || t('product_restored'), 'success');
-
-			if (String(currentProductId) === String(productId) && detailModal) {
-				detailModal.hide();
-			}
-
-			grid.reload();
-		}).catch(function (error) {
-			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
-				return;
-			}
-
-			showToast(error.message || t('product_restore_failed'), 'error');
-		});
-	}
-
-	if (deleteBtn) {
-		deleteBtn.addEventListener('click', function () {
-			deleteProduct(currentProductId);
-		});
-	}
-
-	if (restoreBtn) {
-		restoreBtn.addEventListener('click', function () {
-			restoreProduct(currentProductId);
-		});
-	}
-
-	initModal();
 })();

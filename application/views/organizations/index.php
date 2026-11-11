@@ -24,21 +24,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 		<div class="app-panel p-2 entity-list-panel">
 		<div class="entity-list-toolbar d-flex flex-wrap align-items-center gap-2 px-2 py-2 mb-2">
-			<form class="entity-list-search-form d-flex flex-wrap align-items-center gap-2 flex-grow-1" role="search" id="organizationsSearchForm">
-				<div class="input-group input-group-sm entity-list-search-input-group">
-					<span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
-					<input
-						type="search"
-						name="q"
-						class="form-control"
-						id="organizationsSearchInput"
-						placeholder="<?php echo html_escape($list_search_placeholder); ?>"
-						autocomplete="off"
-						aria-label="<?php echo html_escape(app_line('search_aria', $title)); ?>"
-					>
-					<button type="button" class="btn btn-outline-secondary d-none" id="organizationsClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
-				</div>
-			</form>
+			<div class="entity-list-search-form d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+				<select class="form-select form-select-sm organizations-expiry-filter" id="organizationsExpiryFilter" aria-label="<?php echo html_escape(app_line('org_expiry_filter')); ?>">
+					<option value=""><?php echo html_escape(app_line('org_expiry_filter_all')); ?></option>
+					<option value="expired"><?php echo html_escape(app_line('org_expiry_filter_expired')); ?></option>
+					<option value="expiring_1_month"><?php echo html_escape(app_line('org_expiry_filter_1_month')); ?></option>
+					<option value="expiring_2_months"><?php echo html_escape(app_line('org_expiry_filter_2_months')); ?></option>
+				</select>
+			</div>
 			<button type="button" class="btn btn-sm btn-primary" id="organizationsExportBtn" data-mdb-ripple-init>
 				<i class="fas fa-file-excel me-1"></i> <?php echo html_escape(app_line('common_download_excel')); ?>
 			</button>
@@ -50,6 +43,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 </div>
 
 <?php $this->load->view('organizations/detail_modal', array('detail_config' => $detail_config ?? array())); ?>
+<?php $this->load->view('products/detail_modal', array('product_detail' => ($detail_config['productDetail'] ?? array()))); ?>
 
 <script>
 	window.ORGANIZATIONS_CONFIG = <?php echo json_encode(array(

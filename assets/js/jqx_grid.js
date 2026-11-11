@@ -32,6 +32,8 @@
 		showfilterrow: false,
 		pageable: false,
 		autoheight: true,
+		enablebrowserselection: true,
+		clipboard: false,
 		localization: {
 			emptydatastring: window.t ? t('jqx_empty') : 'No records found.',
 			loadtext: window.t ? t('jqx_load') : 'Loading...',
@@ -181,6 +183,9 @@
 			// Ask the server to sort. Without this, jqxGrid only reorders the current page.
 			sort: function () {
 				$el.jqxGrid('updatebounddata', 'sort');
+			},
+			filter: function () {
+				$el.jqxGrid('updatebounddata', 'filter');
 			},
 			beforeprocessing: function (data) {
 				source.totalrecords = (data && data.total) || 0;

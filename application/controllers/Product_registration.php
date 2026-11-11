@@ -10,7 +10,7 @@ class Product_registration extends AuthenticatedController {
 	public function __construct()
 	{
 		parent::__construct();
-		$this->load->helper(array('url', 'file', 'barcode'));
+		$this->load->helper(array('url', 'file', 'barcode', 'standard_number'));
 		$this->load->model('product_registration_model');
 		$this->load->model('product_registration_item_model');
 		$this->load->library('product_registration_processor');
@@ -1211,7 +1211,10 @@ class Product_registration extends AuthenticatedController {
 
 		return array(
 			'name'              => $this->limit_text($name, 255, ''),
-			'standard_number'   => $this->limit_text($this->registration_cell($columns, $cells, array('standard')), 100),
+			'standard_number'   => $this->limit_text(
+				standard_number_normalize($this->registration_cell($columns, $cells, array('standard'))),
+				100
+			),
 			'brand'             => $this->limit_text($this->registration_cell($columns, $cells, array('brand', 'size of brand')), 255),
 			'package_type'      => $this->limit_text($this->registration_cell($columns, $cells, array('package type')), 100),
 			'org_id'            => (int) $organization['id'],
@@ -1706,11 +1709,17 @@ class Product_registration extends AuthenticatedController {
 			$this->input->get('dir'),
 			$this->product_model->get_sortable_columns_for_keys(array(
 				'name',
+				'organization_name',
 				'brand',
 				'standard_number',
 				'barcode_1d',
+				'barcode_1d_type',
+				'barcode_2d',
+				'barcode_2d_type',
 				'package_type',
+				'price',
 				'reg_date',
+				'processor_name',
 			))
 		);
 		$total = $this->product_model->count_by_organization($organization['id'], $search);

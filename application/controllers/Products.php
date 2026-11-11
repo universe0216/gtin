@@ -8,7 +8,10 @@ class Products extends BasicController {
 	protected $entity = 'products';
 	protected $entity_label = 'Products';
 	protected $list_view = 'products/index';
-	protected $list_scripts = array('assets/js/products.js');
+	protected $list_scripts = array(
+		'assets/js/product_detail_modal.js',
+		'assets/js/products.js',
+	);
 	protected $add_url_route = 'product_registration';
 	protected $list_search_placeholder = 'Search name, brand, barcode, standard number, organization...';
 	protected $list_empty_message = 'No products found.';

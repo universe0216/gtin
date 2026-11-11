@@ -9,6 +9,7 @@ class Organizations extends BasicController {
 	protected $entity_label = 'Organizations';
 	protected $list_view = 'organizations/index';
 	protected $list_scripts = array(
+		'assets/js/product_detail_modal.js',
 		'assets/js/organizations.js',
 		'assets/js/organization_detail.js',
 	);
@@ -46,14 +47,18 @@ class Organizations extends BasicController {
 		array('key' => 'location_id', 'label' => 'Location'),
 	);
 	protected $detail_product_columns = array(
-		array('key' => 'name', 'label' => 'Name'),
+		array('key' => 'name', 'label' => 'Name', 'pinned' => TRUE),
+		array('key' => 'organization_name', 'label' => 'Organization'),
 		array('key' => 'brand', 'label' => 'Brand'),
 		array('key' => 'standard_number', 'label' => 'Standard Number'),
 		array('key' => 'barcode_1d', 'label' => 'Barcode'),
+		array('key' => 'barcode_1d_type', 'label' => 'Barcode Type'),
+		array('key' => 'barcode_2d', 'label' => '2D Barcode'),
+		array('key' => 'barcode_2d_type', 'label' => '2D Barcode Type'),
 		array('key' => 'package_type', 'label' => 'Package Type'),
 		array('key' => 'price', 'label' => 'Price'),
 		array('key' => 'reg_date', 'label' => 'Registration Date'),
-		array('key' => 'test_status', 'label' => 'Test Status'),
+		array('key' => 'processor_name', 'label' => 'Processor'),
 	);
 	protected $fields = array(
 		array(
@@ -330,8 +335,34 @@ class Organizations extends BasicController {
 	{
 		$params = parent::list_query_params();
 		$params['location_ids'] = $this->location_filter_ids();
+		$params['expiry_status'] = $this->expiry_status_param();
 
 		return $params;
+	}
+
+	protected function list_filters_from_params(array $params)
+	{
+		$filters = parent::list_filters_from_params($params);
+
+		if ( ! empty($params['expiry_status']))
+		{
+			$filters['expiry_status'] = $params['expiry_status'];
+		}
+
+		return $filters;
+	}
+
+	protected function expiry_status_param()
+	{
+		$status = trim((string) $this->input->get('expiry_status'));
+		$allowed = array('expired', 'expiring_1_month', 'expiring_2_months');
+
+		if ( ! in_array($status, $allowed, TRUE))
+		{
+			return '';
+		}
+
+		return $status;
 	}
 
 	protected function location_filter_ids()
@@ -395,6 +426,7 @@ class Organizations extends BasicController {
 			'productColumns'    => $this->localize_labeled($this->detail_product_columns),
 			'productDeleteUrl'  => site_url('products/delete'),
 			'canDeleteProduct'  => $this->auth->can('product.edit'),
+			'productDetail'     => $this->get_product_detail_config(),
 			'deleteUrl'         => site_url('organizations/delete'),
 			'deletePreviewUrl'  => site_url('organizations/delete_preview'),
 			'canDelete'         => $this->auth->can($this->permission_edit),
@@ -405,6 +437,56 @@ class Organizations extends BasicController {
 			),
 			'perPage'           => $this->list_per_page,
 			'perPageOptions'    => $this->list_per_page_options,
+		);
+	}
+
+	protected function get_product_detail_config()
+	{
+		return array(
+			'enabled'     => TRUE,
+			'detailUrl'   => site_url('products/detail'),
+			'downloadUrl' => site_url('products/download'),
+			'updateUrl'   => site_url('products/update'),
+			'canEdit'     => $this->auth->can('product.edit'),
+			'deleteUrl'   => site_url('products/delete'),
+			'canDelete'   => $this->auth->can('product.edit'),
+			'fields'      => $this->localize_labeled(array(
+				array('name' => 'name', 'label' => 'Name', 'type' => 'text'),
+				array('name' => 'brand', 'label' => 'Brand', 'type' => 'text'),
+				array('name' => 'standard_number', 'label' => 'Standard Number', 'type' => 'text'),
+				array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text', 'readonly' => TRUE),
+				array(
+					'name'    => 'barcode_1d_type',
+					'label'   => 'Barcode Type',
+					'type'    => 'select',
+					'options' => array('EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ITF-14', 'GS1-128', 'Code 128', 'Code 39'),
+				),
+				array('name' => 'barcode_1d', 'label' => 'Barcode', 'type' => 'text'),
+				array(
+					'name'    => 'barcode_2d_type',
+					'label'   => '2D Barcode Type',
+					'type'    => 'select',
+					'options' => array('QR', 'Data Matrix', 'GS1 DataMatrix', 'PDF417', 'Aztec'),
+				),
+				array('name' => 'barcode_2d', 'label' => '2D Barcode', 'type' => 'text'),
+				array('name' => 'package_type', 'label' => 'Package Type', 'type' => 'text'),
+				array('name' => 'price', 'label' => 'Price', 'type' => 'text'),
+				array('name' => 'effective_period', 'label' => 'Effective Period', 'type' => 'text'),
+				array('name' => 'reg_date', 'label' => 'Registration Date', 'type' => 'date'),
+				array('name' => 'test_date', 'label' => 'Test Date', 'type' => 'date'),
+				array('name' => 'test_status', 'label' => 'Test Status', 'type' => 'text'),
+				array('name' => 'processor_name', 'label' => 'Processor', 'type' => 'text'),
+				array('name' => 'c_code', 'label' => 'Country Code', 'type' => 'text'),
+				array('name' => 'global_id', 'label' => 'Global ID', 'type' => 'text'),
+				array('name' => 'effect', 'label' => 'Effect', 'type' => 'textarea'),
+				array('name' => 'usage', 'label' => 'Usage', 'type' => 'textarea'),
+				array('name' => 'description', 'label' => 'Description', 'type' => 'textarea'),
+			)),
+			'rowAction'   => array(
+				'type'    => 'delete',
+				'url'     => site_url('products/delete'),
+				'enabled' => $this->auth->can('product.edit'),
+			),
 		);
 	}
 

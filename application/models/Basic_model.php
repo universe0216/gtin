@@ -7,6 +7,7 @@ class Basic_model extends CI_Model {
 	protected $primary_key = 'id';
 	protected $searchable_columns = array();
 	protected $sortable_columns = array();
+	protected $filterable_columns = array();
 
 	public function get_all()
 	{
@@ -29,6 +30,7 @@ class Basic_model extends CI_Model {
 		$this->prepare_list_query();
 		$this->apply_search_filters($search);
 		$this->apply_list_filters($filters);
+		$this->apply_column_filters($filters);
 
 		return (int) $this->db->count_all_results();
 	}
@@ -38,6 +40,7 @@ class Basic_model extends CI_Model {
 		$this->prepare_list_query();
 		$this->apply_search_filters($search);
 		$this->apply_list_filters($filters);
+		$this->apply_column_filters($filters);
 		$this->apply_list_order($sort);
 
 		return $this->db
@@ -56,9 +59,15 @@ class Basic_model extends CI_Model {
 		$this->prepare_list_query();
 		$this->apply_search_filters($search);
 		$this->apply_list_filters($filters);
+		$this->apply_column_filters($filters);
 		$this->apply_list_order($sort);
 
 		return $this->db->get()->result_array();
+	}
+
+	public function get_filterable_columns()
+	{
+		return $this->filterable_columns;
 	}
 
 	public function get_sortable_columns()
@@ -141,6 +150,29 @@ class Basic_model extends CI_Model {
 
 	protected function apply_list_filters(array $filters)
 	{
+	}
+
+	protected function apply_column_filters(array $filters)
+	{
+		$columns = $filters['columns'] ?? array();
+
+		if ( ! is_array($columns) || empty($this->filterable_columns))
+		{
+			return;
+		}
+
+		foreach ($columns as $key => $value)
+		{
+			$key = trim((string) $key);
+			$value = trim((string) $value);
+
+			if ($key === '' || $value === '' || ! isset($this->filterable_columns[$key]))
+			{
+				continue;
+			}
+
+			$this->db->like($this->filterable_columns[$key], $value);
+		}
 	}
 
 	protected function apply_search_filters($search)

@@ -23,12 +23,29 @@ class Product_archieve_model extends Product_model {
 		'barcode_1d'        => 'products_archieve.barcode_1d',
 		'barcode_1d_type'   => 'products_archieve.barcode_1d_type',
 		'barcode_2d'        => 'products_archieve.barcode_2d',
+		'barcode_2d_type'   => 'products_archieve.barcode_2d_type',
 		'package_type'      => 'products_archieve.package_type',
 		'organization_name' => 'COALESCE(organizations.name, archived_org.name)',
 		'processor_name'    => 'products_archieve.processor_name',
 		'price'             => 'products_archieve.price',
 		'reg_date'          => 'products_archieve.reg_date',
 		'test_date'         => 'products_archieve.test_date',
+		'test_status'       => 'products_archieve.test_status',
+		'deleted_at'        => 'products_archieve.deleted_at',
+	);
+	protected $filterable_columns = array(
+		'name'              => 'products_archieve.name',
+		'brand'             => 'products_archieve.brand',
+		'standard_number'   => 'products_archieve.standard_number',
+		'barcode_1d'        => 'products_archieve.barcode_1d',
+		'barcode_1d_type'   => 'products_archieve.barcode_1d_type',
+		'barcode_2d'        => 'products_archieve.barcode_2d',
+		'barcode_2d_type'   => 'products_archieve.barcode_2d_type',
+		'package_type'      => 'products_archieve.package_type',
+		'organization_name' => 'COALESCE(organizations.name, archived_org.name)',
+		'processor_name'    => 'products_archieve.processor_name',
+		'price'             => 'products_archieve.price',
+		'reg_date'          => 'products_archieve.reg_date',
 		'test_status'       => 'products_archieve.test_status',
 		'deleted_at'        => 'products_archieve.deleted_at',
 	);
@@ -67,6 +84,35 @@ class Product_archieve_model extends Product_model {
 			NULL,
 			FALSE
 		);
+	}
+
+	protected function apply_column_filters(array $filters)
+	{
+		$columns = $filters['columns'] ?? array();
+
+		if ( ! is_array($columns) || empty($this->filterable_columns))
+		{
+			return;
+		}
+
+		foreach ($columns as $key => $value)
+		{
+			$key = trim((string) $key);
+			$value = trim((string) $value);
+
+			if ($key === '' || $value === '' || ! isset($this->filterable_columns[$key]))
+			{
+				continue;
+			}
+
+			if ($key === 'organization_name')
+			{
+				$this->db->like('COALESCE(organizations.name, archived_org.name)', $value, 'both', FALSE);
+				continue;
+			}
+
+			$this->db->like($this->filterable_columns[$key], $value);
+		}
 	}
 
 	protected function apply_list_order($sort)

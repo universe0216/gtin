@@ -267,12 +267,7 @@ class BasicController extends AuthenticatedController {
 		}
 
 		$params = $this->list_query_params();
-		$filters = array();
-
-		if ( ! empty($params['location_ids']) && is_array($params['location_ids']))
-		{
-			$filters['location_ids'] = $params['location_ids'];
-		}
+		$filters = $this->list_filters_from_params($params);
 
 		$total = $this->model->count_filtered($params['search'], $filters);
 		$offset = ($params['page'] - 1) * $params['per_page'];
@@ -305,11 +300,66 @@ class BasicController extends AuthenticatedController {
 		}
 
 		return array(
-			'page'     => $page,
-			'per_page' => $per_page,
-			'search'   => trim((string) $this->input->get('q')),
-			'sort'     => $this->resolve_list_sort(),
+			'page'           => $page,
+			'per_page'       => $per_page,
+			'search'         => trim((string) $this->input->get('q')),
+			'sort'           => $this->resolve_list_sort(),
+			'column_filters' => $this->column_filter_params(),
 		);
+	}
+
+	protected function list_filters_from_params(array $params)
+	{
+		$filters = array();
+
+		if ( ! empty($params['location_ids']) && is_array($params['location_ids']))
+		{
+			$filters['location_ids'] = $params['location_ids'];
+		}
+
+		if ( ! empty($params['column_filters']) && is_array($params['column_filters']))
+		{
+			$filters['columns'] = $params['column_filters'];
+		}
+
+		return $filters;
+	}
+
+	protected function column_filter_params()
+	{
+		if ( ! $this->model || ! method_exists($this->model, 'get_filterable_columns'))
+		{
+			return array();
+		}
+
+		$map = $this->model->get_filterable_columns();
+		$raw = $this->input->get('filter');
+		$filters = array();
+
+		if ( ! is_array($raw) || empty($map))
+		{
+			return $filters;
+		}
+
+		foreach ($raw as $key => $value)
+		{
+			$key = trim((string) $key);
+			$value = trim((string) $value);
+
+			if ($key === '' || $value === '' || ! isset($map[$key]))
+			{
+				continue;
+			}
+
+			if (mb_strlen($value) > 255)
+			{
+				$value = mb_substr($value, 0, 255);
+			}
+
+			$filters[$key] = $value;
+		}
+
+		return $filters;
 	}
 
 	protected function resolve_list_sort()
@@ -479,12 +529,7 @@ class BasicController extends AuthenticatedController {
 		}
 
 		$params = $this->list_query_params();
-		$filters = array();
-
-		if ( ! empty($params['location_ids']) && is_array($params['location_ids']))
-		{
-			$filters['location_ids'] = $params['location_ids'];
-		}
+		$filters = $this->list_filters_from_params($params);
 
 		$records = $this->model->get_filtered($params['search'], $params['sort'], $filters);
 		$columns = $this->export_columns();

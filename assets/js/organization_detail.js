@@ -46,6 +46,8 @@
 	const productsMeta = document.getElementById('organizationProductsMeta');
 	const bulkDeleteProducts = !!(canDeleteProduct && productsDeleteSelectedBtn && productDeleteUrl);
 	const selectedProductIds = new Set();
+	const productDetailConfig = detailConfig.productDetail || null;
+	const productDetailEnabled = !!(productDetailConfig && productDetailConfig.enabled && productDetailConfig.detailUrl && window.ProductDetailModal);
 
 	let modal;
 	let detailRequest = null;
@@ -53,6 +55,7 @@
 	let productDeleteRequest = null;
 	let productsLoaded = false;
 	let productsGrid = null;
+	let productDetail = null;
 
 	const detailState = {
 		organizationId: null,
@@ -89,6 +92,32 @@
 		}
 
 		return raw.length >= 10 ? raw.slice(0, 10) : raw;
+	}
+
+	function padDatePart(value) {
+		return String(value).padStart(2, '0');
+	}
+
+	function todayDateValue() {
+		const now = new Date();
+
+		return now.getFullYear() + '-' + padDatePart(now.getMonth() + 1) + '-' + padDatePart(now.getDate());
+	}
+
+	function addYearsToDate(value, years) {
+		const base = normalizeDateValue(value) || todayDateValue();
+		const parts = base.split('-').map(function (part) {
+			return parseInt(part, 10);
+		});
+
+		if (parts.length < 3 || parts.some(function (part) { return Number.isNaN(part); })) {
+			return todayDateValue();
+		}
+
+		const date = new Date(parts[0], parts[1] - 1, parts[2]);
+		date.setFullYear(date.getFullYear() + years);
+
+		return date.getFullYear() + '-' + padDatePart(date.getMonth() + 1) + '-' + padDatePart(date.getDate());
 	}
 
 	function getInfoAlert() {
@@ -406,22 +435,25 @@
 
 	function setInfoUpdateLoading(isLoading) {
 		const updateBtn = document.getElementById('organizationDetailUpdateBtn');
+		const extendButtons = document.querySelectorAll('.organization-detail-extend-btn');
 
-		if (!updateBtn) {
-			return;
+		if (updateBtn) {
+			updateBtn.disabled = isLoading;
+			const spinner = updateBtn.querySelector('.organization-detail-update-spinner');
+			const label = updateBtn.querySelector('.organization-detail-update-label');
+
+			if (spinner) {
+				spinner.classList.toggle('d-none', !isLoading);
+			}
+
+			if (label) {
+				label.textContent = isLoading ? t('common_updating') : t('common_update');
+			}
 		}
 
-		updateBtn.disabled = isLoading;
-		const spinner = updateBtn.querySelector('.organization-detail-update-spinner');
-		const label = updateBtn.querySelector('.organization-detail-update-label');
-
-		if (spinner) {
-			spinner.classList.toggle('d-none', !isLoading);
-		}
-
-		if (label) {
-			label.textContent = isLoading ? t('common_updating') : t('common_update');
-		}
+		extendButtons.forEach(function (button) {
+			button.disabled = isLoading;
+		});
 	}
 
 	function renderInfoFields(data) {
@@ -437,10 +469,6 @@
 		if (canEdit && updateUrl && editableFields.length) {
 			html += '<form id="organizationDetailInfoForm" class="entity-detail-info-form">';
 
-			if (readOnlyFields.length) {
-				html += renderReadOnlyItems(readOnlyFields, data, 'entity-detail-info-grid entity-detail-info-readonly-grid');
-			}
-
 			html += '<div class="entity-detail-info-grid">';
 
 			editableFields.forEach(function (field) {
@@ -450,8 +478,16 @@
 			html += '</div>';
 			html += '<div class="entity-detail-info-actions mt-4">';
 			html +=
+				'<button type="button" class="btn btn-outline-primary btn-sm organization-detail-extend-btn" data-years="2" id="organizationDetailExtend2Btn" data-mdb-ripple-init>' +
+					escapeHtml(t('org_extend_2_years')) +
+				'</button>';
+			html +=
+				'<button type="button" class="btn btn-outline-primary btn-sm organization-detail-extend-btn" data-years="1" id="organizationDetailExtend1Btn" data-mdb-ripple-init>' +
+					escapeHtml(t('org_extend_1_year')) +
+				'</button>';
+			html +=
 				'<button type="submit" class="btn btn-primary btn-sm" id="organizationDetailUpdateBtn" data-mdb-ripple-init>' +
-					'<span class="organization-detail-update-label">Update</span>' +
+					'<span class="organization-detail-update-label">' + escapeHtml(t('common_update')) + '</span>' +
 					'<span class="organization-detail-update-spinner spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>' +
 				'</button>';
 			html += '</div>';
@@ -466,21 +502,25 @@
 
 		if (form) {
 			form.addEventListener('submit', submitInfoUpdate);
+			form.querySelectorAll('.organization-detail-extend-btn').forEach(function (button) {
+				button.addEventListener('click', function () {
+					const years = parseInt(button.getAttribute('data-years'), 10) || 0;
+					extendOrganization(years);
+				});
+			});
 			mountLocationPicker();
 		}
 	}
 
-	function submitInfoUpdate(event) {
-		event.preventDefault();
-
+	function saveInfoForm() {
 		if (!canEdit || !updateUrl || !detailState.organizationId) {
-			return;
+			return Promise.reject(new Error(t('org_update_failed')));
 		}
 
 		const form = document.getElementById('organizationDetailInfoForm');
 
 		if (!form) {
-			return;
+			return Promise.reject(new Error(t('org_update_failed')));
 		}
 
 		hideInfoAlert();
@@ -488,7 +528,7 @@
 
 		updateRequest = createAbortableRequest(updateRequest);
 
-		fetchApi(updateUrl + '/' + detailState.organizationId, {
+		return fetchApi(updateUrl + '/' + detailState.organizationId, {
 			method: 'POST',
 			body: new FormData(form),
 			signal: updateRequest.signal,
@@ -505,22 +545,68 @@
 				showToast(result.message || t('org_updated'), 'success');
 				document.dispatchEvent(new CustomEvent('organizationsListRefresh'));
 
-				// Refresh products in case the rename affected them.
 				if (productsGrid) {
 					productsGrid.reload();
 				}
-			})
-			.catch(function (error) {
-				if (isAbortError(error)) {
-					return;
-				}
 
-				showInfoAlert(error.message || t('org_update_failed'), 'error');
+				return result;
 			})
 			.finally(function () {
 				setInfoUpdateLoading(false);
 				updateRequest = null;
 			});
+	}
+
+	function submitInfoUpdate(event) {
+		event.preventDefault();
+
+		saveInfoForm().catch(function (error) {
+			if (isAbortError(error)) {
+				return;
+			}
+
+			showInfoAlert(error.message || t('org_update_failed'), 'error');
+		});
+	}
+
+	function extendOrganization(years) {
+		if (!canEdit || !updateUrl || !detailState.organizationId || (years !== 1 && years !== 2)) {
+			return;
+		}
+
+		const form = document.getElementById('organizationDetailInfoForm');
+		const regDateInput = document.getElementById('organizationDetailField_reg_date');
+		const expiryDateInput = document.getElementById('organizationDetailField_expiry_date');
+
+		if (!form || !regDateInput || !expiryDateInput) {
+			showInfoAlert(t('org_extend_failed'), 'error');
+			return;
+		}
+
+		const confirmMessage = years === 2 ? t('org_extend_confirm_2') : t('org_extend_confirm_1');
+		const confirmLabel = years === 2 ? t('org_extend_2_years') : t('org_extend_1_year');
+
+		showConfirm({
+			title: confirmLabel,
+			message: confirmMessage,
+			confirmLabel: confirmLabel,
+			confirmClass: 'btn btn-primary',
+		}).then(function () {
+			regDateInput.value = todayDateValue();
+			expiryDateInput.value = addYearsToDate(expiryDateInput.value, years);
+
+			return saveInfoForm();
+		}).catch(function (error) {
+			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
+				return;
+			}
+
+			if (isAbortError(error)) {
+				return;
+			}
+
+			showInfoAlert(error.message || t('org_extend_failed'), 'error');
+		});
 	}
 
 	// ------------------------------------------------------------- Products grid
@@ -560,13 +646,17 @@
 
 	const productColumnWidths = {
 		name: 220,
+		organization_name: 200,
 		brand: 150,
 		standard_number: 170,
 		barcode_1d: 170,
+		barcode_1d_type: 140,
+		barcode_2d: 170,
+		barcode_2d_type: 150,
 		package_type: 150,
 		price: 120,
 		reg_date: 160,
-		test_status: 140,
+		processor_name: 160,
 	};
 
 	function productIndexRenderer(row) {
@@ -637,11 +727,17 @@
 		}
 
 		productColumns.forEach(function (column) {
-			columns.push({
+			const gridColumn = {
 				text: column.label,
 				datafield: column.key,
 				width: productColumnWidths[column.key] || 160,
-			});
+			};
+
+			if (column.pinned) {
+				gridColumn.pinned = true;
+			}
+
+			columns.push(gridColumn);
 		});
 
 		if (canDeleteProduct) {
@@ -716,6 +812,33 @@
 				event.stopPropagation();
 				restoreArchivedProduct($(this).attr('data-product-id'));
 			});
+
+			if (productDetailEnabled) {
+				if (!productDetail) {
+					productDetail = window.ProductDetailModal.create(productDetailConfig, {
+						onChanged: function () {
+							if (productsGrid) {
+								productsGrid.reload();
+							}
+						},
+					});
+				}
+
+				productsGrid.$el.on('rowdoubleclick', function (event) {
+					const target = event.originalEvent && event.originalEvent.target;
+
+					if (target && target.closest && target.closest('.organization-product-delete-btn, .organization-product-restore-btn, .products-row-check, .products-row-check-all')) {
+						return;
+					}
+
+					const rowIndex = event.args && event.args.rowindex;
+					const row = rowIndex == null ? null : productsGrid.$el.jqxGrid('getrowdata', rowIndex);
+
+					if (row && row.id != null) {
+						productDetail.open(row.id);
+					}
+				});
+			}
 		}
 
 		if (bulkDeleteProducts && productsGrid) {
@@ -829,6 +952,10 @@
 		if (updateRequest) {
 			updateRequest.abort();
 			updateRequest = null;
+		}
+
+		if (productDetail) {
+			productDetail.hide();
 		}
 
 		detailState.organizationId = null;
@@ -954,6 +1081,10 @@
 		}).then(function () {
 			return fetchApi(url, { method: 'POST', body: body });
 		}).then(function (result) {
+			if (productDetail && selectedProductIds.has(String(productDetail.currentId()))) {
+				productDetail.hide();
+			}
+
 			clearProductSelection();
 			showToast(result.message || t('org_product_deleted'), 'success');
 
@@ -1010,6 +1141,10 @@
 			})
 			.then(function (result) {
 				showToast(result.message || t('org_product_deleted'), 'success');
+
+				if (productDetail && String(productDetail.currentId()) === String(productId)) {
+					productDetail.hide();
+				}
 
 				if (productsGrid) {
 					productsGrid.reload();
