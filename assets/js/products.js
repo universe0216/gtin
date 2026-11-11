@@ -16,6 +16,7 @@
 	const locationClearBtn = document.getElementById('productsLocationClear');
 	const exportBtn = document.getElementById('productsExportBtn');
 	const deleteSelectedBtn = document.getElementById('productsDeleteSelectedBtn');
+	const generateKeyBtn = document.getElementById('productsGenerateKeyBtn');
 	const locationNodes = config.locationNodes || [];
 	const rowAction = detail.rowAction || {};
 
@@ -283,6 +284,35 @@
 
 			const query = params.toString();
 			window.location.href = config.exportUrl + (query ? '?' + query : '');
+		});
+	}
+
+	if (generateKeyBtn && config.generateKeyUrl) {
+		generateKeyBtn.addEventListener('click', function () {
+			showConfirm({
+				title: t('product_generate_key'),
+				message: t('product_generate_key_confirm'),
+				confirmLabel: t('product_generate_key'),
+			}).then(function () {
+				generateKeyBtn.disabled = true;
+
+				return fetchApi(config.generateKeyUrl, { method: 'POST' });
+			}).then(function (result) {
+				if (!result) {
+					return;
+				}
+
+				showToast(result.message || t('product_generate_key_done'), 'success');
+				grid.reload();
+			}).catch(function (error) {
+				if (window.isConfirmCancelled && isConfirmCancelled(error)) {
+					return;
+				}
+
+				showToast(error.message || t('product_generate_key_failed'), 'error');
+			}).finally(function () {
+				generateKeyBtn.disabled = false;
+			});
 		});
 	}
 

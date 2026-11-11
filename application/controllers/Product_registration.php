@@ -1499,9 +1499,14 @@ class Product_registration extends AuthenticatedController {
 		if ( ! array_key_exists($factory_name, $catalog_cache))
 		{
 			$organization = $this->organization_model->get_by_name($factory_name);
-			$catalog_cache[$factory_name] = $organization
-				? $this->product_model->list_similarity_fields($organization['id'])
-				: array();
+			$catalog_cache[$factory_name] = $organization ? (int) $organization['id'] : 0;
+		}
+
+		$organization_id = (int) $catalog_cache[$factory_name];
+
+		if ($organization_id < 1)
+		{
+			return NULL;
 		}
 
 		$name = $this->registration_cell($columns, $cells, array('product name'));
@@ -1518,15 +1523,9 @@ class Product_registration extends AuthenticatedController {
 			'package_type'    => $this->registration_cell($columns, $cells, array('package type')),
 		);
 
-		foreach ($catalog_cache[$factory_name] as $product)
-		{
-			if ($this->product_similarity->is_similar($incoming, $product))
-			{
-				return $product;
-			}
-		}
+		$normalized_key = $this->product_similarity->normalized_key($incoming);
 
-		return NULL;
+		return $this->product_model->find_by_organization_normalized_key($organization_id, $normalized_key);
 	}
 
 	protected function mark_registration_processing($registration, $extra = array())
@@ -1685,13 +1684,24 @@ class Product_registration extends AuthenticatedController {
 		$per_page = (int) $this->input->get('per_page');
 		$page = max(1, (int) $this->input->get('page'));
 		$search = trim((string) $this->input->get('q'));
+		$mode = strtolower(trim((string) $this->input->get('mode')));
+		$similar_mode = ($mode === 'similar');
+		$incoming = $this->organization_products_incoming();
+		$normalized_key = '';
+
+		if ($similar_mode)
+		{
+			$this->load->library('product_similarity');
+			$normalized_key = $this->product_similarity->normalized_key($incoming);
+			$search = '';
+		}
 
 		if ( ! in_array($per_page, array(10, 20, 50), TRUE))
 		{
 			$per_page = 10;
 		}
 
-		if ( ! $organization)
+		if ( ! $organization || ($similar_mode && ($normalized_key === '' || $normalized_key === '___')))
 		{
 			return $this->json_response(array(
 				'success'     => TRUE,
@@ -1701,6 +1711,7 @@ class Product_registration extends AuthenticatedController {
 				'per_page'    => $per_page,
 				'range_start' => 0,
 				'range_end'   => 0,
+				'mode'        => $similar_mode ? 'similar' : 'search',
 			));
 		}
 
@@ -1722,7 +1733,7 @@ class Product_registration extends AuthenticatedController {
 				'processor_name',
 			))
 		);
-		$total = $this->product_model->count_by_organization($organization['id'], $search);
+		$total = $this->product_model->count_by_organization($organization['id'], $search, $normalized_key);
 		$total_pages = max(1, (int) ceil($total / $per_page));
 		$page = min($page, $total_pages);
 		$offset = ($page - 1) * $per_page;
@@ -1731,8 +1742,21 @@ class Product_registration extends AuthenticatedController {
 			$per_page,
 			$offset,
 			$search,
-			$sort
+			$sort,
+			$normalized_key
 		);
+
+		if ($similar_mode)
+		{
+			$this->load->library('product_similarity');
+
+			foreach ($records as &$record)
+			{
+				$score = $this->product_similarity->score($incoming, $record);
+				$record['similarity_rate'] = (int) round(((float) ($score['score'] ?? 0)) * 100);
+			}
+			unset($record);
+		}
 
 		return $this->json_response(array(
 			'success'     => TRUE,
@@ -1744,7 +1768,18 @@ class Product_registration extends AuthenticatedController {
 			'range_end'   => min($offset + count($records), $total),
 			'sort'        => $sort['key'] ?? '',
 			'sort_dir'    => $sort['direction'] ?? '',
+			'mode'        => $similar_mode ? 'similar' : 'search',
 		));
+	}
+
+	protected function organization_products_incoming()
+	{
+		return array(
+			'name'            => trim((string) $this->input->get('name')),
+			'standard_number' => trim((string) $this->input->get('standard_number')),
+			'brand'           => trim((string) $this->input->get('brand')),
+			'package_type'    => trim((string) $this->input->get('package_type')),
+		);
 	}
 
 	protected function json_response($payload, $status = 200)

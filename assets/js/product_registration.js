@@ -71,8 +71,10 @@
 	const productDetailPrevBtn = document.getElementById('procedureDetailPrevBtn');
 	const productDetailNextBtn = document.getElementById('procedureDetailNextBtn');
 	const procedureBarcodeInput = document.getElementById('procedureBarcodeInput');
+	const procedureBarcode2dInput = document.getElementById('procedureBarcode2dInput');
 	const assignableBarcodeEl = document.getElementById('assignable_barcode');
 	const procedureBarcodeFullValue = document.getElementById('procedureBarcodeFullValue');
+	const procedureBarcode2dMeta = document.getElementById('procedureBarcode2dMeta');
 	const procedureBarcodeSvg = document.getElementById('procedureBarcodeSvg');
 	const procedureBarcodeEmpty = document.getElementById('procedureBarcodeEmpty');
 	const procedureQrCode = document.getElementById('procedureQrCode');
@@ -88,6 +90,8 @@
 	const productDetailResetBtn = document.getElementById('procedureDetailResetBtn');
 	const similarSearchInput = document.getElementById('procedureSimilarSearch');
 	const similarClearBtn = document.getElementById('procedureSimilarClearBtn');
+	const similarSearchBtn = document.getElementById('procedureSimilarSearchBtn');
+	const similarFindBtn = document.getElementById('procedureSimilarFindBtn');
 	const similarOrgLabel = document.getElementById('procedureSimilarOrg');
 
 	let importModal;
@@ -96,6 +100,7 @@
 	let importGrid = null;
 	let similarGrid = null;
 	let similarQuery = '';
+	let similarMode = 'similar';
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
 	let barcodeTypingTimer = null;
@@ -583,11 +588,7 @@
 		renderDetailImages(payload.image_urls || []);
 		renderDetailInfo(payload);
 
-		if (procedureBarcodeInput) {
-			const barcodeValue = (barcodeFieldInput('barcode_1d') || { value: '' }).value;
-			procedureBarcodeInput.value = barcodeValue;
-			renderBarcodePreview(barcodeValue);
-		}
+		syncBarcodeTabFromFields();
 
 		updateAssignableBarcodeDisplay();
 		updateDetailNavButtons();
@@ -902,8 +903,13 @@
 
 		if (procedureBarcodeInput) {
 			procedureBarcodeInput.value = '';
-			renderBarcodePreview('');
 		}
+
+		if (procedureBarcode2dInput) {
+			procedureBarcode2dInput.value = '';
+		}
+
+		renderBarcodePreviews();
 	}
 
 	function resetProduct() {
@@ -1025,7 +1031,7 @@
 				const previewValue = assignable && assignable.barcode ? assignable.barcode : '';
 
 				typeBarcodeIntoInput(previewValue, function () {
-					setTimeout(advanceToNextRowAfterReview, 2000);
+					setTimeout(advanceToNextRowAfterReview, 500);
 				});
 
 				showToast(result.message, 'success');
@@ -1216,6 +1222,15 @@
 		return row && row.name ? String(row.name).trim() : '';
 	}
 
+	function selectedSimilarSearchFields() {
+		return {
+			name: selectedProductName(),
+			standard_number: selectedCell(['standard']),
+			brand: selectedCell(['brand', 'size of brand']),
+			package_type: selectedCell(['package type']),
+		};
+	}
+
 	function selectedFactoryName() {
 		const factory = selectedCell(['factory name'], 22);
 
@@ -1270,6 +1285,15 @@
 		similarClearBtn.classList.toggle('d-none', similarSearchInput.value.trim() === '');
 	}
 
+	function similarRateRenderer(row, column, value) {
+		const rate = value != null && value !== '' ? Number(value) : null;
+		const label = rate != null && !Number.isNaN(rate) ? Math.round(rate) + '%' : '';
+
+		return '<div class="jqx-grid-cell-right-align procedure-similar-rate" style="margin-top:6px;">' +
+			escapeHtml(label) +
+			'</div>';
+	}
+
 	function ensureSimilarGrid() {
 		if (typeof JqxGrid === 'undefined' || !document.getElementById('procedureSimilarGrid')) {
 			return;
@@ -1288,6 +1312,7 @@
 					{ name: 'id', type: 'number' },
 					{ name: '__rownum', type: 'number' },
 					{ name: 'name', type: 'string' },
+					{ name: 'similarity_rate', type: 'number' },
 					{ name: 'organization_name', type: 'string' },
 					{ name: 'brand', type: 'string' },
 					{ name: 'standard_number', type: 'string' },
@@ -1314,6 +1339,17 @@
 					},
 					{ text: t('col_name'), datafield: 'name', width: 220, pinned: true },
 					{
+						text: t('col_similarity'),
+						datafield: 'similarity_rate',
+						width: 100,
+						pinned: true,
+						sortable: false,
+						filterable: false,
+						cellsalign: 'right',
+						align: 'right',
+						cellsrenderer: similarRateRenderer,
+					},
+					{
 						text: t('reg_reuse'),
 						datafield: 'id',
 						width: 110,
@@ -1335,10 +1371,35 @@
 					{ text: t('col_processor_name'), datafield: 'processor_name', width: 160 },
 				],
 				getParams: function () {
-					const params = { organization: selectedFactoryName() };
+					const params = {
+						organization: selectedFactoryName(),
+						mode: similarMode,
+					};
 
-					if (similarQuery) {
-						params.q = similarQuery;
+					if (similarMode === 'search') {
+						if (similarQuery) {
+							params.q = similarQuery;
+						}
+
+						return params;
+					}
+
+					const fields = selectedSimilarSearchFields();
+
+					if (fields.name) {
+						params.name = fields.name;
+					}
+
+					if (fields.standard_number) {
+						params.standard_number = fields.standard_number;
+					}
+
+					if (fields.brand) {
+						params.brand = fields.brand;
+					}
+
+					if (fields.package_type) {
+						params.package_type = fields.package_type;
 					}
 
 					return params;
@@ -1436,6 +1497,10 @@
 	}
 
 	function similarEmptyMessage() {
+		if (similarMode === 'similar') {
+			return t('reg_no_similar');
+		}
+
 		return similarQuery ? t('reg_no_similar') : t('org_products_empty');
 	}
 
@@ -1449,6 +1514,10 @@
 
 	function reloadSimilarGrid() {
 		if (!similarGrid) {
+			ensureSimilarGrid();
+		}
+
+		if (!similarGrid) {
 			return;
 		}
 
@@ -1457,16 +1526,28 @@
 		similarGrid.reload();
 	}
 
-	function refreshSimilarSearch() {
-		similarQuery = selectedProductName();
+	function findSimilarProducts() {
+		similarMode = 'similar';
+		similarQuery = '';
+		updateSimilarOrgLabel();
+		reloadSimilarGrid();
+	}
 
-		if (similarSearchInput) {
-			similarSearchInput.value = similarQuery;
-		}
-
+	function runSimilarNameSearch() {
+		similarMode = 'search';
+		similarQuery = similarSearchInput ? similarSearchInput.value.trim() : '';
 		toggleSimilarClear();
 		updateSimilarOrgLabel();
 		reloadSimilarGrid();
+	}
+
+	function refreshSimilarSearch() {
+		if (similarSearchInput) {
+			similarSearchInput.value = selectedProductName();
+		}
+
+		toggleSimilarClear();
+		findSimilarProducts();
 	}
 
 	// ------------------------------------------------------------- modal header
@@ -1519,7 +1600,9 @@
 			return;
 		}
 
-		renderModalHeader(buildRowPayload(tab, row, rowIndex));
+		const payload = buildRowPayload(tab, row, rowIndex);
+		renderModalHeader(payload);
+		syncRejectionReasonBlock(payload);
 	}
 
 	function renderModalHeader(payload) {
@@ -1543,22 +1626,54 @@
 			return;
 		}
 
-		const itemStatus = payload ? normalizeItemStatus(payload.item_status || 'pending') : '';
-		const reason = itemStatus === 'rejected' ? String(payload.rejection_reason || '').trim() : '';
-
 		productDetailReason.textContent = '';
+		productDetailReason.hidden = true;
+	}
+
+	function rejectionReasonText(payload) {
+		const itemStatus = normalizeItemStatus(payload.item_status || 'pending');
+		return itemStatus === 'rejected' ? String(payload.rejection_reason || '').trim() : '';
+	}
+
+	function renderRejectionReasonBlock(payload) {
+		const reason = rejectionReasonText(payload);
 
 		if (!reason) {
-			productDetailReason.hidden = true;
+			return '';
+		}
+
+		return '<div class="procedure-detail-reject-reason">' +
+			'<label class="procedure-detail-info-label procedure-detail-reject-reason-label" for="procedureDetailRejectReason">' +
+				escapeHtml(t('common_reason')) +
+			'</label>' +
+			'<textarea id="procedureDetailRejectReason" class="form-control form-control-sm procedure-detail-info-input procedure-detail-reject-reason-input" rows="3" readonly>' +
+				escapeHtml(reason) +
+			'</textarea>' +
+		'</div>';
+	}
+
+	function syncRejectionReasonBlock(payload) {
+		if (!productDetailInfo) {
 			return;
 		}
 
-		const label = document.createElement('span');
-		label.className = 'procedure-detail-footer-reason-label';
-		label.textContent = t('common_reason');
-		productDetailReason.appendChild(label);
-		productDetailReason.appendChild(document.createTextNode(reason));
-		productDetailReason.hidden = false;
+		const existing = productDetailInfo.querySelector('.procedure-detail-reject-reason');
+		const reasonHtml = renderRejectionReasonBlock(payload);
+
+		if (!reasonHtml) {
+			if (existing) {
+				existing.remove();
+			}
+
+			return;
+		}
+
+		if (existing) {
+			existing.outerHTML = reasonHtml;
+			return;
+		}
+
+		productDetailInfo.insertAdjacentHTML('afterbegin', reasonHtml);
 	}
 
 	function barcodeTypeOptions(field, currentValue) {
@@ -1589,10 +1704,19 @@
 				dataAttrs + ' value="' + saved + '">';
 
 			if (field === 'barcode_1d' && editable) {
-				return '<div class="procedure-barcode-1d-control">' +
+				return '<div class="procedure-barcode-value-control">' +
 					input +
 					'<button type="button" class="btn btn-sm btn-outline-primary procedure-barcode-auto-assign">' +
 						escapeHtml(t('reg_auto_assign')) +
+					'</button>' +
+				'</div>';
+			}
+
+			if (field === 'barcode_2d' && editable) {
+				return '<div class="procedure-barcode-value-control">' +
+					input +
+					'<button type="button" class="btn btn-sm btn-outline-primary procedure-barcode-auto-generate">' +
+						escapeHtml(t('reg_auto_generate')) +
 					'</button>' +
 				'</div>';
 			}
@@ -1684,10 +1808,10 @@
 
 		applyBarcodeFieldLocally(regId, itemId, field, value);
 
-		if (field === 'barcode_1d' && procedureBarcodeInput && !procedureBarcodeInput.classList.contains('is-typing-barcode')) {
-			procedureBarcodeInput.value = value;
-			renderBarcodePreview(value);
-			showBarcodesTab();
+		if (field === 'barcode_1d' || field === 'barcode_1d_type' || field === 'barcode_2d' || field === 'barcode_2d_type') {
+			syncBarcodeTabFromFields({
+				showTab: field === 'barcode_1d' || field === 'barcode_2d',
+			});
 		}
 
 		const formData = new FormData();
@@ -1734,6 +1858,38 @@
 		});
 
 		return values;
+	}
+
+	function productFieldValue(field, columnNames) {
+		const input = barcodeFieldInput(field);
+
+		if (input) {
+			return String(input.value || '').trim();
+		}
+
+		return selectedCell(columnNames || []);
+	}
+
+	function buildAutoGeneratedBarcode2d() {
+		return [
+			productFieldValue('product_name', ['product name']),
+			productFieldValue('standard', ['standard']),
+			productFieldValue('effective_period', ['perios before expired', 'period before expired', 'expiry date', 'expirydate']),
+			productFieldValue('effect', ['effect']),
+		].join(';');
+	}
+
+	function autoGenerateBarcode2d(button) {
+		const valueInput = barcodeFieldInput('barcode_2d');
+
+		if (!valueInput || !activeDetail || valueInput.disabled) {
+			return;
+		}
+
+		const generated = buildAutoGeneratedBarcode2d().slice(0, 255);
+		valueInput.value = generated;
+		valueInput.classList.remove('is-invalid');
+		saveBarcodeField(valueInput);
 	}
 
 	function autoAssignBarcode(button) {
@@ -1866,7 +2022,9 @@
 			'</div>';
 		}).join('');
 
-		productDetailInfo.innerHTML = '<div class="procedure-detail-info-grid">' + fieldsHtml + '</div>';
+		productDetailInfo.innerHTML =
+			renderRejectionReasonBlock(payload) +
+			'<div class="procedure-detail-info-grid">' + fieldsHtml + '</div>';
 	}
 
 	// ---------------------------------------------------------------- images
@@ -1932,7 +2090,7 @@
 
 	// --------------------------------------------------------------- barcodes
 
-	function resetBarcodePreview() {
+	function resetBarcode1dPreview() {
 		if (procedureBarcodeSvg) {
 			procedureBarcodeSvg.innerHTML = '';
 			procedureBarcodeSvg.classList.add('d-none');
@@ -1942,16 +2100,49 @@
 			procedureBarcodeEmpty.textContent = t('reg_barcode_empty');
 			procedureBarcodeEmpty.classList.remove('d-none');
 		}
+	}
 
+	function resetBarcode2dPreview() {
 		if (procedureQrCode) {
 			procedureQrCode.innerHTML = '';
 		}
 
 		if (procedureQrEmpty) {
+			procedureQrEmpty.textContent = t('reg_barcode_empty');
 			procedureQrEmpty.classList.remove('d-none');
 		}
 
 		productQrCodeInstance = null;
+	}
+
+	function resetBarcodePreview() {
+		resetBarcode1dPreview();
+		resetBarcode2dPreview();
+	}
+
+	function currentBarcodeFieldValue(field) {
+		const input = barcodeFieldInput(field);
+		return input ? String(input.value || '').trim() : '';
+	}
+
+	function syncBarcodeTabFromFields(options) {
+		const opts = options || {};
+		const barcode1d = currentBarcodeFieldValue('barcode_1d');
+		const barcode2d = currentBarcodeFieldValue('barcode_2d');
+
+		if (procedureBarcodeInput && !procedureBarcodeInput.classList.contains('is-typing-barcode')) {
+			procedureBarcodeInput.value = barcode1d;
+		}
+
+		if (procedureBarcode2dInput) {
+			procedureBarcode2dInput.value = barcode2d;
+		}
+
+		renderBarcodePreviews();
+
+		if (opts.showTab) {
+			showBarcodesTab();
+		}
 	}
 
 	function applyBarcodeTextSpacing(svgEl) {
@@ -1991,11 +2182,11 @@
 
 		procedureBarcodeInput.value = '';
 		procedureBarcodeInput.classList.add('is-typing-barcode');
-		renderBarcodePreview('');
+		renderBarcode1dPreview('');
 
 		if (!target) {
 			procedureBarcodeInput.classList.remove('is-typing-barcode');
-			renderBarcodePreview('');
+			renderBarcode1dPreview('');
 
 			if (typeof onComplete === 'function') {
 				onComplete();
@@ -2008,7 +2199,7 @@
 		function typeNextCharacter() {
 			if (index >= target.length) {
 				procedureBarcodeInput.classList.remove('is-typing-barcode');
-				renderBarcodePreview(procedureBarcodeInput.value);
+				renderBarcode1dPreview(procedureBarcodeInput.value);
 
 				if (typeof onComplete === 'function') {
 					onComplete();
@@ -2017,7 +2208,7 @@
 			}
 
 			procedureBarcodeInput.value += target.charAt(index);
-			renderBarcodePreview(procedureBarcodeInput.value);
+			renderBarcode1dPreview(procedureBarcodeInput.value);
 			index += 1;
 			barcodeTypingTimer = setTimeout(typeNextCharacter, 45 + Math.floor(Math.random() * 35));
 		}
@@ -2034,9 +2225,11 @@
 	}
 
 	function currentBarcode1dType() {
-		const input = barcodeFieldInput('barcode_1d_type');
+		return currentBarcodeFieldValue('barcode_1d_type');
+	}
 
-		return input ? input.value.trim() : '';
+	function currentBarcode2dType() {
+		return currentBarcodeFieldValue('barcode_2d_type');
 	}
 
 	function barcodePreviewSpec(type, value) {
@@ -2089,12 +2282,12 @@
 		return !!fullLength && String(value || '').length < fullLength;
 	}
 
-	function renderBarcodePreview(value) {
+	function renderBarcode1dPreview(value) {
 		const barcodeValue = (value || '').trim();
 		const barcodeType = currentBarcode1dType();
 		const spec = barcodePreviewSpec(barcodeType, barcodeValue);
 
-		resetBarcodePreview();
+		resetBarcode1dPreview();
 
 		if (procedureBarcodeFullValue) {
 			if (barcodeType && barcodeValue) {
@@ -2157,24 +2350,72 @@
 			procedureBarcodeEmpty.textContent = t('reg_barcode_render_failed');
 			procedureBarcodeEmpty.classList.remove('d-none');
 		}
+	}
 
-		const qrText = spec ? (spec.text || spec.value) : '';
+	function renderBarcode2dPreview(value) {
+		const barcodeValue = (value || '').trim();
+		const barcodeType = currentBarcode2dType() || 'QR';
 
-		if (typeof QRCode !== 'undefined' && procedureQrCode && qrText) {
-			procedureQrCode.innerHTML = '';
-			productQrCodeInstance = new QRCode(procedureQrCode, {
-				text: qrText,
-				width: 180,
-				height: 180,
-				colorDark: '#000000',
-				colorLight: '#ffffff',
-				correctLevel: QRCode.CorrectLevel.M,
-			});
+		resetBarcode2dPreview();
 
-			if (procedureQrEmpty) {
-				procedureQrEmpty.classList.add('d-none');
+		if (procedureBarcode2dMeta) {
+			if (barcodeValue) {
+				procedureBarcode2dMeta.textContent = t('reg_barcode_2d_typed', {
+					type: barcodeType,
+					value: barcodeValue,
+				});
+			} else if (barcodeType) {
+				procedureBarcode2dMeta.textContent = t('reg_barcode_2d_typed_empty', { type: barcodeType });
+			} else {
+				procedureBarcode2dMeta.textContent = t('reg_barcode_2d_meta');
 			}
 		}
+
+		if (!barcodeValue) {
+			return;
+		}
+
+		if (typeof QRCode !== 'undefined' && procedureQrCode) {
+			try {
+				procedureQrCode.innerHTML = '';
+				productQrCodeInstance = new QRCode(procedureQrCode, {
+					text: barcodeValue,
+					width: 180,
+					height: 180,
+					colorDark: '#000000',
+					colorLight: '#ffffff',
+					correctLevel: QRCode.CorrectLevel.M,
+				});
+
+				if (procedureQrEmpty) {
+					procedureQrEmpty.classList.add('d-none');
+				}
+			} catch (error) {
+				if (procedureQrEmpty) {
+					procedureQrEmpty.textContent = t('reg_barcode_render_failed');
+					procedureQrEmpty.classList.remove('d-none');
+				}
+			}
+		} else if (procedureQrEmpty) {
+			procedureQrEmpty.textContent = t('reg_barcode_render_failed');
+			procedureQrEmpty.classList.remove('d-none');
+		}
+	}
+
+	function renderBarcodePreviews() {
+		const barcode1d = procedureBarcodeInput ? procedureBarcodeInput.value : currentBarcodeFieldValue('barcode_1d');
+		const barcode2d = procedureBarcode2dInput ? procedureBarcode2dInput.value : currentBarcodeFieldValue('barcode_2d');
+
+		renderBarcode1dPreview(barcode1d);
+		renderBarcode2dPreview(barcode2d);
+	}
+
+	function renderBarcodePreview(value) {
+		if (value !== undefined && value !== null && procedureBarcodeInput) {
+			procedureBarcodeInput.value = value;
+		}
+
+		renderBarcodePreviews();
 	}
 
 	// ---------------------------------------------------------- import modal
@@ -2522,13 +2763,7 @@
 		if (valueInput && valueInput.getAttribute('data-item-id') === String(itemId)) {
 			valueInput.value = barcodeValue;
 			valueInput.setAttribute('data-saved-value', barcodeValue);
-
-			if (procedureBarcodeInput) {
-				procedureBarcodeInput.value = barcodeValue;
-				renderBarcodePreview(barcodeValue);
-			}
-
-			showBarcodesTab();
+			syncBarcodeTabFromFields({ showTab: true });
 		}
 	}
 
@@ -3198,19 +3433,33 @@
 		}
 	});
 
-	const scheduleSimilarSearch = debounce(function () {
-		similarQuery = similarSearchInput ? similarSearchInput.value.trim() : '';
-		toggleSimilarClear();
-		reloadSimilarGrid();
-	}, 300);
-
 	if (similarSearchInput) {
-		similarSearchInput.addEventListener('input', scheduleSimilarSearch);
+		similarSearchInput.addEventListener('input', function () {
+			toggleSimilarClear();
+		});
+
+		similarSearchInput.addEventListener('keydown', function (event) {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				runSimilarNameSearch();
+			}
+		});
+	}
+
+	if (similarSearchBtn) {
+		similarSearchBtn.addEventListener('click', function () {
+			runSimilarNameSearch();
+		});
+	}
+
+	if (similarFindBtn) {
+		similarFindBtn.addEventListener('click', function () {
+			findSimilarProducts();
+		});
 	}
 
 	if (similarClearBtn) {
 		similarClearBtn.addEventListener('click', function () {
-			scheduleSimilarSearch.cancel();
 			similarQuery = '';
 
 			if (similarSearchInput) {
@@ -3218,7 +3467,7 @@
 			}
 
 			toggleSimilarClear();
-			reloadSimilarGrid();
+			findSimilarProducts();
 		});
 	}
 
@@ -3294,12 +3543,6 @@
 		});
 	}
 
-	if (procedureBarcodeInput) {
-		procedureBarcodeInput.addEventListener('input', function () {
-			renderBarcodePreview(procedureBarcodeInput.value);
-		});
-	}
-
 	if (productDetailInfo) {
 		productDetailInfo.addEventListener('input', function (event) {
 			const input = event.target.closest('[data-barcode-field]');
@@ -3310,21 +3553,28 @@
 
 			input.classList.remove('is-invalid');
 
-			if (input.getAttribute('data-barcode-field') === 'barcode_1d') {
-				showBarcodesTab();
+			const field = input.getAttribute('data-barcode-field');
+
+			if (field === 'barcode_1d' || field === 'barcode_2d') {
+				syncBarcodeTabFromFields({ showTab: true });
 			}
 
 			scheduleBarcodeFieldSave(input);
 		});
 
 		productDetailInfo.addEventListener('click', function (event) {
-			const button = event.target.closest('.procedure-barcode-auto-assign');
+			const assignBtn = event.target.closest('.procedure-barcode-auto-assign');
 
-			if (!button || button.disabled) {
+			if (assignBtn && !assignBtn.disabled) {
+				autoAssignBarcode(assignBtn);
 				return;
 			}
 
-			autoAssignBarcode(button);
+			const generateBtn = event.target.closest('.procedure-barcode-auto-generate');
+
+			if (generateBtn && !generateBtn.disabled) {
+				autoGenerateBarcode2d(generateBtn);
+			}
 		});
 
 		productDetailInfo.addEventListener('change', function (event) {
@@ -3337,15 +3587,10 @@
 			input.classList.remove('is-invalid');
 			scheduleBarcodeFieldSave(input);
 
-			if (input.getAttribute('data-barcode-field') === 'barcode_1d_type') {
-				const valueInput = barcodeFieldInput('barcode_1d');
-				const barcodeValue = valueInput ? valueInput.value : '';
+			const field = input.getAttribute('data-barcode-field');
 
-				if (procedureBarcodeInput && !procedureBarcodeInput.classList.contains('is-typing-barcode')) {
-					procedureBarcodeInput.value = barcodeValue;
-				}
-
-				renderBarcodePreview(barcodeValue);
+			if (field === 'barcode_1d_type' || field === 'barcode_2d_type') {
+				syncBarcodeTabFromFields();
 			}
 		});
 	}

@@ -6,6 +6,43 @@ require_once APPPATH.'models/Basic_model.php';
 class Product_model extends Basic_model {
 
 	protected $table = 'products';
+
+	public function __construct()
+	{
+		parent::__construct();
+		$this->load->helper('product_key');
+	}
+
+	public function insert($data)
+	{
+		$data = $this->with_normalized_key($data);
+
+		return parent::insert($data);
+	}
+
+	public function update($id, $data)
+	{
+		$data = $this->with_normalized_key($data, $this->get($id) ?: array());
+
+		return parent::update($id, $data);
+	}
+
+	protected function with_normalized_key(array $data, array $existing = array())
+	{
+		$name = array_key_exists('name', $data) ? $data['name'] : ($existing['name'] ?? '');
+		$standard_number = array_key_exists('standard_number', $data)
+			? $data['standard_number']
+			: ($existing['standard_number'] ?? '');
+		$brand = array_key_exists('brand', $data) ? $data['brand'] : ($existing['brand'] ?? '');
+		$package_type = array_key_exists('package_type', $data)
+			? $data['package_type']
+			: ($existing['package_type'] ?? '');
+
+		$data['normalized_key'] = product_build_normalized_key($name, $standard_number, $brand, $package_type);
+
+		return $data;
+	}
+
 	protected $searchable_columns = array(
 		'products.name',
 		'products.brand',
@@ -87,18 +124,18 @@ class Product_model extends Basic_model {
 		return $ids;
 	}
 
-	public function count_by_organization($organization_id, $search = '')
+	public function count_by_organization($organization_id, $search = '', $normalized_key = '')
 	{
 		$this->prepare_organization_products_query($organization_id);
-		$this->apply_organization_product_search_filters($search);
+		$this->apply_organization_product_search_filters($search, $normalized_key);
 
 		return (int) $this->db->count_all_results();
 	}
 
-	public function get_paginated_by_organization($organization_id, $limit, $offset = 0, $search = '', $sort = array())
+	public function get_paginated_by_organization($organization_id, $limit, $offset = 0, $search = '', $sort = array(), $normalized_key = '')
 	{
 		$this->prepare_organization_products_query($organization_id);
-		$this->apply_organization_product_search_filters($search);
+		$this->apply_organization_product_search_filters($search, $normalized_key);
 		$this->apply_list_order($sort);
 
 		return $this->db
@@ -112,6 +149,54 @@ class Product_model extends Basic_model {
 		return array_intersect_key($this->sortable_columns, array_flip((array) $keys));
 	}
 
+	/**
+	 * Rebuild normalized_key for every product in batches.
+	 */
+	public function regenerate_all_normalized_keys($batch_size = 1000)
+	{
+		$this->load->helper('product_key');
+
+		$batch_size = max(100, (int) $batch_size);
+		$last_id = 0;
+		$updated = 0;
+
+		while (TRUE)
+		{
+			$rows = $this->db
+				->select('id, name, standard_number, brand, package_type')
+				->from($this->table)
+				->where('id >', $last_id)
+				->order_by('id', 'ASC')
+				->limit($batch_size)
+				->get()
+				->result_array();
+
+			if (empty($rows))
+			{
+				break;
+			}
+
+			foreach ($rows as $row)
+			{
+				$key = product_build_normalized_key(
+					$row['name'] ?? '',
+					$row['standard_number'] ?? '',
+					$row['brand'] ?? '',
+					$row['package_type'] ?? ''
+				);
+
+				$this->db
+					->where($this->primary_key, (int) $row['id'])
+					->update($this->table, array('normalized_key' => $key));
+
+				$last_id = (int) $row['id'];
+				$updated++;
+			}
+		}
+
+		return $updated;
+	}
+
 	protected function prepare_organization_products_query($organization_id)
 	{
 		$this->db
@@ -121,24 +206,30 @@ class Product_model extends Basic_model {
 			->where('products.org_id', (int) $organization_id);
 	}
 
-	protected function apply_organization_product_search_filters($search)
+	protected function apply_organization_product_search_filters($search, $normalized_key = '')
 	{
 		$search = trim((string) $search);
 
-		if ($search === '')
+		if ($search !== '')
 		{
+			$this->db->group_start();
+			$this->db->like('products.name', $search);
+			$this->db->or_like('products.brand', $search);
+			$this->db->or_like('products.standard_number', $search);
+			$this->db->or_like('products.barcode_1d', $search);
+			$this->db->or_like('products.barcode_1d_type', $search);
+			$this->db->or_like('products.barcode_2d', $search);
+			$this->db->or_like('products.package_type', $search);
+			$this->db->group_end();
 			return;
 		}
 
-		$this->db->group_start();
-		$this->db->like('products.name', $search);
-		$this->db->or_like('products.brand', $search);
-		$this->db->or_like('products.standard_number', $search);
-		$this->db->or_like('products.barcode_1d', $search);
-		$this->db->or_like('products.barcode_1d_type', $search);
-		$this->db->or_like('products.barcode_2d', $search);
-		$this->db->or_like('products.package_type', $search);
-		$this->db->group_end();
+		$normalized_key = trim((string) $normalized_key);
+
+		if ($normalized_key !== '' && $normalized_key !== '___')
+		{
+			$this->db->where('products.normalized_key', $normalized_key);
+		}
 	}
 
 	public function get_with_organization($id)
@@ -175,10 +266,28 @@ class Product_model extends Basic_model {
 			->row_array();
 	}
 
+	public function find_by_organization_normalized_key($organization_id, $normalized_key)
+	{
+		$normalized_key = trim((string) $normalized_key);
+
+		if ($normalized_key === '' || $normalized_key === '___')
+		{
+			return NULL;
+		}
+
+		return $this->db
+			->from($this->table)
+			->where('org_id', (int) $organization_id)
+			->where('normalized_key', $normalized_key)
+			->limit(1)
+			->get()
+			->row_array();
+	}
+
 	public function list_similarity_fields($organization_id)
 	{
 		return $this->db
-			->select('id, name, brand, standard_number, package_type')
+			->select('id, name, brand, standard_number, package_type, normalized_key')
 			->from($this->table)
 			->where('org_id', (int) $organization_id)
 			->get()

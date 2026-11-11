@@ -28,6 +28,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('product_delete_selected')); ?>
 				</button>
 			<?php endif; ?>
+			<?php if ($entity === 'products' && ! empty($is_admin)): ?>
+				<button type="button" class="btn btn-sm btn-outline-secondary" id="productsGenerateKeyBtn" data-mdb-ripple-init>
+					<i class="fas fa-key me-1"></i> <?php echo html_escape(app_line('product_generate_key')); ?>
+				</button>
+			<?php endif; ?>
 			<button type="button" class="btn btn-sm btn-outline-primary" id="productsExportBtn" data-mdb-ripple-init>
 				<i class="fas fa-file-excel me-1"></i> <?php echo html_escape(app_line('common_download_excel')); ?>
 			</button>
@@ -49,6 +54,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		'emptySearchMessage' => $list_empty_search_message,
 		'locationNodes'      => $location_nodes ?? array(),
 		'exportUrl'          => site_url($entity.'/export'),
+		'generateKeyUrl'     => ! empty($is_admin) ? site_url('products/generate_normalized_keys') : NULL,
 		'detail'             => $detail_config ?? NULL,
 	)); ?>;
 </script>

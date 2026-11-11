@@ -219,7 +219,33 @@ class Products extends BasicController {
 	{
 		return array(
 			'location_nodes' => $this->location_model->tree_nodes(),
+			'is_admin'       => $this->auth->is_admin(),
 		);
+	}
+
+	public function generate_normalized_keys()
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$this->auth->require_admin();
+
+		@ini_set('max_execution_time', '0');
+		@ini_set('memory_limit', '1024M');
+		@set_time_limit(0);
+		ignore_user_abort(TRUE);
+
+		$updated = $this->model->regenerate_all_normalized_keys(1000);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('product_generate_key_done', $updated),
+			'data'    => array(
+				'updated' => $updated,
+			),
+		));
 	}
 
 	protected function list_query_params()

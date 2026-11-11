@@ -226,6 +226,7 @@ CREATE TABLE `products`  (
   `standard_number` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
   `brand` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
   `package_type` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
+  `normalized_key` varchar(800) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
   `org_id` int UNSIGNED NULL DEFAULT NULL,
   `effect` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL,
   `usage` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL,
@@ -246,6 +247,7 @@ CREATE TABLE `products`  (
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_products_organization`(`org_id` ASC) USING BTREE,
+  INDEX `idx_products_normalized_key`(`normalized_key` ASC) USING BTREE,
   CONSTRAINT `fk_products_organization` FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
 ) ENGINE = InnoDB AUTO_INCREMENT = 1001 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
 

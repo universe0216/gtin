@@ -248,6 +248,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabSimilar" role="tabpanel" aria-labelledby="procedureDetailTabSimilarBtn">
 								<div class="procedure-similar-search d-flex flex-wrap align-items-center gap-2 mb-2">
+									<button type="button" class="btn btn-sm btn-outline-primary" id="procedureSimilarFindBtn" data-mdb-ripple-init>
+										<i class="fas fa-clone me-1" aria-hidden="true"></i><?php echo html_escape(app_line('reg_find_similar')); ?>
+									</button>
 									<div class="input-group input-group-sm procedure-similar-search-input">
 										<span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
 										<input
@@ -259,27 +262,33 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 											aria-label="<?php echo html_escape(app_line('reg_similar_search')); ?>"
 										>
 										<button type="button" class="btn btn-outline-secondary d-none" id="procedureSimilarClearBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_clear')); ?></button>
+										<button type="button" class="btn btn-primary" id="procedureSimilarSearchBtn" data-mdb-ripple-init><?php echo html_escape(app_line('common_search')); ?></button>
 									</div>
 									<p class="text-muted small mb-0" id="procedureSimilarOrg"></p>
 								</div>
 								<div id="procedureSimilarGrid"></div>
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabBarcodes" role="tabpanel" aria-labelledby="procedureDetailTabBarcodesBtn">
-								<div class="procedure-barcode-form mb-4">
-									<label class="form-label" for="procedureBarcodeInput"><?php echo html_escape(app_line('reg_barcode_value')); ?></label>
-									<input type="text" class="form-control" id="procedureBarcodeInput" placeholder="<?php echo html_escape(app_line('reg_barcode_placeholder')); ?>">
-									<p class="text-muted small mt-2 mb-0" id="procedureBarcodeFullValue"><?php echo html_escape(app_line('reg_barcode_full')); ?></p>
-								</div>
 								<div class="procedure-barcode-preview-grid">
 									<div class="procedure-barcode-preview-card">
-										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_barcode_title')); ?></h6>
+										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_barcode_1d_title')); ?></h6>
+										<div class="procedure-barcode-preview-fields">
+											<label class="form-label" for="procedureBarcodeInput"><?php echo html_escape(app_line('reg_barcode_value')); ?></label>
+											<input type="text" class="form-control" id="procedureBarcodeInput" placeholder="<?php echo html_escape(app_line('reg_barcode_placeholder')); ?>" readonly>
+											<p class="text-muted small mt-2 mb-0" id="procedureBarcodeFullValue"><?php echo html_escape(app_line('reg_barcode_full')); ?></p>
+										</div>
 										<div class="procedure-barcode-preview-body">
 											<svg id="procedureBarcodeSvg" class="procedure-barcode-svg d-none"></svg>
 											<p class="text-muted small mb-0 procedure-barcode-empty" id="procedureBarcodeEmpty"><?php echo html_escape(app_line('reg_barcode_empty')); ?></p>
 										</div>
 									</div>
 									<div class="procedure-barcode-preview-card">
-										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_qr_title')); ?></h6>
+										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_barcode_2d_title')); ?></h6>
+										<div class="procedure-barcode-preview-fields">
+											<label class="form-label" for="procedureBarcode2dInput"><?php echo html_escape(app_line('reg_barcode_value')); ?></label>
+											<textarea class="form-control" id="procedureBarcode2dInput" rows="3" readonly placeholder="<?php echo html_escape(app_line('reg_barcode_2d_placeholder')); ?>"></textarea>
+											<p class="text-muted small mt-2 mb-0" id="procedureBarcode2dMeta"><?php echo html_escape(app_line('reg_barcode_2d_meta')); ?></p>
+										</div>
 										<div class="procedure-barcode-preview-body">
 											<div id="procedureQrCode" class="procedure-qr-code"></div>
 											<p class="text-muted small mb-0 procedure-barcode-empty" id="procedureQrEmpty"><?php echo html_escape(app_line('reg_barcode_empty')); ?></p>
