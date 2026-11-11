@@ -134,24 +134,30 @@ class Product_archieve_model extends Product_model {
 			->where('products_archieve.org_id', (int) $organization_id);
 	}
 
-	protected function apply_organization_product_search_filters($search)
+	protected function apply_organization_product_search_filters($search, $normalized_key = '')
 	{
 		$search = trim((string) $search);
 
-		if ($search === '')
+		if ($search !== '')
 		{
+			$this->db->group_start();
+			$this->db->like('products_archieve.name', $search);
+			$this->db->or_like('products_archieve.brand', $search);
+			$this->db->or_like('products_archieve.standard_number', $search);
+			$this->db->or_like('products_archieve.barcode_1d', $search);
+			$this->db->or_like('products_archieve.barcode_1d_type', $search);
+			$this->db->or_like('products_archieve.barcode_2d', $search);
+			$this->db->or_like('products_archieve.package_type', $search);
+			$this->db->group_end();
 			return;
 		}
 
-		$this->db->group_start();
-		$this->db->like('products_archieve.name', $search);
-		$this->db->or_like('products_archieve.brand', $search);
-		$this->db->or_like('products_archieve.standard_number', $search);
-		$this->db->or_like('products_archieve.barcode_1d', $search);
-		$this->db->or_like('products_archieve.barcode_1d_type', $search);
-		$this->db->or_like('products_archieve.barcode_2d', $search);
-		$this->db->or_like('products_archieve.package_type', $search);
-		$this->db->group_end();
+		$normalized_key = trim((string) $normalized_key);
+
+		if ($normalized_key !== '' && $normalized_key !== '___')
+		{
+			$this->db->where('products_archieve.normalized_key', $normalized_key);
+		}
 	}
 
 	public function get_with_organization($id)
