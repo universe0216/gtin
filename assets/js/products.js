@@ -16,9 +16,20 @@
 	const locationClearBtn = document.getElementById('productsLocationClear');
 	const exportBtn = document.getElementById('productsExportBtn');
 	const deleteSelectedBtn = document.getElementById('productsDeleteSelectedBtn');
+	const deleteBatchBtn = document.getElementById('productsDeleteBatchBtn');
+	const deleteBatchModalEl = document.getElementById('productsDeleteBatchModal');
+	const deleteBatchFileInput = document.getElementById('productsDeleteBatchFile');
+	const deleteBatchFileName = document.getElementById('productsDeleteBatchFileName');
+	const deleteBatchLoading = document.getElementById('productsDeleteBatchLoading');
+	const deleteBatchPreview = document.getElementById('productsDeleteBatchPreview');
+	const deleteBatchBody = document.getElementById('productsDeleteBatchBody');
+	const deleteBatchEmpty = document.getElementById('productsDeleteBatchEmpty');
+	const deleteBatchSubmit = document.getElementById('productsDeleteBatchSubmit');
 	const generateKeyBtn = document.getElementById('productsGenerateKeyBtn');
 	const locationNodes = config.locationNodes || [];
 	const rowAction = detail.rowAction || {};
+	let deleteBatchModal = null;
+	let deleteBatchRows = [];
 
 	if (typeof JqxGrid === 'undefined' || !document.getElementById('productsGrid')) {
 		return;
@@ -719,5 +730,235 @@
 		}).finally(function () {
 			deleteSelectedBtn.disabled = false;
 		});
+	}
+
+	function resetDeleteBatchModal() {
+		deleteBatchRows = [];
+
+		if (deleteBatchFileInput) {
+			deleteBatchFileInput.value = '';
+		}
+
+		if (deleteBatchFileName) {
+			deleteBatchFileName.textContent = '';
+			deleteBatchFileName.classList.add('d-none');
+		}
+
+		if (deleteBatchLoading) {
+			deleteBatchLoading.classList.add('d-none');
+		}
+
+		if (deleteBatchPreview) {
+			deleteBatchPreview.classList.add('d-none');
+		}
+
+		if (deleteBatchBody) {
+			deleteBatchBody.innerHTML = '';
+		}
+
+		if (deleteBatchEmpty) {
+			deleteBatchEmpty.classList.add('d-none');
+		}
+
+		if (deleteBatchSubmit) {
+			deleteBatchSubmit.disabled = true;
+		}
+	}
+
+	function renderDeleteBatchRows(rows) {
+		deleteBatchRows = Array.isArray(rows) ? rows : [];
+
+		if (!deleteBatchBody) {
+			return;
+		}
+
+		if (!deleteBatchRows.length) {
+			deleteBatchBody.innerHTML = '';
+
+			if (deleteBatchPreview) {
+				deleteBatchPreview.classList.add('d-none');
+			}
+
+			if (deleteBatchEmpty) {
+				deleteBatchEmpty.classList.remove('d-none');
+			}
+
+			if (deleteBatchSubmit) {
+				deleteBatchSubmit.disabled = true;
+			}
+
+			return;
+		}
+
+		deleteBatchBody.innerHTML = deleteBatchRows.map(function (row) {
+			return '<tr>' +
+				'<td>' + escapeHtml(row.row_index || '') + '</td>' +
+				'<td>' + escapeHtml(row.name || '') + '</td>' +
+				'<td>' + escapeHtml(row.barcode_1d || '') + '</td>' +
+			'</tr>';
+		}).join('');
+
+		if (deleteBatchEmpty) {
+			deleteBatchEmpty.classList.add('d-none');
+		}
+
+		if (deleteBatchPreview) {
+			deleteBatchPreview.classList.remove('d-none');
+		}
+
+		if (deleteBatchSubmit) {
+			deleteBatchSubmit.disabled = false;
+		}
+	}
+
+	function previewDeleteBatchFile(file) {
+		if (!file || !config.batchDeletePreviewUrl) {
+			return;
+		}
+
+		if (!/\.(xls|xlsx)$/i.test(file.name || '')) {
+			showToast(t('product_delete_batch_invalid'), 'error');
+			resetDeleteBatchModal();
+			return;
+		}
+
+		const body = new FormData();
+		body.append('file', file);
+
+		if (deleteBatchLoading) {
+			deleteBatchLoading.classList.remove('d-none');
+		}
+
+		if (deleteBatchPreview) {
+			deleteBatchPreview.classList.add('d-none');
+		}
+
+		if (deleteBatchEmpty) {
+			deleteBatchEmpty.classList.add('d-none');
+		}
+
+		if (deleteBatchSubmit) {
+			deleteBatchSubmit.disabled = true;
+		}
+
+		if (deleteBatchFileName) {
+			deleteBatchFileName.textContent = file.name;
+			deleteBatchFileName.classList.remove('d-none');
+		}
+
+		fetchApi(config.batchDeletePreviewUrl, {
+			method: 'POST',
+			body: body,
+		}).then(function (result) {
+			renderDeleteBatchRows(result.rows || []);
+		}).catch(function (error) {
+			deleteBatchRows = [];
+
+			if (deleteBatchBody) {
+				deleteBatchBody.innerHTML = '';
+			}
+
+			if (deleteBatchPreview) {
+				deleteBatchPreview.classList.add('d-none');
+			}
+
+			if (deleteBatchEmpty) {
+				deleteBatchEmpty.classList.add('d-none');
+			}
+
+			if (deleteBatchSubmit) {
+				deleteBatchSubmit.disabled = true;
+			}
+
+			showToast(error.message || t('product_delete_batch_failed'), 'error');
+		}).finally(function () {
+			if (deleteBatchLoading) {
+				deleteBatchLoading.classList.add('d-none');
+			}
+		});
+	}
+
+	function submitDeleteBatch() {
+		if (!config.batchDeleteUrl || !deleteBatchRows.length) {
+			return;
+		}
+
+		const barcodes = deleteBatchRows.map(function (row) {
+			return String(row.barcode_1d || '').trim();
+		}).filter(Boolean);
+
+		if (!barcodes.length) {
+			showToast(t('product_delete_batch_empty'), 'error');
+			return;
+		}
+
+		const body = new FormData();
+
+		barcodes.forEach(function (barcode) {
+			body.append('barcodes[]', barcode);
+		});
+
+		if (deleteBatchSubmit) {
+			deleteBatchSubmit.disabled = true;
+		}
+
+		showConfirm({
+			title: t('product_delete_batch'),
+			message: t('product_delete_batch_confirm', { count: barcodes.length }),
+			confirmLabel: t('common_delete'),
+		}).then(function () {
+			return fetchApi(config.batchDeleteUrl, { method: 'POST', body: body });
+		}).then(function (result) {
+			if (deleteBatchModal) {
+				deleteBatchModal.hide();
+			}
+
+			resetDeleteBatchModal();
+			clearRowSelection();
+			showToast(result.message || t('product_delete_batch_done'), 'success');
+			grid.reload();
+		}).catch(function (error) {
+			if (window.isConfirmCancelled && isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('product_delete_batch_failed'), 'error');
+		}).finally(function () {
+			if (deleteBatchSubmit) {
+				deleteBatchSubmit.disabled = !deleteBatchRows.length;
+			}
+		});
+	}
+
+	if (deleteBatchBtn && deleteBatchModalEl && typeof mdb !== 'undefined' && config.batchDeletePreviewUrl && config.batchDeleteUrl) {
+		deleteBatchModal = mdb.Modal.getOrCreateInstance(deleteBatchModalEl);
+
+		deleteBatchBtn.addEventListener('click', function () {
+			resetDeleteBatchModal();
+			deleteBatchModal.show();
+		});
+
+		deleteBatchModalEl.addEventListener('hidden.mdb.modal', function () {
+			resetDeleteBatchModal();
+		});
+
+		if (deleteBatchFileInput) {
+			deleteBatchFileInput.addEventListener('change', function () {
+				const file = this.files && this.files[0] ? this.files[0] : null;
+
+				if (!file) {
+					resetDeleteBatchModal();
+					return;
+				}
+
+				previewDeleteBatchFile(file);
+			});
+		}
+
+		if (deleteBatchSubmit) {
+			deleteBatchSubmit.addEventListener('click', function () {
+				submitDeleteBatch();
+			});
+		}
 	}
 })();

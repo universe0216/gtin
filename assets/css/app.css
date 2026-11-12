@@ -609,6 +609,14 @@ body.modal-open .modal-backdrop.app-alert-backdrop {
 	white-space: normal;
 }
 
+.registration-data-index-col {
+	width: 2.5rem;
+}
+
+.registration-data-actions-col {
+	width: 4.5rem;
+}
+
 .registration-data-user-col {
 	width: 10.5rem;
 }
@@ -750,6 +758,21 @@ body.modal-open:has(#productDetailModal.show) .modal-backdrop:last-of-type {
 
 #productDetailModal .modal-body {
 	overflow: auto;
+}
+
+.products-delete-batch-preview {
+	max-height: 22rem;
+	overflow: auto;
+	border: 1px solid rgba(148, 163, 184, 0.35);
+	border-radius: 0.375rem;
+}
+
+.products-delete-batch-preview table thead th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background-color: var(--app-surface-raised);
+	box-shadow: 0 1px 0 var(--app-border-subtle);
 }
 
 .entity-list-toolbar {

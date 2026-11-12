@@ -35,6 +35,16 @@ class Products_archieve extends Products {
 		show_404();
 	}
 
+	public function batch_delete_preview()
+	{
+		show_404();
+	}
+
+	public function batch_delete()
+	{
+		show_404();
+	}
+
 	public function download($id = NULL)
 	{
 		show_404();

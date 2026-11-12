@@ -305,4 +305,50 @@ class Product_model extends Basic_model {
 			->get()
 			->result_array();
 	}
+
+	public function get_ids_by_barcodes(array $barcodes)
+	{
+		$normalized = array();
+
+		foreach ($barcodes as $barcode)
+		{
+			$value = trim((string) $barcode);
+
+			if ($value !== '')
+			{
+				$normalized[$value] = $value;
+			}
+		}
+
+		$normalized = array_values($normalized);
+
+		if (empty($normalized))
+		{
+			return array();
+		}
+
+		$ids = array();
+
+		foreach (array_chunk($normalized, 500) as $chunk)
+		{
+			$rows = $this->db
+				->select('id')
+				->from($this->table)
+				->where_in('barcode_1d', $chunk)
+				->get()
+				->result_array();
+
+			foreach ($rows as $row)
+			{
+				$id = (int) $row['id'];
+
+				if ($id > 0)
+				{
+					$ids[$id] = $id;
+				}
+			}
+		}
+
+		return array_values($ids);
+	}
 }

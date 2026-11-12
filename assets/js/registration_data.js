@@ -169,6 +169,79 @@
 		return html;
 	}
 
+	function reindexRows() {
+		if (!table) {
+			return;
+		}
+
+		table.querySelectorAll('.registration-data-row .registration-data-index').forEach(function (cell, index) {
+			cell.textContent = String(index + 1);
+		});
+	}
+
+	function clearItemsPanel() {
+		if (!itemsBody) {
+			return;
+		}
+
+		itemsBody.innerHTML = '<tr><td colspan="6" class="text-muted">' + escapeHtml(t('reg_data_select')) + '</td></tr>';
+	}
+
+	function deleteRegistration(button) {
+		const registrationId = button.getAttribute('data-registration-id');
+		const fileName = button.getAttribute('data-file-name') || '';
+
+		if (!registrationId) {
+			return;
+		}
+
+		showConfirm({
+			title: fileName || t('common_delete'),
+			message: t('reg_data_delete_confirm'),
+			confirmLabel: t('common_delete'),
+		}).then(function () {
+			button.disabled = true;
+
+			return fetchApi(baseUrl + '/delete/' + registrationId, {
+				method: 'POST',
+			}).then(function (result) {
+				const row = table ? table.querySelector('.registration-data-row[data-registration-id="' + registrationId + '"]') : null;
+				const wasSelected = selectedId === String(registrationId);
+
+				if (row) {
+					row.remove();
+				}
+
+				reindexRows();
+
+				const tbody = table ? table.querySelector('tbody') : null;
+				const remaining = tbody ? tbody.querySelectorAll('.registration-data-row') : [];
+
+				if (!remaining.length && tbody) {
+					tbody.innerHTML = '<tr><td colspan="8" class="text-muted">' + escapeHtml(t('reg_data_empty')) + '</td></tr>';
+				}
+
+				if (wasSelected) {
+					selectedId = null;
+					clearItemsPanel();
+				}
+
+				showToast(result.message || t('reg_data_deleted'), 'success');
+			});
+		}).catch(function (error) {
+			if (window.isConfirmCancelled && window.isConfirmCancelled(error)) {
+				return;
+			}
+
+			showAlert({
+				message: error.message || t('reg_delete_save_failed'),
+				variant: 'danger',
+			});
+		}).finally(function () {
+			button.disabled = false;
+		});
+	}
+
 	function insertUploadedRegistration(tab) {
 		const tbody = table ? table.querySelector('tbody') : null;
 
@@ -189,10 +262,12 @@
 		}
 
 		const id = tab.product_registration_id;
+		const fileName = tab.file_name || '';
 
 		tbody.insertAdjacentHTML('afterbegin',
 			'<tr class="registration-data-row" data-registration-id="' + id + '">' +
-				'<td>' + escapeHtml(tab.file_name || '') + '</td>' +
+				'<td class="registration-data-index">1</td>' +
+				'<td>' + escapeHtml(fileName) + '</td>' +
 				'<td>' + escapeHtml(tab.procedure_number || '') + '</td>' +
 				'<td>' + escapeHtml(tab.organization_name || '') + '</td>' +
 				'<td>' + escapeHtml(tab.status || 'uploaded') + '</td>' +
@@ -205,8 +280,19 @@
 						userOptions(currentAccountId) +
 					'</select>' +
 				'</td>' +
+				'<td class="text-end">' +
+					'<button type="button" class="btn btn-sm btn-outline-danger registration-data-delete"' +
+						' data-registration-id="' + id + '"' +
+						' data-file-name="' + escapeAttr(fileName) + '"' +
+						' title="' + escapeAttr(t('common_delete')) + '"' +
+						' aria-label="' + escapeAttr(t('common_delete')) + '">' +
+						'<i class="fas fa-trash"></i>' +
+					'</button>' +
+				'</td>' +
 			'</tr>'
 		);
+
+		reindexRows();
 	}
 
 	function addUploadedRegistrations(tabs) {
@@ -261,6 +347,15 @@
 
 	if (table) {
 		table.addEventListener('click', function (event) {
+			const deleteBtn = event.target.closest('.registration-data-delete');
+
+			if (deleteBtn) {
+				event.preventDefault();
+				event.stopPropagation();
+				deleteRegistration(deleteBtn);
+				return;
+			}
+
 			if (event.target.closest('.registration-data-user')) {
 				return;
 			}

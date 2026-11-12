@@ -22,21 +22,23 @@ foreach ($editors as $editor)
 				<table class="table table-hover table-sm procedure-data-table mb-0" id="registrationDataTable">
 					<thead>
 						<tr>
+							<th class="registration-data-index-col">#</th>
 							<th><?php echo html_escape(app_line('reg_file')); ?></th>
 							<th><?php echo html_escape(app_line('reg_procedure')); ?></th>
 							<th><?php echo html_escape(app_line('reg_organization')); ?></th>
 							<th><?php echo html_escape(app_line('common_status')); ?></th>
 							<th class="text-end"><?php echo html_escape(app_line('reg_products')); ?></th>
 							<th class="registration-data-user-col"><?php echo html_escape(app_line('reg_data_user')); ?></th>
+							<th class="registration-data-actions-col text-end"><?php echo html_escape(app_line('common_actions')); ?></th>
 						</tr>
 					</thead>
 					<tbody>
 						<?php if (empty($registrations)): ?>
 							<tr>
-								<td colspan="6" class="text-muted"><?php echo html_escape(app_line('reg_data_empty')); ?></td>
+								<td colspan="8" class="text-muted"><?php echo html_escape(app_line('reg_data_empty')); ?></td>
 							</tr>
 						<?php else: ?>
-							<?php foreach ($registrations as $registration): ?>
+							<?php foreach ($registrations as $index => $registration): ?>
 								<?php
 									$account_id = (int) $registration['account_id'];
 									$current_label = trim((string) ($registration['processor_name'] ?? ''));
@@ -47,6 +49,7 @@ foreach ($editors as $editor)
 									}
 								?>
 								<tr class="registration-data-row" data-registration-id="<?php echo (int) $registration['id']; ?>">
+									<td class="registration-data-index"><?php echo (int) $index + 1; ?></td>
 									<td><?php echo html_escape($registration['file_name']); ?></td>
 									<td><?php echo html_escape($registration['procedure_number']); ?></td>
 									<td><?php echo html_escape($registration['organization_name']); ?></td>
@@ -75,6 +78,18 @@ foreach ($editors as $editor)
 												</option>
 											<?php endforeach; ?>
 										</select>
+									</td>
+									<td class="text-end">
+										<button
+											type="button"
+											class="btn btn-sm btn-outline-danger registration-data-delete"
+											data-registration-id="<?php echo (int) $registration['id']; ?>"
+											data-file-name="<?php echo html_escape($registration['file_name']); ?>"
+											title="<?php echo html_escape(app_line('common_delete')); ?>"
+											aria-label="<?php echo html_escape(app_line('common_delete')); ?>"
+										>
+											<i class="fas fa-trash"></i>
+										</button>
 									</td>
 								</tr>
 							<?php endforeach; ?>

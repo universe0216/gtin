@@ -8,7 +8,7 @@ class Registration_data extends AuthenticatedController {
 	public function __construct()
 	{
 		parent::__construct();
-		$this->load->helper('url');
+		$this->load->helper(array('url', 'file'));
 		$this->load->model('product_registration_model');
 		$this->load->model('product_registration_item_model');
 		$this->load->model('account_model');
@@ -128,6 +128,42 @@ class Registration_data extends AuthenticatedController {
 				'account_id' => (int) $target['id'],
 				'full_name'  => $name,
 			),
+		));
+	}
+
+	public function delete($id = NULL)
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$registration = $this->open_registration($id);
+
+		if ( ! $registration)
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_not_found')), 404);
+		}
+
+		if ( ! empty($registration['storage_path']))
+		{
+			$storage_dir = FCPATH.str_replace('/', DIRECTORY_SEPARATOR, $registration['storage_path']);
+
+			if (is_dir($storage_dir))
+			{
+				delete_files($storage_dir, TRUE);
+				@rmdir($storage_dir);
+			}
+		}
+
+		if ( ! $this->product_registration_model->delete($id))
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('reg_delete_save_failed')), 500);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('reg_data_deleted'),
 		));
 	}
 

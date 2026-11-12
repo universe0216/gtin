@@ -478,6 +478,249 @@ class Products extends BasicController {
 		));
 	}
 
+	public function batch_delete_preview()
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$this->auth->require_permission($this->permission_edit);
+
+		try
+		{
+			$rows = $this->parse_batch_delete_file($this->batch_delete_uploaded_path());
+		}
+		catch (RuntimeException $exception)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => $exception->getMessage(),
+			), 422);
+		}
+		catch (Exception $exception)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_delete_batch_failed'),
+			), 500);
+		}
+
+		if (empty($rows))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_delete_batch_empty'),
+			), 422);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'rows'    => $rows,
+		));
+	}
+
+	public function batch_delete()
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array('success' => FALSE, 'message' => app_line('common_invalid_method')), 405);
+		}
+
+		$this->auth->require_permission($this->permission_edit);
+
+		$raw_barcodes = $this->input->post('barcodes');
+
+		if ( ! is_array($raw_barcodes))
+		{
+			$raw_barcodes = array();
+		}
+
+		$barcodes = array();
+
+		foreach ($raw_barcodes as $raw)
+		{
+			$value = trim((string) $raw);
+
+			if ($value !== '')
+			{
+				$barcodes[$value] = $value;
+			}
+		}
+
+		$barcodes = array_values($barcodes);
+
+		if (empty($barcodes))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_delete_batch_empty'),
+			), 422);
+		}
+
+		$ids = $this->model->get_ids_by_barcodes($barcodes);
+
+		if (empty($ids))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_delete_batch_none'),
+			), 422);
+		}
+
+		$this->load->library('catalog_archieve');
+		$deleted = 0;
+		$failed = 0;
+
+		foreach ($ids as $id)
+		{
+			$result = $this->catalog_archieve->archive_product($id);
+
+			if ( ! empty($result['ok']))
+			{
+				$deleted++;
+			}
+			else
+			{
+				$failed++;
+			}
+		}
+
+		if ($deleted < 1)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_delete_failed'),
+			), 500);
+		}
+
+		$message = $failed > 0
+			? app_line('product_delete_batch_partial', $deleted, $failed)
+			: app_line('product_delete_batch_done', $deleted);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => $message,
+			'deleted' => $deleted,
+			'failed'  => $failed,
+		));
+	}
+
+	protected function batch_delete_uploaded_path()
+	{
+		if (empty($_FILES['file']) || ! is_array($_FILES['file']))
+		{
+			throw new RuntimeException(app_line('product_delete_batch_invalid'));
+		}
+
+		$file = $_FILES['file'];
+		$error = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
+
+		if ($error !== UPLOAD_ERR_OK || empty($file['tmp_name']) || ! is_uploaded_file($file['tmp_name']))
+		{
+			throw new RuntimeException(app_line('product_delete_batch_invalid'));
+		}
+
+		$name = strtolower((string) ($file['name'] ?? ''));
+
+		if ( ! preg_match('/\.(xls|xlsx)$/', $name))
+		{
+			throw new RuntimeException(app_line('product_delete_batch_invalid'));
+		}
+
+		return $file['tmp_name'];
+	}
+
+	protected function parse_batch_delete_file($file_path)
+	{
+		if ( ! class_exists('\PhpOffice\PhpSpreadsheet\IOFactory'))
+		{
+			throw new RuntimeException(app_line('upload_reader_missing'));
+		}
+
+		$this->load->library('spreadsheet_value_binder');
+		\PhpOffice\PhpSpreadsheet\Cell\Cell::setValueBinder(new Spreadsheet_value_binder());
+
+		$reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($file_path);
+		$reader->setReadDataOnly(TRUE);
+		$spreadsheet = $reader->load($file_path);
+		$sheet_rows = $spreadsheet->getActiveSheet()->toArray(NULL, TRUE, TRUE, FALSE);
+
+		if (empty($sheet_rows))
+		{
+			throw new RuntimeException(app_line('upload_no_rows'));
+		}
+
+		$start = 0;
+		$first = $this->batch_delete_cell_string(isset($sheet_rows[0][0]) ? $sheet_rows[0][0] : '');
+		$second = strtolower($this->batch_delete_cell_string(isset($sheet_rows[0][1]) ? $sheet_rows[0][1] : ''));
+		$third = strtolower($this->batch_delete_cell_string(isset($sheet_rows[0][2]) ? $sheet_rows[0][2] : ''));
+
+		if ($first !== '' && ! ctype_digit($first))
+		{
+			$start = 1;
+		}
+		elseif ($second === 'name' || strpos($third, 'barcode') !== FALSE)
+		{
+			$start = 1;
+		}
+
+		$rows = array();
+		$seen = array();
+
+		for ($i = $start; $i < count($sheet_rows); $i++)
+		{
+			$cells = isset($sheet_rows[$i]) && is_array($sheet_rows[$i]) ? $sheet_rows[$i] : array();
+			$row_index = $this->batch_delete_cell_string(isset($cells[0]) ? $cells[0] : '');
+			$name = $this->batch_delete_cell_string(isset($cells[1]) ? $cells[1] : '');
+			$barcode = $this->batch_delete_cell_string(isset($cells[2]) ? $cells[2] : '');
+
+			if ($barcode === '')
+			{
+				continue;
+			}
+
+			if (isset($seen[$barcode]))
+			{
+				continue;
+			}
+
+			$seen[$barcode] = TRUE;
+			$rows[] = array(
+				'row_index'  => $row_index !== '' ? $row_index : (string) (count($rows) + 1),
+				'name'       => $name,
+				'barcode_1d' => $barcode,
+			);
+		}
+
+		return $rows;
+	}
+
+	protected function batch_delete_cell_string($value)
+	{
+		if ($value === NULL || $value === '')
+		{
+			return '';
+		}
+
+		if (is_int($value))
+		{
+			return (string) $value;
+		}
+
+		if (is_float($value))
+		{
+			if (floor($value) == $value)
+			{
+				return sprintf('%.0f', $value);
+			}
+
+			return rtrim(rtrim(sprintf('%.12F', $value), '0'), '.');
+		}
+
+		return trim((string) $value);
+	}
+
 	protected function get_add_label()
 	{
 		return app_line('add_products');
