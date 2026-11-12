@@ -6,9 +6,10 @@ $nav_active = $nav_active ?? '';
 $auth_user = $CI->auth->user();
 
 $admin_children = array(
-	'admin'      => array('label' => app_line('nav_accounts'), 'url' => site_url('admin')),
-	'locations'  => array('label' => app_line('nav_locations'), 'url' => site_url('locations')),
-	'categories' => array('label' => app_line('nav_categories'), 'url' => site_url('categories')),
+	'admin'          => array('label' => app_line('nav_accounts'), 'url' => site_url('admin')),
+	'locations'      => array('label' => app_line('nav_locations'), 'url' => site_url('locations')),
+	'categories'     => array('label' => app_line('nav_categories'), 'url' => site_url('categories')),
+	'data_transfer'  => array('label' => app_line('nav_data_transfer'), 'url' => site_url('data_transfer')),
 );
 
 $production_children = array(

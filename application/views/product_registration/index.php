@@ -74,7 +74,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">
 							<span><strong><?php echo html_escape(app_line('reg_procedure')); ?>:</strong> <?php echo html_escape($tab['procedure_number']); ?></span>
 							<span><strong><?php echo html_escape(app_line('reg_organization')); ?>:</strong> <?php echo html_escape($tab['organization_name']); ?></span>
-							<span><strong><?php echo html_escape(app_line('reg_processor')); ?>:</strong> <?php echo html_escape($tab['processor_name']); ?></span>
+							<span><strong><?php echo html_escape(app_line('reg_factory_name')); ?>:</strong> <?php echo html_escape($tab['factory_name'] ?? $tab['organization_name']); ?></span>
 							<span><strong><?php echo html_escape(app_line('reg_status')); ?>:</strong> <span class="procedure-tab-status-value"><?php echo html_escape($tab['status']); ?></span></span>
 							<span><strong><?php echo html_escape(app_line('reg_uploaded')); ?>:</strong> <?php echo html_escape($tab['created_at']); ?></span>
 							<?php if ($tab_completed): ?>

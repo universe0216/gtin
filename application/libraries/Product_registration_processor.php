@@ -620,11 +620,17 @@ class Product_registration_processor {
 
 		$columns = $this->reorder_display_cells($columns);
 
+		$factory_name_list = array_values($factory_names);
+		$factory_name = $factory_name_list === array()
+			? (string) ($registration['organization_name'] ?? '')
+			: implode(', ', $factory_name_list);
+
 		$tab = array(
 			'product_registration_id' => (int) $registration['id'],
 			'file_name'               => $registration['file_name'],
 			'procedure_number'        => $registration['procedure_number'],
 			'organization_name'       => $registration['organization_name'],
+			'factory_name'            => $factory_name,
 			'processor_name'          => $registration['processor_name'] ?? '',
 			'status'                  => $registration['status'],
 			'created_at'              => $registration['created_at'],
@@ -638,7 +644,7 @@ class Product_registration_processor {
 			count($saved_items)
 		);
 		$this->CI->load->model('organization_model');
-		$tab['unregistered_factories'] = $this->CI->organization_model->missing_names(array_values($factory_names));
+		$tab['unregistered_factories'] = $this->CI->organization_model->missing_names($factory_name_list);
 
 		return $tab;
 	}
