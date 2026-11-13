@@ -85,6 +85,209 @@ class History extends AuthenticatedController {
 		$this->load->view('layouts/main', $data);
 	}
 
+	public function activity_log()
+	{
+		$this->auth->require_admin();
+
+		$data = array(
+			'title'        => app_line('title_activity_log'),
+			'nav_active'   => 'history_activity_log',
+			'page_scripts' => array('assets/js/history_logs.js'),
+		);
+
+		$data['content'] = $this->load->view('history/activity_log', $data, TRUE);
+		$this->load->view('layouts/main', $data);
+	}
+
+	public function activity_log_list()
+	{
+		$this->auth->require_admin();
+
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->load->model('activity_log_model');
+		$page = max(1, (int) $this->input->get('page'));
+		$per_page = (int) $this->input->get('per_page');
+		$per_page = in_array($per_page, array(10, 20, 50, 100), TRUE) ? $per_page : 20;
+		$search = trim((string) $this->input->get('q'));
+		$action = trim((string) $this->input->get('action'));
+		$total = $this->activity_log_model->count_filtered($search, $action);
+		$offset = ($page - 1) * $per_page;
+		$rows = $this->activity_log_model->get_paginated($per_page, $offset, $search, $action);
+
+		foreach ($rows as &$row)
+		{
+			$row['account_label'] = $this->account_label($row);
+			$row['has_request_data'] = ! empty($row['request_data']) ? 1 : 0;
+		}
+		unset($row);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $rows,
+			'total'   => $total,
+			'page'    => $page,
+			'per_page'=> $per_page,
+		));
+	}
+
+	public function activity_log_detail($id = NULL)
+	{
+		$this->auth->require_admin();
+
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->load->model('activity_log_model');
+		$row = $this->activity_log_model->get($id);
+
+		if ( ! $row)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('common_record_not_found'),
+			), 404);
+		}
+
+		$row['account_label'] = $this->account_label($row);
+		$row['request_data_pretty'] = $this->pretty_json($row['request_data'] ?? NULL);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $row,
+		));
+	}
+
+	public function data_log()
+	{
+		$this->auth->require_admin();
+
+		$data = array(
+			'title'        => app_line('title_data_log'),
+			'nav_active'   => 'history_data_log',
+			'page_scripts' => array('assets/js/history_logs.js'),
+		);
+
+		$data['content'] = $this->load->view('history/data_log', $data, TRUE);
+		$this->load->view('layouts/main', $data);
+	}
+
+	public function data_log_list()
+	{
+		$this->auth->require_admin();
+
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->load->model('data_log_model');
+		$page = max(1, (int) $this->input->get('page'));
+		$per_page = (int) $this->input->get('per_page');
+		$per_page = in_array($per_page, array(10, 20, 50, 100), TRUE) ? $per_page : 20;
+		$search = trim((string) $this->input->get('q'));
+		$entity = trim((string) $this->input->get('entity'));
+		$action = trim((string) $this->input->get('action'));
+		$total = $this->data_log_model->count_filtered($search, $entity, $action);
+		$offset = ($page - 1) * $per_page;
+		$rows = $this->data_log_model->get_paginated($per_page, $offset, $search, $entity, $action);
+
+		foreach ($rows as &$row)
+		{
+			$row['account_label'] = $this->account_label($row);
+			$row['has_payload'] = ( ! empty($row['original_data']) || ! empty($row['new_data'])) ? 1 : 0;
+		}
+		unset($row);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $rows,
+			'total'   => $total,
+			'page'    => $page,
+			'per_page'=> $per_page,
+		));
+	}
+
+	public function data_log_detail($id = NULL)
+	{
+		$this->auth->require_admin();
+
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->load->model('data_log_model');
+		$row = $this->data_log_model->get($id);
+
+		if ( ! $row)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('common_record_not_found'),
+			), 404);
+		}
+
+		$row['account_label'] = $this->account_label($row);
+		$row['original_data_pretty'] = $this->pretty_json($row['original_data'] ?? NULL);
+		$row['new_data_pretty'] = $this->pretty_json($row['new_data'] ?? NULL);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $row,
+		));
+	}
+
+	protected function account_label(array $row)
+	{
+		$name = trim((string) ($row['account_name'] ?? ''));
+		$username = trim((string) ($row['username'] ?? ''));
+
+		if ($name !== '' && $username !== '')
+		{
+			return $name.' ('.$username.')';
+		}
+
+		if ($name !== '')
+		{
+			return $name;
+		}
+
+		if ($username !== '')
+		{
+			return $username;
+		}
+
+		return ! empty($row['account_id']) ? '#'.$row['account_id'] : '—';
+	}
+
+	protected function pretty_json($value)
+	{
+		if ($value === NULL || $value === '')
+		{
+			return '';
+		}
+
+		if (is_array($value))
+		{
+			return json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		$decoded = json_decode((string) $value, TRUE);
+
+		if (json_last_error() === JSON_ERROR_NONE)
+		{
+			return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		return (string) $value;
+	}
+
 	protected function render_product_registration_history($title, $nav_active, $route)
 	{
 		$registrations = $this->product_registration_model->get_by_status('completed');

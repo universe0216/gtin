@@ -33,6 +33,8 @@ $history_children = array(
 	'history_organizations'  => array('label' => app_line('nav_organizations'), 'url' => site_url('history/organizations')),
 	'products_archieve'      => array('label' => app_line('nav_products_archieve'), 'url' => site_url('products_archieve'), 'permission' => 'product.view'),
 	'organization_archieve'  => array('label' => app_line('nav_organizations_archieve'), 'url' => site_url('organization_archieve'), 'permission' => 'organization.view'),
+	'history_activity_log'   => array('label' => app_line('nav_activity_log'), 'url' => site_url('history/activity_log'), 'admin' => TRUE),
+	'history_data_log'       => array('label' => app_line('nav_data_log'), 'url' => site_url('history/data_log'), 'admin' => TRUE),
 );
 
 $books_children = array(
@@ -151,7 +153,18 @@ if ( ! $show_superadmin)
 					><?php echo html_escape(app_line('nav_history')); ?></a>
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="historyDropdown">
 						<?php foreach ($history_children as $key => $item): ?>
-							<?php if ( ! isset($item['permission']) || $CI->auth->can($item['permission'])): ?>
+							<?php
+								$allowed = TRUE;
+								if ( ! empty($item['admin']))
+								{
+									$allowed = $CI->auth->is_admin();
+								}
+								elseif (isset($item['permission']))
+								{
+									$allowed = $CI->auth->can($item['permission']);
+								}
+							?>
+							<?php if ($allowed): ?>
 							<li>
 								<a
 									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"

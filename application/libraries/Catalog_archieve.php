@@ -35,6 +35,7 @@ class Catalog_archieve {
 		}
 
 		$this->ci->db->trans_commit();
+		$this->log_archive(Data_logger::ENTITY_PRODUCT, $id, $row);
 
 		return array('ok' => TRUE);
 	}
@@ -76,10 +77,23 @@ class Catalog_archieve {
 
 		$this->ci->db->trans_commit();
 
+		foreach ($products as $product)
+		{
+			$this->log_archive(Data_logger::ENTITY_PRODUCT, (int) $product['id'], $product);
+		}
+
+		$this->log_archive(Data_logger::ENTITY_ORGANIZATION, $id, $organization);
+
 		return array(
 			'ok'            => TRUE,
 			'product_count' => count($products),
 		);
+	}
+
+	protected function log_archive($entity, $entity_id, array $original_data)
+	{
+		$this->ci->load->library('data_logger');
+		$this->ci->data_logger->log_archive($entity, (int) $entity_id, $original_data);
 	}
 
 	public function describe_product_restore($id)
@@ -144,6 +158,25 @@ class Catalog_archieve {
 
 		$this->ci->db->trans_commit();
 
+		if ($organization)
+		{
+			$origin_org_id = (int) ($organization['origin_id'] ?? 0);
+			$restored_org = $origin_org_id > 0 ? $this->row('organizations', $origin_org_id) : NULL;
+
+			if ($restored_org)
+			{
+				$this->log_restore(Data_logger::ENTITY_ORGANIZATION, $origin_org_id, $organization, $restored_org);
+			}
+		}
+
+		$origin_product_id = (int) ($row['origin_id'] ?? 0);
+		$restored_product = $origin_product_id > 0 ? $this->row('products', $origin_product_id) : NULL;
+
+		if ($restored_product)
+		{
+			$this->log_restore(Data_logger::ENTITY_PRODUCT, $origin_product_id, $row, $restored_product);
+		}
+
 		return array(
 			'ok'                    => TRUE,
 			'restored_organization' => $organization !== NULL,
@@ -172,7 +205,21 @@ class Catalog_archieve {
 
 		$this->ci->db->trans_commit();
 
+		$origin_id = (int) ($row['origin_id'] ?? 0);
+		$restored = $origin_id > 0 ? $this->row('organizations', $origin_id) : NULL;
+
+		if ($restored)
+		{
+			$this->log_restore(Data_logger::ENTITY_ORGANIZATION, $origin_id, $row, $restored);
+		}
+
 		return array('ok' => TRUE);
+	}
+
+	protected function log_restore($entity, $entity_id, array $original_data, array $new_data)
+	{
+		$this->ci->load->library('data_logger');
+		$this->ci->data_logger->log_restore($entity, (int) $entity_id, $original_data, $new_data);
 	}
 
 	protected function archived_organization_for_product(array $product)

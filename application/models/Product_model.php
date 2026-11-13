@@ -16,15 +16,45 @@ class Product_model extends Basic_model {
 	public function insert($data)
 	{
 		$data = $this->with_normalized_key($data);
+		$id = parent::insert($data);
 
-		return parent::insert($data);
+		if ($id)
+		{
+			$row = $this->get($id);
+
+			if ($row)
+			{
+				$this->load->library('data_logger');
+				$this->data_logger->log_create(Data_logger::ENTITY_PRODUCT, (int) $id, $row);
+			}
+		}
+
+		return $id;
 	}
 
 	public function update($id, $data)
 	{
-		$data = $this->with_normalized_key($data, $this->get($id) ?: array());
+		$original = $this->get($id) ?: array();
+		$data = $this->with_normalized_key($data, $original);
+		$ok = parent::update($id, $data);
 
-		return parent::update($id, $data);
+		if ($ok)
+		{
+			$updated = $this->get($id);
+
+			if ($updated)
+			{
+				$this->load->library('data_logger');
+				$this->data_logger->log_update(
+					Data_logger::ENTITY_PRODUCT,
+					(int) $id,
+					$original ?: NULL,
+					$updated
+				);
+			}
+		}
+
+		return $ok;
 	}
 
 	protected function with_normalized_key(array $data, array $existing = array())

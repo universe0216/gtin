@@ -6,6 +6,49 @@ require_once APPPATH.'models/Basic_model.php';
 class Organization_model extends Basic_model {
 
 	protected $table = 'organizations';
+
+	public function insert($data)
+	{
+		$id = parent::insert($data);
+
+		if ($id)
+		{
+			$row = $this->get($id);
+
+			if ($row)
+			{
+				$this->load->library('data_logger');
+				$this->data_logger->log_create(Data_logger::ENTITY_ORGANIZATION, (int) $id, $row);
+			}
+		}
+
+		return $id;
+	}
+
+	public function update($id, $data)
+	{
+		$original = $this->get($id) ?: array();
+		$ok = parent::update($id, $data);
+
+		if ($ok)
+		{
+			$updated = $this->get($id);
+
+			if ($updated)
+			{
+				$this->load->library('data_logger');
+				$this->data_logger->log_update(
+					Data_logger::ENTITY_ORGANIZATION,
+					(int) $id,
+					$original ?: NULL,
+					$updated
+				);
+			}
+		}
+
+		return $ok;
+	}
+
 	protected $searchable_columns = array(
 		'organizations.name',
 		'organizations.reg_number',
