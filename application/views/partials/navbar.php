@@ -7,6 +7,7 @@ $auth_user = $CI->auth->user();
 
 $admin_children = array(
 	'admin'               => array('label' => app_line('nav_accounts'), 'url' => site_url('admin')),
+	'settings'            => array('label' => app_line('nav_settings'), 'url' => site_url('settings')),
 	'locations'           => array('label' => app_line('nav_locations'), 'url' => site_url('locations')),
 	'categories'          => array('label' => app_line('nav_categories'), 'url' => site_url('categories')),
 	'data_transfer'       => array('label' => app_line('nav_data_transfer'), 'url' => site_url('data_transfer')),
@@ -43,6 +44,7 @@ $books_children = array(
 
 $tools_children = array(
 	'tools_verify_checksum' => array('label' => app_line('nav_verify_checksum'), 'url' => site_url('tools/verify_checksum')),
+	'tools_data_patch'      => array('label' => app_line('nav_data_patch'), 'url' => site_url('data_patch'), 'admin' => TRUE),
 );
 
 $production_active = isset($production_children[$nav_active]);
@@ -206,12 +208,21 @@ if ( ! $show_superadmin)
 					><?php echo html_escape(app_line('nav_tools')); ?></a>
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown" aria-labelledby="toolsDropdown">
 						<?php foreach ($tools_children as $key => $item): ?>
+							<?php
+								$tool_allowed = TRUE;
+								if ( ! empty($item['admin']))
+								{
+									$tool_allowed = $CI->auth->is_admin();
+								}
+							?>
+							<?php if ($tool_allowed): ?>
 							<li>
 								<a
 									class="dropdown-item<?php echo ($nav_active === $key) ? ' active' : ''; ?>"
 									href="<?php echo $item['url']; ?>"
 								><?php echo html_escape($item['label']); ?></a>
 							</li>
+							<?php endif; ?>
 						<?php endforeach; ?>
 					</ul>
 				</li>

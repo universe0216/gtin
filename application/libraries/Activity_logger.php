@@ -137,6 +137,9 @@ class Activity_logger {
 			'history/data_log',
 			'history/data_log_list',
 			'history/data_log_detail',
+			'data_patch/export_start',
+			'data_patch/export_chunk',
+			'data_patch/status',
 		);
 
 		foreach ($skip as $prefix)
