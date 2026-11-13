@@ -1100,6 +1100,40 @@ body.modal-open:has(#productDetailModal.show) .modal-backdrop:last-of-type {
 	flex: 0 0 auto;
 }
 
+.product-category-field {
+	grid-column: 1 / -1;
+}
+
+.product-category-picker {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	max-width: 28rem;
+}
+
+.product-category-dropdown {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.product-category-dropdown-label {
+	display: block;
+	margin: 0 0.4rem;
+	line-height: 30px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.product-category-clear {
+	flex: 0 0 auto;
+}
+
+.category-standard-combo {
+	width: 100%;
+	min-height: 34px;
+}
+
 .entity-detail-info-form .entity-detail-info-item .form-control,
 .entity-detail-info-form .entity-detail-info-item .form-select {
 	background-color: rgba(15, 23, 42, 0.6);

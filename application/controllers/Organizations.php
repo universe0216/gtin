@@ -541,19 +541,23 @@ class Organizations extends BasicController {
 
 	protected function get_product_detail_config()
 	{
+		$this->load->model('category_model');
+
 		return array(
-			'enabled'     => TRUE,
-			'detailUrl'   => site_url('products/detail'),
-			'historyUrl'  => site_url('products/history'),
-			'downloadUrl' => site_url('products/download'),
-			'updateUrl'   => site_url('products/update'),
-			'canEdit'     => $this->auth->can('product.edit'),
-			'deleteUrl'   => site_url('products/delete'),
-			'canDelete'   => $this->auth->can('product.edit'),
-			'fields'      => $this->localize_labeled(array(
+			'enabled'       => TRUE,
+			'detailUrl'     => site_url('products/detail'),
+			'historyUrl'    => site_url('products/history'),
+			'downloadUrl'   => site_url('products/download'),
+			'updateUrl'     => site_url('products/update'),
+			'canEdit'       => $this->auth->can('product.edit'),
+			'deleteUrl'     => site_url('products/delete'),
+			'canDelete'     => $this->auth->can('product.edit'),
+			'categoryNodes' => $this->category_model->tree_nodes(3),
+			'fields'        => $this->localize_labeled(array(
 				array('name' => 'name', 'label' => 'Name', 'type' => 'text'),
 				array('name' => 'brand', 'label' => 'Brand', 'type' => 'text'),
 				array('name' => 'standard_number', 'label' => 'Standard Number', 'type' => 'text'),
+				array('name' => 'category_id', 'label' => 'Category', 'type' => 'category'),
 				array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text', 'readonly' => TRUE),
 				array(
 					'name'    => 'barcode_1d_type',

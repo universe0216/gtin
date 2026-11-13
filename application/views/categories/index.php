@@ -1,6 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 $can_edit = ! empty($can_edit);
+$standard_numbers = $standard_numbers ?? array();
 ?>
 <div class="entity-list-page" id="categoriesPage">
 	<div class="entity-list-page-header d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
@@ -31,7 +32,7 @@ $can_edit = ! empty($can_edit);
 
 <?php if ($can_edit): ?>
 <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered">
+	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title" id="categoryModalLabel"><?php echo html_escape(app_line('common_edit')); ?></h5>
@@ -49,9 +50,14 @@ $can_edit = ! empty($can_edit);
 						<label class="form-label"><?php echo html_escape(app_line('category_code')); ?></label>
 						<input type="text" class="form-control" id="categoryCode" readonly>
 					</div>
-					<div class="mb-0">
+					<div class="mb-3">
 						<label class="form-label" for="categoryName"><?php echo html_escape(app_line('col_name')); ?></label>
 						<input type="text" class="form-control" id="categoryName" name="name" required maxlength="255">
+					</div>
+					<div class="mb-0">
+						<label class="form-label" for="categoryStandardNumbers"><?php echo html_escape(app_line('category_standard_numbers')); ?></label>
+						<div id="categoryStandardNumbers" class="category-standard-combo"></div>
+						<div class="form-text"><?php echo html_escape(app_line('category_standard_numbers_hint')); ?></div>
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -72,5 +78,6 @@ $can_edit = ! empty($can_edit);
 		'baseUrl' => site_url('categories'),
 		'canEdit' => $can_edit,
 		'records' => $records,
+		'standardNumbers' => $standard_numbers,
 	), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 </script>

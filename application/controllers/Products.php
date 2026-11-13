@@ -35,6 +35,7 @@ class Products extends BasicController {
 		array('name' => 'name', 'label' => 'Name', 'type' => 'text'),
 		array('name' => 'brand', 'label' => 'Brand', 'type' => 'text'),
 		array('name' => 'standard_number', 'label' => 'Standard Number', 'type' => 'text'),
+		array('name' => 'category_id', 'label' => 'Category', 'type' => 'category'),
 		array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text', 'readonly' => TRUE),
 		array(
 			'name'    => 'barcode_1d_type',
@@ -284,12 +285,23 @@ class Products extends BasicController {
 			unset($data['org_id']);
 		}
 
+		unset($data['category_id']);
+
 		if ( ! $this->model->update($id, $data))
 		{
 			return $this->json_response(array(
 				'success' => FALSE,
 				'message' => app_line('common_failed_update'),
 			), 500);
+		}
+
+		if ($this->input->post('category_id') !== NULL)
+		{
+			$this->load->model('product_category_model');
+			$this->product_category_model->set_product_category(
+				(int) $id,
+				(int) $this->input->post('category_id')
+			);
 		}
 
 		return $this->json_response(array(
@@ -759,17 +771,20 @@ class Products extends BasicController {
 
 	protected function get_detail_config()
 	{
+		$this->load->model('category_model');
+
 		return array(
-			'enabled'     => TRUE,
-			'detailUrl'   => site_url('products/detail'),
-			'historyUrl'  => site_url('products/history'),
-			'downloadUrl' => site_url('products/download'),
-			'updateUrl'   => site_url('products/update'),
-			'canEdit'     => $this->auth->can($this->permission_edit),
-			'deleteUrl'   => site_url('products/delete'),
-			'canDelete'   => $this->auth->can($this->permission_edit),
-			'fields'      => $this->localize_labeled($this->detail_fields),
-			'rowAction'   => array(
+			'enabled'       => TRUE,
+			'detailUrl'     => site_url('products/detail'),
+			'historyUrl'    => site_url('products/history'),
+			'downloadUrl'   => site_url('products/download'),
+			'updateUrl'     => site_url('products/update'),
+			'canEdit'       => $this->auth->can($this->permission_edit),
+			'deleteUrl'     => site_url('products/delete'),
+			'canDelete'     => $this->auth->can($this->permission_edit),
+			'fields'        => $this->localize_labeled($this->detail_fields),
+			'categoryNodes' => $this->category_model->tree_nodes(3),
+			'rowAction'     => array(
 				'type'    => 'delete',
 				'url'     => site_url('products/delete'),
 				'enabled' => $this->auth->can($this->permission_edit),

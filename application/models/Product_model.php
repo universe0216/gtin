@@ -26,6 +26,7 @@ class Product_model extends Basic_model {
 			{
 				$this->load->library('data_logger');
 				$this->data_logger->log_create(Data_logger::ENTITY_PRODUCT, (int) $id, $row);
+				$this->assign_category_by_standard((int) $id, $row['standard_number'] ?? '');
 			}
 		}
 
@@ -270,13 +271,50 @@ class Product_model extends Basic_model {
 
 	public function get_with_organization($id)
 	{
-		return $this->db
+		$row = $this->db
 			->select('products.*, organizations.name AS organization_name')
 			->from($this->table)
 			->join('organizations', 'organizations.id = products.org_id', 'left')
 			->where('products.id', (int) $id)
 			->get()
 			->row_array();
+
+		if ( ! $row)
+		{
+			return NULL;
+		}
+
+		$this->load->model('product_category_model');
+		$this->load->model('category_model');
+		$category_id = $this->product_category_model->get_primary_category_id($id);
+		$row['category_id'] = $category_id;
+		$row['category_name'] = $category_id
+			? $this->category_model->path_label($category_id)
+			: '';
+
+		return $row;
+	}
+
+	public function assign_category_by_standard($product_id, $standard_number)
+	{
+		$product_id = (int) $product_id;
+		$standard_number = trim((string) $standard_number);
+
+		if ($product_id < 1 || $standard_number === '')
+		{
+			return FALSE;
+		}
+
+		$this->load->model('standard_category_model');
+		$this->load->model('product_category_model');
+		$category_id = $this->standard_category_model->get_category_id($standard_number);
+
+		if ( ! $category_id)
+		{
+			return FALSE;
+		}
+
+		return $this->product_category_model->assign_category_to_products(array($product_id), $category_id);
 	}
 
 	public function find_catalog_match($organization_id, $barcode, $name)

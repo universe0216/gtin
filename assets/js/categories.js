@@ -193,7 +193,92 @@
 	const codeInput = document.getElementById('categoryCode');
 	const nameInput = document.getElementById('categoryName');
 	const saveBtn = document.getElementById('categorySaveBtn');
+	const standardHost = document.getElementById('categoryStandardNumbers');
+	const standardOptions = (config.standardNumbers || []).slice();
 	const modal = modalEl && typeof mdb !== 'undefined' ? mdb.Modal.getOrCreateInstance(modalEl) : null;
+	let standardComboReady = false;
+
+	function ensureStandardCombo() {
+		if (!standardHost || typeof jQuery === 'undefined' || !jQuery.fn || !jQuery.fn.jqxComboBox) {
+			return false;
+		}
+
+		const $host = jQuery(standardHost);
+
+		if (!standardComboReady) {
+			$host.jqxComboBox({
+				theme: 'dark',
+				width: '100%',
+				height: 34,
+				source: standardOptions,
+				multiSelect: true,
+				searchMode: 'containsignorecase',
+				placeHolder: t('category_standard_numbers_placeholder'),
+				autoComplete: true,
+			});
+			$host.on('keydown', function (event) {
+				if (event.key !== 'Enter' && event.keyCode !== 13) {
+					return;
+				}
+
+				const input = $host.find('input.jqx-combobox-input');
+				const text = String(input.val() || '').trim();
+
+				if (!text) {
+					return;
+				}
+
+				event.preventDefault();
+
+				if (standardOptions.indexOf(text) === -1) {
+					standardOptions.push(text);
+					$host.jqxComboBox({ source: standardOptions.slice() });
+				}
+
+				$host.jqxComboBox('selectItem', text);
+				input.val('');
+			});
+			standardComboReady = true;
+		}
+
+		return true;
+	}
+
+	function setStandardNumbers(values) {
+		if (!ensureStandardCombo()) {
+			return;
+		}
+
+		const $host = jQuery(standardHost);
+		$host.jqxComboBox('clearSelection');
+
+		(values || []).forEach(function (value) {
+			const text = String(value || '').trim();
+
+			if (!text) {
+				return;
+			}
+
+			if (standardOptions.indexOf(text) === -1) {
+				standardOptions.push(text);
+				$host.jqxComboBox({ source: standardOptions.slice() });
+			}
+
+			$host.jqxComboBox('selectItem', text);
+		});
+	}
+
+	function getStandardNumbers() {
+		if (!standardComboReady || !standardHost) {
+			return [];
+		}
+
+		const items = jQuery(standardHost).jqxComboBox('getSelectedItems') || [];
+
+		return items.map(function (item) {
+			return String(item && (item.label != null ? item.label : item.value) || '').trim();
+		}).filter(Boolean);
+	}
 
 	function hideAlert() {
 		if (!alertEl) {
@@ -248,10 +333,18 @@
 		originalInput.value = record.original_name || '';
 		codeInput.value = record.gpc_code || '';
 		nameInput.value = record.name || '';
+		setStandardNumbers([]);
 
 		if (modal) {
 			modal.show();
 		}
+
+		fetchApi(baseUrl + '/detail/' + record.id).then(function (result) {
+			const detail = result.data || {};
+			setStandardNumbers(detail.standard_numbers || []);
+		}).catch(function (error) {
+			showAlert(error.message || t('common_failed_load_records'));
+		});
 
 		window.setTimeout(function () {
 			nameInput.focus();
@@ -266,6 +359,7 @@
 
 		const id = recordInput.value;
 		const body = new FormData(formEl);
+		body.append('standard_numbers', JSON.stringify(getStandardNumbers()));
 
 		fetchApi(baseUrl + '/update/' + id, { method: 'POST', body: body }).then(function (result) {
 			const record = result.data;
@@ -276,7 +370,15 @@
 				});
 
 				if (index >= 0) {
-					records[index] = record;
+					records[index] = {
+						id: record.id,
+						parent_id: record.parent_id,
+						gpc_code: record.gpc_code,
+						name: record.name,
+						original_name: record.original_name,
+						level: record.level,
+						sort_order: record.sort_order,
+					};
 					rebuildIndex();
 				}
 			}

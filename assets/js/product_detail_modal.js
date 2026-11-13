@@ -24,6 +24,12 @@
 		const historyFieldLabels = window.EntityHistory
 			? window.EntityHistory.buildFieldLabels(settings.fields || [])
 			: {};
+		const categoryNodes = settings.categoryNodes || [];
+		const categoryById = {};
+
+		categoryNodes.forEach(function (node) {
+			categoryById[String(node.id)] = node;
+		});
 
 		if (!enabled || !modalEl || typeof mdb === 'undefined') {
 			return {
@@ -160,6 +166,178 @@
 			}
 		}
 
+		function destroyCategoryPicker() {
+			if (typeof jQuery === 'undefined') {
+				return;
+			}
+
+			const $drop = jQuery('#productCategoryDropDown');
+			const $tree = jQuery('#productCategoryTree');
+
+			if ($tree.length && $tree.data('jqxTree')) {
+				$tree.jqxTree('destroy');
+			}
+
+			if ($drop.length && $drop.data('jqxDropDownButton')) {
+				$drop.jqxDropDownButton('destroy');
+			}
+		}
+
+		function categoryChildren(parentId) {
+			const key = parentId == null || parentId === '' ? '' : String(parentId);
+
+			return categoryNodes.filter(function (node) {
+				const nodeParent = node.parent_id == null ? '' : String(node.parent_id);
+				return nodeParent === key;
+			});
+		}
+
+		function categoryChain(id) {
+			const chain = [];
+			let current = categoryById[String(id)];
+
+			while (current) {
+				chain.unshift(current);
+				current = current.parent_id != null ? categoryById[String(current.parent_id)] : null;
+			}
+
+			return chain;
+		}
+
+		function categoryLabel(id) {
+			return categoryChain(id).map(function (node) {
+				return node.name;
+			}).join(' / ');
+		}
+
+		function categoryTreeSource(parentId) {
+			return categoryChildren(parentId).map(function (node) {
+				const children = categoryTreeSource(node.id);
+				const item = {
+					label: node.name,
+					value: String(node.id),
+					icon: false,
+				};
+
+				if (children.length) {
+					item.items = children;
+				}
+
+				return item;
+			});
+		}
+
+		function categoryDropContent(text) {
+			return '<span class="product-category-dropdown-label">' + escapeHtml(text || '') + '</span>';
+		}
+
+		function mountCategoryPicker(selectedId, locked) {
+			const hidden = document.getElementById('productDetailField_category_id');
+			const $ = window.jQuery;
+			const clearBtn = document.getElementById('productCategoryClear');
+
+			if (!$ || !$.fn || !$.fn.jqxDropDownButton || !$.fn.jqxTree || !hidden) {
+				return;
+			}
+
+			const $drop = $('#productCategoryDropDown');
+			const $tree = $('#productCategoryTree');
+			let applyingSelection = false;
+
+			if (!$drop.length || !$tree.length) {
+				return;
+			}
+
+			const syncLabel = function (id) {
+				$drop.jqxDropDownButton('setContent', categoryDropContent(id ? categoryLabel(id) : ''));
+			};
+
+			const initial = selectedId ? String(selectedId) : '';
+			hidden.value = initial;
+
+			$drop.jqxDropDownButton({
+				theme: 'dark',
+				width: '100%',
+				height: 32,
+				disabled: !!locked,
+				popupZIndex: 2100,
+				dropDownWidth: 360,
+				dropDownHeight: 260,
+				initContent: function () {
+					$tree.jqxTree({
+						theme: 'dark',
+						width: 360,
+						height: 260,
+						source: categoryTreeSource(''),
+						allowDrag: false,
+						allowDrop: false,
+						toggleMode: 'dblclick',
+						incrementalSearch: true,
+					});
+
+					$tree.on('select', function (event) {
+						if (locked || applyingSelection || !event.args) {
+							return;
+						}
+
+						const item = $tree.jqxTree('getItem', event.args.element);
+
+						if (!item || item.value == null || item.value === '') {
+							return;
+						}
+
+						hidden.value = String(item.value);
+						syncLabel(hidden.value);
+						$drop.jqxDropDownButton('close');
+					});
+
+					if (initial && categoryById[initial]) {
+						const items = $tree.jqxTree('getItems') || [];
+						const match = items.filter(function (item) {
+							return String(item.value) === initial;
+						})[0];
+
+						if (match) {
+							applyingSelection = true;
+							let parent = match.parentElement;
+
+							while (parent) {
+								$tree.jqxTree('expandItem', parent);
+								const parentItem = $tree.jqxTree('getItem', parent);
+								parent = parentItem ? parentItem.parentElement : null;
+							}
+
+							$tree.jqxTree('selectItem', match.element);
+							applyingSelection = false;
+						}
+					}
+				},
+			});
+
+			syncLabel(initial);
+
+			if (clearBtn) {
+				clearBtn.onclick = function () {
+					if (locked) {
+						return;
+					}
+
+					hidden.value = '';
+					syncLabel('');
+
+					if ($tree.data('jqxTree')) {
+						applyingSelection = true;
+						$tree.jqxTree('selectItem', null);
+						applyingSelection = false;
+					}
+
+					if ($drop.jqxDropDownButton('isOpened')) {
+						$drop.jqxDropDownButton('close');
+					}
+				};
+			}
+		}
+
 		function mountDatePickers() {
 			if (!formWrap || !window.JqxDate || typeof window.JqxDate.mount !== 'function') {
 				return;
@@ -185,6 +363,7 @@
 			}
 
 			destroyDatePickers();
+			destroyCategoryPicker();
 
 			const fields = settings.fields || [];
 			let html = '<div class="entity-detail-info-grid">';
@@ -225,6 +404,26 @@
 								(locked ? ' data-disabled="1"' : '') +
 							'></div>' +
 						'</div>';
+				} else if (field.type === 'category') {
+					const categoryId = data.category_id ? String(data.category_id) : '';
+					control =
+						'<div class="product-category-picker">' +
+							'<input type="hidden" id="' + inputId + '" name="category_id" value="' + escapeAttr(categoryId) + '">' +
+							'<div id="productCategoryDropDown" class="product-category-dropdown">' +
+								'<div id="productCategoryTree" style="border: none;"></div>' +
+							'</div>' +
+							(locked
+								? ''
+								: '<button type="button" class="btn btn-secondary btn-sm product-category-clear" id="productCategoryClear">' +
+									escapeHtml(t('common_clear')) +
+								'</button>') +
+						'</div>';
+					html +=
+						'<div class="entity-detail-info-item product-category-field">' +
+							'<label class="entity-detail-info-label" for="' + inputId + '">' + escapeHtml(field.label) + '</label>' +
+							control +
+						'</div>';
+					return;
 				} else {
 					control = '<input type="text" class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' value="' + value + '"' + readOnlyAttr + '>';
 				}
@@ -239,6 +438,7 @@
 			html += '</div>';
 			formWrap.innerHTML = html;
 			mountDatePickers();
+			mountCategoryPicker(data.category_id || '', !canEdit);
 			setDetailActionsDisabled(false);
 		}
 
@@ -256,6 +456,7 @@
 			showInfoTab();
 
 			destroyDatePickers();
+			destroyCategoryPicker();
 
 			if (formWrap) {
 				formWrap.innerHTML = '';

@@ -766,10 +766,12 @@ class Product_registration extends AuthenticatedController {
 			if ($existing)
 			{
 				$ok = $this->product_model->update($existing['id'], $row);
+				$product_id = $ok ? (int) $existing['id'] : 0;
 			}
 			else
 			{
-				$ok = $this->product_model->insert($row);
+				$product_id = (int) $this->product_model->insert($row);
+				$ok = $product_id > 0;
 			}
 
 			if ( ! $ok)
@@ -780,6 +782,14 @@ class Product_registration extends AuthenticatedController {
 					'success' => FALSE,
 					'message' => app_line('reg_save_failed'),
 				), 500);
+			}
+
+			if ($product_id > 0)
+			{
+				$this->product_model->assign_category_by_standard(
+					$product_id,
+					$row['standard_number'] ?? ''
+				);
 			}
 
 			$saved++;
