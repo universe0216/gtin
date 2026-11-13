@@ -38,6 +38,7 @@ CREATE TABLE `accounts`  (
   `password` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
   `full_name` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
   `is_admin` tinyint(1) NOT NULL DEFAULT 0,
+  `is_superadmin` tinyint(1) NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
@@ -262,6 +263,18 @@ CREATE TABLE `users`  (
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
+
+CREATE TABLE IF NOT EXISTS `source_file_history` (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `relative_path` varchar(500) NOT NULL,
+  `backup_path` varchar(500) NOT NULL,
+  `uploaded_name` varchar(255) NOT NULL,
+  `account_id` int UNSIGNED NOT NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_source_file_history_path` (`relative_path`(191)) USING BTREE,
+  CONSTRAINT `fk_source_file_history_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
 
 CREATE TABLE IF NOT EXISTS `products_archieve` LIKE `products`;

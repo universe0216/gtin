@@ -51,6 +51,14 @@ class Admin extends AuthenticatedController {
 		$data = $this->collect_account_data(TRUE);
 		$permissions = $this->collect_permissions();
 
+		if ( ! empty($data['is_superadmin']))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('admin_superadmin_forbidden'),
+			), 403);
+		}
+
 		if ($this->account_model->username_exists($data['username']))
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_username_exists')), 422);
@@ -72,9 +80,19 @@ class Admin extends AuthenticatedController {
 
 	public function update($id = NULL)
 	{
-		if ( ! $this->account_model->get($id))
+		$existing = $this->account_model->get($id);
+
+		if ( ! $existing)
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_user_not_found')), 404);
+		}
+
+		if ( ! empty($existing['is_superadmin']) && ! $this->auth->is_superadmin())
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('admin_superadmin_edit_forbidden'),
+			), 403);
 		}
 
 		if ( ! $this->validate_account(FALSE))
@@ -87,6 +105,22 @@ class Admin extends AuthenticatedController {
 
 		$data = $this->collect_account_data(FALSE);
 		$permissions = $this->collect_permissions();
+
+		if ( ! empty($data['is_superadmin']) && empty($existing['is_superadmin']))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('admin_superadmin_forbidden'),
+			), 403);
+		}
+
+		// Never change superadmin flag through the accounts UI.
+		unset($data['is_superadmin']);
+
+		if ( ! empty($existing['is_superadmin']))
+		{
+			$data['is_admin'] = 1;
+		}
 
 		if ($this->account_model->username_exists($data['username'], $id))
 		{
@@ -114,9 +148,19 @@ class Admin extends AuthenticatedController {
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_delete_self')), 422);
 		}
 
-		if ( ! $this->account_model->get($id))
+		$existing = $this->account_model->get($id);
+
+		if ( ! $existing)
 		{
 			return $this->json_response(array('success' => FALSE, 'message' => app_line('admin_user_not_found')), 404);
+		}
+
+		if ( ! empty($existing['is_superadmin']))
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('admin_superadmin_delete_forbidden'),
+			), 403);
 		}
 
 		if ( ! $this->account_model->delete($id))
@@ -170,10 +214,11 @@ class Admin extends AuthenticatedController {
 	protected function collect_account_data($is_create)
 	{
 		$data = array(
-			'username'   => $this->input->post('username'),
-			'full_name'  => $this->input->post('full_name'),
-			'is_admin'   => $this->input->post('is_admin') ? 1 : 0,
-			'is_active'  => $this->input->post('is_active') ? 1 : 0,
+			'username'        => $this->input->post('username'),
+			'full_name'       => $this->input->post('full_name'),
+			'is_admin'        => $this->input->post('is_admin') ? 1 : 0,
+			'is_superadmin'   => 0,
+			'is_active'       => $this->input->post('is_active') ? 1 : 0,
 		);
 
 		$password = $this->input->post('password');

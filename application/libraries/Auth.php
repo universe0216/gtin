@@ -27,17 +27,20 @@ class Auth {
 			return FALSE;
 		}
 
-		$permissions = $account['is_admin']
+		$is_superadmin = ! empty($account['is_superadmin']);
+		$is_admin = ! empty($account['is_admin']) || $is_superadmin;
+		$permissions = $is_admin
 			? $this->CI->config->item('all_permissions', 'permissions')
 			: $this->CI->account_model->get_permissions($account['id']);
 
 		$this->CI->session->set_userdata(array(
-			'auth_user_id'       => (int) $account['id'],
-			'auth_username'      => $account['username'],
-			'auth_full_name'     => $account['full_name'],
-			'auth_is_admin'      => (bool) $account['is_admin'],
-			'auth_permissions'   => $permissions,
-			'auth_logged_in'     => TRUE,
+			'auth_user_id'         => (int) $account['id'],
+			'auth_username'        => $account['username'],
+			'auth_full_name'       => $account['full_name'],
+			'auth_is_admin'        => $is_admin,
+			'auth_is_superadmin'   => $is_superadmin,
+			'auth_permissions'     => $permissions,
+			'auth_logged_in'       => TRUE,
 		));
 
 		return TRUE;
@@ -50,6 +53,7 @@ class Auth {
 			'auth_username',
 			'auth_full_name',
 			'auth_is_admin',
+			'auth_is_superadmin',
 			'auth_permissions',
 			'auth_logged_in',
 		));
@@ -60,9 +64,14 @@ class Auth {
 		return (bool) $this->CI->session->userdata('auth_logged_in');
 	}
 
+	public function is_superadmin()
+	{
+		return (bool) $this->CI->session->userdata('auth_is_superadmin');
+	}
+
 	public function is_admin()
 	{
-		return (bool) $this->CI->session->userdata('auth_is_admin');
+		return (bool) $this->CI->session->userdata('auth_is_admin') || $this->is_superadmin();
 	}
 
 	public function user()
@@ -73,10 +82,11 @@ class Auth {
 		}
 
 		return array(
-			'id'        => (int) $this->CI->session->userdata('auth_user_id'),
-			'username'  => $this->CI->session->userdata('auth_username'),
-			'full_name' => $this->CI->session->userdata('auth_full_name'),
-			'is_admin'  => $this->is_admin(),
+			'id'             => (int) $this->CI->session->userdata('auth_user_id'),
+			'username'       => $this->CI->session->userdata('auth_username'),
+			'full_name'      => $this->CI->session->userdata('auth_full_name'),
+			'is_admin'       => $this->is_admin(),
+			'is_superadmin'  => $this->is_superadmin(),
 		);
 	}
 
@@ -89,7 +99,7 @@ class Auth {
 
 	public function can($permission)
 	{
-		if ($this->is_admin())
+		if ($this->is_superadmin() || $this->is_admin())
 		{
 			return TRUE;
 		}
@@ -150,5 +160,17 @@ class Auth {
 		}
 
 		show_error(app_line('auth_admin_required'), 403);
+	}
+
+	public function require_superadmin()
+	{
+		$this->require_login();
+
+		if ($this->is_superadmin())
+		{
+			return;
+		}
+
+		show_error(app_line('auth_superadmin_required'), 403);
 	}
 }

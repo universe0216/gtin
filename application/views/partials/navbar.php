@@ -6,10 +6,15 @@ $nav_active = $nav_active ?? '';
 $auth_user = $CI->auth->user();
 
 $admin_children = array(
-	'admin'          => array('label' => app_line('nav_accounts'), 'url' => site_url('admin')),
-	'locations'      => array('label' => app_line('nav_locations'), 'url' => site_url('locations')),
-	'categories'     => array('label' => app_line('nav_categories'), 'url' => site_url('categories')),
-	'data_transfer'  => array('label' => app_line('nav_data_transfer'), 'url' => site_url('data_transfer')),
+	'admin'               => array('label' => app_line('nav_accounts'), 'url' => site_url('admin')),
+	'locations'           => array('label' => app_line('nav_locations'), 'url' => site_url('locations')),
+	'categories'          => array('label' => app_line('nav_categories'), 'url' => site_url('categories')),
+	'data_transfer'       => array('label' => app_line('nav_data_transfer'), 'url' => site_url('data_transfer')),
+	'source_management'   => array(
+		'label'       => app_line('nav_source_management'),
+		'url'         => site_url('source_management'),
+		'superadmin'  => TRUE,
+	),
 );
 
 $production_children = array(
@@ -45,6 +50,12 @@ $books_active = isset($books_children[$nav_active]);
 $tools_active = isset($tools_children[$nav_active]);
 $admin_active = isset($admin_children[$nav_active]);
 $show_admin = $CI->auth->is_admin();
+$show_superadmin = $CI->auth->is_superadmin();
+
+if ( ! $show_superadmin)
+{
+	unset($admin_children['source_management']);
+}
 ?>
 <nav class="navbar navbar-expand-lg navbar-dark app-navbar sticky-top">
 	<div class="container-fluid px-4">

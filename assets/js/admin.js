@@ -30,14 +30,22 @@
 			username: account.username || '',
 			full_name: account.full_name || '',
 			is_admin: parseInt(account.is_admin, 10) ? 1 : 0,
+			is_superadmin: parseInt(account.is_superadmin, 10) ? 1 : 0,
 			is_active: parseInt(account.is_active, 10) ? 1 : 0,
 		};
 	}
 
-	function roleRenderer(row, columnfield, value) {
-		const badge = Number(value) === 1
-			? '<span class="badge bg-primary">' + t('common_admin') + '</span>'
-			: '<span class="badge bg-secondary">' + t('common_user') + '</span>';
+	function roleRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
+		let badge;
+
+		if (rowdata && Number(rowdata.is_superadmin) === 1) {
+			badge = '<span class="badge bg-warning text-dark">' + t('common_superadmin') + '</span>';
+		} else if (Number(value) === 1) {
+			badge = '<span class="badge bg-primary">' + t('common_admin') + '</span>';
+		} else {
+			badge = '<span class="badge bg-secondary">' + t('common_user') + '</span>';
+		}
+
 		return JqxGrid.htmlCellRenderer(badge);
 	}
 
@@ -50,13 +58,21 @@
 
 	function actionsRenderer(row, columnfield, value, defaultHtml, props, rowdata) {
 		return JqxGrid.actionButtons([
-			{ cls: 'btn-outline-primary btn-edit', icon: 'fa-pen', title: t('common_edit') },
+			{
+				cls: 'btn-outline-primary btn-edit',
+				icon: 'fa-pen',
+				title: t('common_edit'),
+				hidden: function (record) {
+					return Number(record.is_superadmin) === 1 && !config.currentIsSuperadmin;
+				},
+			},
 			{
 				cls: 'btn-outline-danger btn-delete',
 				icon: 'fa-trash',
 				title: t('common_delete'),
 				hidden: function (record) {
-					return parseInt(record.id, 10) === config.currentUserId;
+					return parseInt(record.id, 10) === config.currentUserId
+						|| Number(record.is_superadmin) === 1;
 				},
 			},
 		], rowdata);

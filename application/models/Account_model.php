@@ -6,7 +6,7 @@ class Account_model extends CI_Model {
 	public function get_all()
 	{
 		return $this->db
-			->select('id, username, full_name, is_admin, is_active, created_at, updated_at')
+			->select('id, username, full_name, is_admin, is_superadmin, is_active, created_at, updated_at')
 			->order_by('id', 'ASC')
 			->get('accounts')
 			->result_array();
@@ -27,9 +27,22 @@ class Account_model extends CI_Model {
 		unset($account['password']);
 		$account['permissions'] = $this->get_permissions($id);
 		$account['is_admin'] = (bool) $account['is_admin'];
+		$account['is_superadmin'] = ! empty($account['is_superadmin']);
 		$account['is_active'] = (bool) $account['is_active'];
 
 		return $account;
+	}
+
+	public function count_superadmins($exclude_id = NULL)
+	{
+		$this->db->where('is_superadmin', 1);
+
+		if ($exclude_id)
+		{
+			$this->db->where('id !=', (int) $exclude_id);
+		}
+
+		return (int) $this->db->count_all_results('accounts');
 	}
 
 	public function get_by_username($username)

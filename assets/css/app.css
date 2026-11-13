@@ -90,6 +90,37 @@ html[data-mdb-theme="dark"] body {
 	max-width: 36rem;
 }
 
+.source-management-layout {
+	min-height: calc(100vh - 10rem);
+}
+
+.source-tree-panel,
+.source-detail-panel {
+	height: calc(100vh - 10rem);
+	min-height: 28rem;
+	display: flex;
+	flex-direction: column;
+}
+
+.source-file-tree {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	border: 1px solid var(--app-border-subtle);
+	border-radius: 0.5rem;
+	background: var(--app-surface-raised);
+}
+
+.source-detail-panel {
+	overflow: auto;
+}
+
+.source-backup-path {
+	font-size: 0.8rem;
+	word-break: break-all;
+}
+}
+
 #checksumDigit[readonly] {
 	font-size: 1.25rem;
 	letter-spacing: 0.08em;

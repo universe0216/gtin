@@ -97,15 +97,17 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 <script>
 	window.ADMIN_CONFIG = <?php echo json_encode(array(
-		'baseUrl'         => site_url('admin'),
-		'currentUserId'   => (int) $current_user_id,
-		'accounts'        => array_map(function ($account) {
+		'baseUrl'              => site_url('admin'),
+		'currentUserId'        => (int) $current_user_id,
+		'currentIsSuperadmin'  => (bool) $this->auth->is_superadmin(),
+		'accounts'             => array_map(function ($account) {
 			return array(
-				'id'        => (int) $account['id'],
-				'username'  => $account['username'],
-				'full_name' => $account['full_name'],
-				'is_admin'  => (int) $account['is_admin'],
-				'is_active' => (int) $account['is_active'],
+				'id'             => (int) $account['id'],
+				'username'       => $account['username'],
+				'full_name'      => $account['full_name'],
+				'is_admin'       => (int) $account['is_admin'],
+				'is_superadmin'  => (int) (! empty($account['is_superadmin'])),
+				'is_active'      => (int) $account['is_active'],
 			);
 		}, $accounts),
 	)); ?>;
