@@ -9,6 +9,7 @@ class Organizations extends BasicController {
 	protected $entity_label = 'Organizations';
 	protected $list_view = 'organizations/index';
 	protected $list_scripts = array(
+		'assets/js/entity_history.js',
 		'assets/js/product_detail_modal.js',
 		'assets/js/organizations.js',
 		'assets/js/organization_detail.js',
@@ -226,6 +227,103 @@ class Organizations extends BasicController {
 		));
 	}
 
+	public function history($id = NULL)
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->auth->require_permission($this->permission_view);
+
+		$record = $this->model->get($id);
+
+		if ( ! $record)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('org_not_found'),
+			), 404);
+		}
+
+		$entity_id = ! empty($record['origin_id'])
+			? (int) $record['origin_id']
+			: (int) $record['id'];
+
+		$this->load->library('data_logger');
+		$rows = $this->data_logger->history_for(Data_logger::ENTITY_ORGANIZATION, $entity_id);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $this->enrich_organization_history($rows),
+		));
+	}
+
+	protected function enrich_organization_history(array $rows)
+	{
+		foreach ($rows as &$row)
+		{
+			if (empty($row['changes']) || ! is_array($row['changes']))
+			{
+				continue;
+			}
+
+			foreach ($row['changes'] as &$change)
+			{
+				$field = (string) ($change['field'] ?? '');
+
+				if ($field === 'currency')
+				{
+					$change['from'] = $this->currency_history_label($change['from'] ?? NULL);
+					$change['to'] = $this->currency_history_label($change['to'] ?? NULL);
+				}
+				elseif ($field === 'location_id')
+				{
+					$change['from'] = $this->location_history_label($change['from'] ?? NULL);
+					$change['to'] = $this->location_history_label($change['to'] ?? NULL);
+				}
+			}
+			unset($change);
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	protected function currency_history_label($value)
+	{
+		if ($value === NULL || $value === '')
+		{
+			return NULL;
+		}
+
+		$currency = (string) $value;
+
+		if ($currency === '1')
+		{
+			return app_line('currency_foreign');
+		}
+
+		if ($currency === '2')
+		{
+			return app_line('currency_domestic');
+		}
+
+		return $currency;
+	}
+
+	protected function location_history_label($value)
+	{
+		if ($value === NULL || $value === '')
+		{
+			return NULL;
+		}
+
+		$path = $this->location_model->path_name($value);
+
+		return $path !== '' ? $path : (string) $value;
+	}
+
 	public function products($id = NULL)
 	{
 		if ( ! $this->input->is_ajax_request())
@@ -412,6 +510,7 @@ class Organizations extends BasicController {
 		return array(
 			'enabled'         => TRUE,
 			'detailUrl'       => site_url('organizations/detail'),
+			'historyUrl'      => site_url('organizations/history'),
 			'productsUrl'     => site_url('organizations/products'),
 			'updateUrl'       => site_url('organizations/update'),
 			'canEdit'         => $this->auth->can($this->permission_edit),
@@ -445,6 +544,7 @@ class Organizations extends BasicController {
 		return array(
 			'enabled'     => TRUE,
 			'detailUrl'   => site_url('products/detail'),
+			'historyUrl'  => site_url('products/history'),
 			'downloadUrl' => site_url('products/download'),
 			'updateUrl'   => site_url('products/update'),
 			'canEdit'     => $this->auth->can('product.edit'),

@@ -40,6 +40,13 @@
 	const infoLoading = document.getElementById('organizationDetailInfoLoading');
 	const infoWrap = document.getElementById('organizationDetailInfoWrap');
 	const productsTabBtn = document.getElementById('organizationProductsTabBtn');
+	const historyTabBtn = document.getElementById('organizationHistoryTabBtn');
+	const historyLoading = document.getElementById('organizationHistoryLoading');
+	const historyWrap = document.getElementById('organizationHistoryWrap');
+	const historyUrl = (detailConfig.historyUrl || '').replace(/\/$/, '');
+	const historyFieldLabels = window.EntityHistory
+		? window.EntityHistory.buildFieldLabels([].concat(editableFields, infoFields, readOnlyFields))
+		: {};
 	const productsSearchInput = document.getElementById('organizationProductsSearchInput');
 	const productsClearBtn = document.getElementById('organizationProductsClearBtn');
 	const productsDeleteSelectedBtn = document.getElementById('organizationProductsDeleteSelectedBtn');
@@ -52,8 +59,11 @@
 	let modal;
 	let detailRequest = null;
 	let updateRequest = null;
+	let historyRequest = null;
 	let productDeleteRequest = null;
 	let productsLoaded = false;
+	let historyLoaded = false;
+	let historyDirty = true;
 	let productsGrid = null;
 	let productDetail = null;
 
@@ -404,9 +414,12 @@
 				'</textarea>';
 		} else if (field.type === 'date') {
 			inputHtml =
-				'<input type="date" class="form-control form-control-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '" value="' +
-				escapeHtml(normalizeDateValue(value)) +
-				'">';
+				'<div class="organization-date-field">' +
+					'<input type="hidden" id="' + inputId + '" name="' + escapeHtml(fieldName) + '" class="jqx-app-date-value" value="' +
+					escapeHtml(normalizeDateValue(value)) +
+					'">' +
+					'<div id="' + inputId + '_picker" class="jqx-app-date-host" data-value-input="' + inputId + '"></div>' +
+				'</div>';
 		} else if (field.type === 'select') {
 			const options = field.options || [];
 			inputHtml = '<select class="form-select form-select-sm" id="' + inputId + '" name="' + escapeHtml(fieldName) + '">';
@@ -462,6 +475,7 @@
 		}
 
 		hideInfoAlert();
+		destroyDatePickers();
 		destroyLocationPicker();
 
 		let html = '';
@@ -509,7 +523,31 @@
 				});
 			});
 			mountLocationPicker();
+			mountDatePickers(form);
 		}
+	}
+
+	function destroyDatePickers() {
+		if (window.JqxDate && typeof window.JqxDate.destroyIn === 'function') {
+			window.JqxDate.destroyIn(infoWrap);
+		}
+	}
+
+	function mountDatePickers(form) {
+		if (!form || !window.JqxDate || typeof window.JqxDate.mount !== 'function') {
+			return;
+		}
+
+		form.querySelectorAll('.jqx-app-date-host').forEach(function (host) {
+			const valueInputId = host.getAttribute('data-value-input');
+			const valueInput = valueInputId ? document.getElementById(valueInputId) : null;
+
+			window.JqxDate.mount(host, {
+				value: valueInput ? valueInput.value : '',
+				valueInput: valueInput,
+				allowNull: true,
+			});
+		});
 	}
 
 	function saveInfoForm() {
@@ -521,6 +559,10 @@
 
 		if (!form) {
 			return Promise.reject(new Error(t('org_update_failed')));
+		}
+
+		if (window.JqxDate && typeof window.JqxDate.syncForm === 'function') {
+			window.JqxDate.syncForm(form);
 		}
 
 		hideInfoAlert();
@@ -542,6 +584,7 @@
 				}
 
 				renderInfoFields(record);
+				historyDirty = true;
 				showToast(result.message || t('org_updated'), 'success');
 				document.dispatchEvent(new CustomEvent('organizationsListRefresh'));
 
@@ -592,8 +635,21 @@
 			confirmLabel: confirmLabel,
 			confirmClass: 'btn btn-primary',
 		}).then(function () {
-			regDateInput.value = todayDateValue();
-			expiryDateInput.value = addYearsToDate(expiryDateInput.value, years);
+			const regPicker = document.getElementById(regDateInput.id + '_picker');
+			const expiryPicker = document.getElementById(expiryDateInput.id + '_picker');
+			const currentExpiry = (window.JqxDate && expiryPicker)
+				? window.JqxDate.getValue(expiryPicker, { valueInput: expiryDateInput })
+				: expiryDateInput.value;
+			const nextReg = todayDateValue();
+			const nextExpiry = addYearsToDate(currentExpiry, years);
+
+			if (window.JqxDate && regPicker && expiryPicker) {
+				window.JqxDate.setValue(regPicker, nextReg, { valueInput: regDateInput });
+				window.JqxDate.setValue(expiryPicker, nextExpiry, { valueInput: expiryDateInput });
+			} else {
+				regDateInput.value = nextReg;
+				expiryDateInput.value = nextExpiry;
+			}
 
 			return saveInfoForm();
 		}).catch(function (error) {
@@ -962,12 +1018,17 @@
 		detailState.organizationName = '';
 		productsState.search = '';
 		productsLoaded = false;
+		historyLoaded = false;
+		historyDirty = true;
 
 		if (modalTitle) {
 			modalTitle.textContent = '—';
 		}
 		if (infoWrap) {
 			infoWrap.innerHTML = '';
+		}
+		if (window.EntityHistory) {
+			EntityHistory.clear(historyWrap);
 		}
 		hideInfoAlert();
 		if (footerMeta) {
@@ -993,6 +1054,36 @@
 		}
 	}
 
+	function loadHistory(force) {
+		if (!historyUrl || !detailState.organizationId || !window.EntityHistory || !historyWrap) {
+			return;
+		}
+
+		if (!force && historyLoaded && !historyDirty) {
+			return;
+		}
+
+		if (historyRequest && historyRequest.abort) {
+			historyRequest.abort();
+		}
+
+		const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+		historyRequest = controller;
+
+		EntityHistory.load({
+			url: historyUrl + '/' + detailState.organizationId,
+			container: historyWrap,
+			loadingEl: historyLoading,
+			fieldLabels: historyFieldLabels,
+			signal: controller ? controller.signal : undefined,
+		}).then(function () {
+			historyLoaded = true;
+			historyDirty = false;
+		}).catch(function () {
+			historyLoaded = false;
+		});
+	}
+
 	function openDetail(organizationId) {
 		if (!modal || !organizationId) {
 			return;
@@ -1001,12 +1092,18 @@
 		detailState.organizationId = organizationId;
 		productsState.search = '';
 		productsLoaded = false;
+		historyLoaded = false;
+		historyDirty = true;
 
 		if (productsSearchInput) {
 			productsSearchInput.value = '';
 		}
 		if (productsClearBtn) {
 			productsClearBtn.classList.add('d-none');
+		}
+
+		if (window.EntityHistory) {
+			EntityHistory.clear(historyWrap);
 		}
 
 		modal.show();
@@ -1304,6 +1401,12 @@
 			if (!productsLoaded) {
 				loadProducts();
 			}
+		});
+	}
+
+	if (historyTabBtn) {
+		historyTabBtn.addEventListener('shown.mdb.tab', function () {
+			loadHistory(false);
 		});
 	}
 

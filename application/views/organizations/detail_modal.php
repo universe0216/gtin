@@ -33,6 +33,17 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							aria-selected="false"
 							data-mdb-ripple-init
 						><?php echo html_escape(app_line('nav_products')); ?></button>
+						<button
+							type="button"
+							class="btn btn-outline-secondary"
+							id="organizationHistoryTabBtn"
+							data-mdb-tab-init
+							data-mdb-target="#organizationHistoryTab"
+							role="tab"
+							aria-controls="organizationHistoryTab"
+							aria-selected="false"
+							data-mdb-ripple-init
+						><?php echo html_escape(app_line('common_history')); ?></button>
 					</div>
 				</div>
 				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
@@ -74,6 +85,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 							<div class="entity-detail-products-table p-2">
 								<div id="organizationProductsGrid"></div>
 							</div>
+						</div>
+
+						<div class="tab-pane fade" id="organizationHistoryTab" role="tabpanel" aria-labelledby="organizationHistoryTabBtn">
+							<div id="organizationHistoryLoading" class="text-center text-muted py-5 d-none">
+								<div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+								<?php echo html_escape(app_line('jqx_load')); ?>
+							</div>
+							<div id="organizationHistoryWrap" class="entity-history-wrap px-4 py-4"></div>
 						</div>
 					</div>
 				</div>

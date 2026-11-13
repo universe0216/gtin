@@ -36,6 +36,12 @@ class Product_model extends Basic_model {
 	{
 		$original = $this->get($id) ?: array();
 		$data = $this->with_normalized_key($data, $original);
+
+		if ( ! $this->payload_has_changes($original, $data))
+		{
+			return TRUE;
+		}
+
 		$ok = parent::update($id, $data);
 
 		if ($ok)

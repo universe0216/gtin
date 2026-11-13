@@ -35,6 +35,7 @@ class Catalog_archieve {
 		}
 
 		$this->ci->db->trans_commit();
+		$this->ensure_data_logger();
 		$this->log_archive(Data_logger::ENTITY_PRODUCT, $id, $row);
 
 		return array('ok' => TRUE);
@@ -76,6 +77,7 @@ class Catalog_archieve {
 		}
 
 		$this->ci->db->trans_commit();
+		$this->ensure_data_logger();
 
 		foreach ($products as $product)
 		{
@@ -88,12 +90,6 @@ class Catalog_archieve {
 			'ok'            => TRUE,
 			'product_count' => count($products),
 		);
-	}
-
-	protected function log_archive($entity, $entity_id, array $original_data)
-	{
-		$this->ci->load->library('data_logger');
-		$this->ci->data_logger->log_archive($entity, (int) $entity_id, $original_data);
 	}
 
 	public function describe_product_restore($id)
@@ -157,6 +153,7 @@ class Catalog_archieve {
 		}
 
 		$this->ci->db->trans_commit();
+		$this->ensure_data_logger();
 
 		if ($organization)
 		{
@@ -204,6 +201,7 @@ class Catalog_archieve {
 		}
 
 		$this->ci->db->trans_commit();
+		$this->ensure_data_logger();
 
 		$origin_id = (int) ($row['origin_id'] ?? 0);
 		$restored = $origin_id > 0 ? $this->row('organizations', $origin_id) : NULL;
@@ -216,9 +214,20 @@ class Catalog_archieve {
 		return array('ok' => TRUE);
 	}
 
-	protected function log_restore($entity, $entity_id, array $original_data, array $new_data)
+	protected function ensure_data_logger()
 	{
 		$this->ci->load->library('data_logger');
+	}
+
+	protected function log_archive($entity, $entity_id, array $original_data)
+	{
+		$this->ensure_data_logger();
+		$this->ci->data_logger->log_archive($entity, (int) $entity_id, $original_data);
+	}
+
+	protected function log_restore($entity, $entity_id, array $original_data, array $new_data)
+	{
+		$this->ensure_data_logger();
 		$this->ci->data_logger->log_restore($entity, (int) $entity_id, $original_data, $new_data);
 	}
 

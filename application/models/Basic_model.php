@@ -120,6 +120,76 @@ class Basic_model extends CI_Model {
 			->update($this->table, $data);
 	}
 
+	/**
+	 * True when any submitted field differs from the existing row.
+	 * Only keys present in $data are compared; metadata fields are ignored.
+	 */
+	public function payload_has_changes(array $original, array $data)
+	{
+		$skip = array(
+			'id'         => TRUE,
+			'created_at' => TRUE,
+			'updated_at' => TRUE,
+			'deleted_at' => TRUE,
+			'origin_id'  => TRUE,
+		);
+
+		foreach ($data as $key => $value)
+		{
+			$key = (string) $key;
+
+			if ($key === '' || isset($skip[$key]))
+			{
+				continue;
+			}
+
+			$from = array_key_exists($key, $original)
+				? $this->normalize_compare_value($original[$key])
+				: NULL;
+			$to = $this->normalize_compare_value($value);
+
+			if ($from !== $to)
+			{
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+	protected function normalize_compare_value($value)
+	{
+		if ($value === NULL)
+		{
+			return NULL;
+		}
+
+		if (is_bool($value))
+		{
+			return $value ? '1' : '0';
+		}
+
+		if (is_array($value) || is_object($value))
+		{
+			return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		$text = trim((string) $value);
+
+		if ($text === '')
+		{
+			return NULL;
+		}
+
+		// Treat date-only and datetime-at-midnight as equal.
+		if (preg_match('/^\d{4}-\d{2}-\d{2}(?:[ T]00:00:00(?:\.0+)?)?$/', $text))
+		{
+			return substr($text, 0, 10);
+		}
+
+		return $text;
+	}
+
 	public function delete($id)
 	{
 		return $this->db

@@ -112,6 +112,7 @@ class Products_archieve extends Products {
 		return array(
 			'enabled'    => TRUE,
 			'detailUrl'  => site_url('products_archieve/detail'),
+			'historyUrl' => site_url('products_archieve/history'),
 			'restoreUrl' => site_url('products_archieve/restore'),
 			'restorePreviewUrl' => site_url('products_archieve/restore_preview'),
 			'canRestore' => $this->auth->can($this->permission_edit),

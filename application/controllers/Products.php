@@ -9,6 +9,7 @@ class Products extends BasicController {
 	protected $entity_label = 'Products';
 	protected $list_view = 'products/index';
 	protected $list_scripts = array(
+		'assets/js/entity_history.js',
 		'assets/js/product_detail_modal.js',
 		'assets/js/products.js',
 	);
@@ -319,6 +320,36 @@ class Products extends BasicController {
 		return $this->json_response(array(
 			'success' => TRUE,
 			'data'    => $record,
+		));
+	}
+
+	public function history($id = NULL)
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$this->auth->require_permission($this->permission_view);
+		$record = $this->model->get($id);
+
+		if ( ! $record)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('product_not_found'),
+			), 404);
+		}
+
+		$entity_id = ! empty($record['origin_id'])
+			? (int) $record['origin_id']
+			: (int) $record['id'];
+
+		$this->load->library('data_logger');
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $this->data_logger->history_for(Data_logger::ENTITY_PRODUCT, $entity_id),
 		));
 	}
 
@@ -731,6 +762,7 @@ class Products extends BasicController {
 		return array(
 			'enabled'     => TRUE,
 			'detailUrl'   => site_url('products/detail'),
+			'historyUrl'  => site_url('products/history'),
 			'downloadUrl' => site_url('products/download'),
 			'updateUrl'   => site_url('products/update'),
 			'canEdit'     => $this->auth->can($this->permission_edit),

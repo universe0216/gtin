@@ -16,6 +16,14 @@
 		const saveBtn = document.getElementById('productDetailSaveBtn');
 		const deleteBtn = document.getElementById('productDetailDeleteBtn');
 		const restoreBtn = document.getElementById('productDetailRestoreBtn');
+		const infoTabBtn = document.getElementById('productInfoTabBtn');
+		const historyTabBtn = document.getElementById('productHistoryTabBtn');
+		const historyLoading = document.getElementById('productHistoryLoading');
+		const historyWrap = document.getElementById('productHistoryWrap');
+		const historyUrl = (settings.historyUrl || '').replace(/\/$/, '');
+		const historyFieldLabels = window.EntityHistory
+			? window.EntityHistory.buildFieldLabels(settings.fields || [])
+			: {};
 
 		if (!enabled || !modalEl || typeof mdb === 'undefined') {
 			return {
@@ -29,7 +37,10 @@
 
 		const detailModal = mdb.Modal.getOrCreateInstance(modalEl);
 		let detailRequest = null;
+		let historyRequest = null;
 		let currentProductId = null;
+		let historyLoaded = false;
+		let historyDirty = true;
 
 		function notifyChanged() {
 			if (typeof hooks.onChanged === 'function') {
@@ -107,10 +118,73 @@
 			}
 		}
 
+		function showInfoTab() {
+			if (infoTabBtn && typeof mdb !== 'undefined') {
+				mdb.Tab.getOrCreateInstance(infoTabBtn).show();
+			}
+		}
+
+		function loadHistory(force) {
+			if (!historyUrl || !currentProductId || !window.EntityHistory || !historyWrap) {
+				return;
+			}
+
+			if (!force && historyLoaded && !historyDirty) {
+				return;
+			}
+
+			if (historyRequest && historyRequest.abort) {
+				historyRequest.abort();
+			}
+
+			const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+			historyRequest = controller;
+
+			EntityHistory.load({
+				url: historyUrl + '/' + currentProductId,
+				container: historyWrap,
+				loadingEl: historyLoading,
+				fieldLabels: historyFieldLabels,
+				signal: controller ? controller.signal : undefined,
+			}).then(function () {
+				historyLoaded = true;
+				historyDirty = false;
+			}).catch(function () {
+				historyLoaded = false;
+			});
+		}
+
+		function destroyDatePickers() {
+			if (window.JqxDate && typeof window.JqxDate.destroyIn === 'function' && formWrap) {
+				window.JqxDate.destroyIn(formWrap);
+			}
+		}
+
+		function mountDatePickers() {
+			if (!formWrap || !window.JqxDate || typeof window.JqxDate.mount !== 'function') {
+				return;
+			}
+
+			formWrap.querySelectorAll('.jqx-app-date-host').forEach(function (host) {
+				const valueInputId = host.getAttribute('data-value-input');
+				const valueInput = valueInputId ? document.getElementById(valueInputId) : null;
+				const locked = host.getAttribute('data-disabled') === '1';
+
+				window.JqxDate.mount(host, {
+					value: valueInput ? valueInput.value : '',
+					valueInput: valueInput,
+					allowNull: true,
+					disabled: locked,
+				});
+			});
+		}
+
 		function renderDetailForm(data) {
 			if (!formWrap) {
 				return;
 			}
+
+			destroyDatePickers();
 
 			const fields = settings.fields || [];
 			let html = '<div class="entity-detail-info-grid">';
@@ -143,9 +217,16 @@
 					'</select>';
 				} else if (field.type === 'textarea') {
 					control = '<textarea class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' rows="3"' + readOnlyAttr + '>' + value + '</textarea>';
+				} else if (field.type === 'date') {
+					control =
+						'<div class="jqx-app-date-field">' +
+							'<input type="hidden" id="' + inputId + '"' + nameAttr + ' class="jqx-app-date-value" value="' + value + '">' +
+							'<div id="' + inputId + '_picker" class="jqx-app-date-host" data-value-input="' + inputId + '"' +
+								(locked ? ' data-disabled="1"' : '') +
+							'></div>' +
+						'</div>';
 				} else {
-					const type = field.type === 'date' ? 'date' : 'text';
-					control = '<input type="' + type + '" class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' value="' + value + '"' + readOnlyAttr + '>';
+					control = '<input type="text" class="form-control form-control-sm" id="' + inputId + '"' + nameAttr + ' value="' + value + '"' + readOnlyAttr + '>';
 				}
 
 				html +=
@@ -157,6 +238,7 @@
 
 			html += '</div>';
 			formWrap.innerHTML = html;
+			mountDatePickers();
 			setDetailActionsDisabled(false);
 		}
 
@@ -166,12 +248,21 @@
 			}
 
 			currentProductId = productId;
+			historyLoaded = false;
+			historyDirty = true;
 			hideDetailAlert();
 			setDetailLoading(true);
 			setDetailActionsDisabled(true);
+			showInfoTab();
+
+			destroyDatePickers();
 
 			if (formWrap) {
 				formWrap.innerHTML = '';
+			}
+
+			if (window.EntityHistory) {
+				EntityHistory.clear(historyWrap);
 			}
 
 			if (modalTitle) {
@@ -361,6 +452,10 @@
 				hideDetailAlert();
 				setDetailSaving(true);
 
+				if (window.JqxDate && typeof window.JqxDate.syncForm === 'function') {
+					window.JqxDate.syncForm(detailForm);
+				}
+
 				fetchApi(settings.updateUrl.replace(/\/$/, '') + '/' + currentProductId, {
 					method: 'POST',
 					body: new FormData(detailForm),
@@ -373,6 +468,7 @@
 					}
 
 					renderDetailForm(record);
+					historyDirty = true;
 					notifyChanged();
 					showToast(result.message || t('common_record_updated'), 'success');
 				}).catch(function (error) {
@@ -380,6 +476,12 @@
 				}).finally(function () {
 					setDetailSaving(false);
 				});
+			});
+		}
+
+		if (historyTabBtn) {
+			historyTabBtn.addEventListener('shown.mdb.tab', function () {
+				loadHistory(false);
 			});
 		}
 

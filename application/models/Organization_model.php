@@ -28,6 +28,12 @@ class Organization_model extends Basic_model {
 	public function update($id, $data)
 	{
 		$original = $this->get($id) ?: array();
+
+		if ( ! $this->payload_has_changes($original, $data))
+		{
+			return TRUE;
+		}
+
 		$ok = parent::update($id, $data);
 
 		if ($ok)

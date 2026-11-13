@@ -26,12 +26,17 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <script src="<?php echo base_url('assets/vendor/jquery/js/jquery.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/mdb/js/mdb.umd.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/jqwidgets/jqx-all.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/jqwidgets/globalization/globalize.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/jqwidgets/globalization/globalize.culture.en-US.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/jqwidgets/globalization/globalize.culture.zh-CN.js'); ?>"></script>
 <script>
 	window.APP_BASE_URL = <?php echo json_encode(base_url()); ?>;
+	window.APP_LANGUAGE = <?php echo json_encode(app_language()); ?>;
 	window.APP_I18N = <?php echo json_encode($this->lang->language, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="<?php echo base_url('assets/js/app.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/jqx_grid.js'); ?>"></script>
+<script src="<?php echo base_url('assets/js/jqx_date.js'); ?>"></script>
 <script src="<?php echo base_url('assets/js/entity_list.js'); ?>"></script>
 <?php foreach (($page_scripts ?? array()) as $page_script): ?>
 <script src="<?php echo base_url($page_script); ?>"></script>

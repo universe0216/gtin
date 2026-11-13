@@ -63,6 +63,156 @@ class Data_logger {
 		return $this->log($entity, $entity_id, self::ACTION_RESTORE, $original_data, $new_data);
 	}
 
+	/**
+	 * History rows for an entity: who, action, when, and field-level changes.
+	 */
+	public function history_for($entity, $entity_id, $limit = 200)
+	{
+		$entity = trim((string) $entity);
+		$entity_id = (int) $entity_id;
+
+		if ($entity === '' || $entity_id < 1)
+		{
+			return array();
+		}
+
+		$rows = $this->CI->data_log_model->list_by_entity($entity, $entity_id, $limit);
+		$formatted = array();
+
+		foreach ($rows as $row)
+		{
+			$formatted[] = $this->format_history_row($row);
+		}
+
+		return $formatted;
+	}
+
+	public function format_history_row(array $row)
+	{
+		$original = $this->decode_row($row['original_data'] ?? NULL);
+		$new = $this->decode_row($row['new_data'] ?? NULL);
+
+		return array(
+			'id'            => (int) ($row['id'] ?? 0),
+			'entity'        => (string) ($row['entity'] ?? ''),
+			'entity_id'     => (int) ($row['entity_id'] ?? 0),
+			'action'        => (string) ($row['action'] ?? ''),
+			'created_at'    => (string) ($row['created_at'] ?? ''),
+			'account_id'    => isset($row['account_id']) ? (int) $row['account_id'] : NULL,
+			'account_label' => $this->account_label($row),
+			'changes'       => $this->diff_rows($original, $new),
+		);
+	}
+
+	protected function decode_row($value)
+	{
+		if ($value === NULL || $value === '')
+		{
+			return NULL;
+		}
+
+		if (is_array($value))
+		{
+			return $value;
+		}
+
+		$decoded = json_decode((string) $value, TRUE);
+
+		return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : NULL;
+	}
+
+	protected function diff_rows($original, $new)
+	{
+		$original = is_array($original) ? $original : array();
+		$new = is_array($new) ? $new : array();
+
+		if (empty($original) && empty($new))
+		{
+			return array();
+		}
+
+		$skip = array(
+			'updated_at' => TRUE,
+			'deleted_at' => TRUE,
+			'origin_id'  => TRUE,
+			'password'   => TRUE,
+		);
+
+		$keys = array_unique(array_merge(array_keys($original), array_keys($new)));
+		$changes = array();
+
+		foreach ($keys as $key)
+		{
+			$key = (string) $key;
+
+			if ($key === '' || isset($skip[$key]))
+			{
+				continue;
+			}
+
+			$from = array_key_exists($key, $original) ? $this->normalize_diff_value($original[$key]) : NULL;
+			$to = array_key_exists($key, $new) ? $this->normalize_diff_value($new[$key]) : NULL;
+
+			if ($from === $to)
+			{
+				continue;
+			}
+
+			$changes[] = array(
+				'field' => $key,
+				'from'  => $from,
+				'to'    => $to,
+			);
+		}
+
+		return $changes;
+	}
+
+	protected function normalize_diff_value($value)
+	{
+		if ($value === NULL)
+		{
+			return NULL;
+		}
+
+		if (is_bool($value))
+		{
+			return $value ? '1' : '0';
+		}
+
+		if (is_array($value) || is_object($value))
+		{
+			return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		$text = trim((string) $value);
+
+		return $text === '' ? NULL : $text;
+	}
+
+	protected function account_label(array $row)
+	{
+		$name = trim((string) ($row['account_name'] ?? ''));
+		$username = trim((string) ($row['username'] ?? ''));
+
+		if ($name !== '' && $username !== '')
+		{
+			return $name.' ('.$username.')';
+		}
+
+		if ($name !== '')
+		{
+			return $name;
+		}
+
+		if ($username !== '')
+		{
+			return $username;
+		}
+
+		return ! empty($row['account_id']) ? '#'.$row['account_id'] : '—';
+	}
+
 	protected function encode_row($row)
 	{
 		if ($row === NULL)

@@ -131,6 +131,25 @@ html[data-mdb-theme="dark"] body {
 	white-space: pre-wrap;
 	word-break: break-word;
 }
+
+.organization-date-field,
+.jqx-app-date-field {
+	width: 100%;
+}
+
+.organization-date-field .jqx-app-date-host,
+.organization-date-field .jqx-widget,
+.organization-date-field .jqx-datetimeinput,
+.jqx-app-date-field .jqx-app-date-host,
+.jqx-app-date-field .jqx-widget,
+.jqx-app-date-field .jqx-datetimeinput {
+	width: 100% !important;
+}
+
+.organization-date-field .jqx-input,
+.jqx-app-date-field .jqx-input {
+	box-sizing: border-box;
+}
 }
 
 #checksumDigit[readonly] {
@@ -800,8 +819,96 @@ body.modal-open:has(#productDetailModal.show) .modal-backdrop:last-of-type {
 	min-height: 0;
 }
 
+#productDetailModal .modal-header.entity-detail-modal-header {
+	align-items: center;
+}
+
 #productDetailModal .modal-body {
 	overflow: auto;
+}
+
+.entity-history-wrap {
+	min-height: 8rem;
+}
+
+.entity-history-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.entity-history-item {
+	border: 1px solid rgba(148, 163, 184, 0.28);
+	border-radius: 0.5rem;
+	padding: 0.85rem 1rem;
+	background: rgba(15, 23, 42, 0.28);
+}
+
+.entity-history-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 0.75rem;
+	margin-bottom: 0.55rem;
+}
+
+.entity-history-who {
+	font-weight: 600;
+}
+
+.entity-history-when {
+	margin-left: auto;
+	color: var(--app-muted, #94a3b8);
+	font-size: 0.85rem;
+}
+
+.entity-history-changes {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.entity-history-change {
+	display: grid;
+	grid-template-columns: minmax(7rem, 10rem) 1fr;
+	gap: 0.5rem 0.75rem;
+	font-size: 0.9rem;
+}
+
+.entity-history-field {
+	color: var(--app-muted, #94a3b8);
+}
+
+.entity-history-values {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.35rem 0.45rem;
+	min-width: 0;
+	word-break: break-word;
+}
+
+.entity-history-from {
+	opacity: 0.75;
+	text-decoration: line-through;
+}
+
+.entity-history-arrow {
+	opacity: 0.55;
+}
+
+.entity-history-to {
+	font-weight: 600;
+}
+
+@media (max-width: 576px) {
+	.entity-history-change {
+		grid-template-columns: 1fr;
+	}
+
+	.entity-history-when {
+		margin-left: 0;
+	}
 }
 
 .products-delete-batch-preview {
