@@ -17,6 +17,17 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 		<div id="dataTransferStatus" class="alert d-none" role="alert"></div>
 
+		<div id="dataTransferProgress" class="data-transfer-progress d-none mb-4" aria-live="polite">
+			<div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+				<div class="data-transfer-progress-label text-muted small" id="dataTransferProgressLabel"></div>
+				<div class="data-transfer-progress-percent fw-semibold" id="dataTransferProgressPercent">0%</div>
+			</div>
+			<div class="progress data-transfer-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+				<div class="progress-bar progress-bar-striped progress-bar-animated" id="dataTransferProgressBar" style="width: 0%"></div>
+			</div>
+			<div class="data-transfer-progress-meta text-muted small mt-2" id="dataTransferProgressMeta"></div>
+		</div>
+
 		<div class="d-flex flex-wrap gap-2">
 			<button type="button" class="btn btn-danger" id="dataTransferStartBtn" data-mdb-ripple-init>
 				<i class="fas fa-database me-1"></i> <?php echo html_escape(app_line('data_transfer_start')); ?>
@@ -40,6 +51,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		'locationsUrl'     => site_url('data_transfer/locations'),
 		'organizationsUrl' => site_url('data_transfer/organizations'),
 		'productsUrl'      => site_url('data_transfer/products'),
-		'chunkSize'        => 2000,
+		'chunkSize'        => 5000,
 	)); ?>;
 </script>

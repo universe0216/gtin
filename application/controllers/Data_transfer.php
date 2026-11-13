@@ -45,16 +45,26 @@ class Data_transfer extends AuthenticatedController {
 	public function locations()
 	{
 		return $this->run_step(function () {
-			if ($this->input->post('clear'))
+			$offset = (int) $this->input->post('offset');
+			$limit = (int) $this->input->post('limit');
+
+			if ($offset < 1 && $this->input->post('clear'))
 			{
 				$this->legacy_data_transfer->clear_tables(array('locations'));
 			}
 
-			$result = $this->legacy_data_transfer->transfer_locations_step();
+			$result = $this->legacy_data_transfer->transfer_locations_step(
+				$offset,
+				$limit > 0 ? $limit : NULL
+			);
 
 			return array(
-				'message' => app_line('data_transfer_locations_only_done', (int) $result['count']),
-				'data'    => array_merge(array('step' => 'locations', 'done' => TRUE), $result),
+				'message' => app_line(
+					'data_transfer_locations_progress',
+					(int) $result['next_offset'],
+					! empty($result['done']) ? app_line('data_transfer_step_complete') : app_line('data_transfer_step_continue')
+				),
+				'data'    => array_merge(array('step' => 'locations'), $result),
 			);
 		});
 	}

@@ -9,7 +9,7 @@ class Legacy_data_transfer {
 
 	protected $CI;
 	protected $old_db;
-	protected $chunk_size = 2000;
+	protected $chunk_size = 5000;
 
 	public function __construct()
 	{
@@ -83,21 +83,24 @@ class Legacy_data_transfer {
 		);
 	}
 
-	public function transfer_locations_step()
+	public function transfer_locations_step($offset = 0, $limit = NULL)
 	{
 		$this->open_old_db();
 		$new_db = $this->CI->db;
 		$this->tune_db_session($new_db);
 		$new_db->save_queries = FALSE;
 
+		$limit = $limit === NULL ? $this->chunk_size : max(1, (int) $limit);
+		$offset = max(0, (int) $offset);
+		$total = (int) $this->old_db->count_all('publictbl');
+
 		$rows = $this->old_db
 			->order_by('OrgID', 'ASC')
+			->limit($limit, $offset)
 			->get('publictbl')
 			->result_array();
 
 		$now = date('Y-m-d H:i:s');
-		$ids = array();
-		$parents = array();
 		$batch = array();
 
 		foreach ($rows as $row)
@@ -109,9 +112,7 @@ class Legacy_data_transfer {
 				continue;
 			}
 
-			$parent_id = $this->nullable_int($row['ParentID'] ?? NULL);
-			$parents[$id] = $parent_id;
-			$ids[$id] = TRUE;
+			// Parent/level are finalized after all location chunks land.
 			$batch[] = array(
 				'id'          => $id,
 				'parent_id'   => NULL,
@@ -125,23 +126,6 @@ class Legacy_data_transfer {
 			);
 		}
 
-		foreach ($batch as &$item)
-		{
-			$parent_id = isset($parents[$item['id']]) ? $parents[$item['id']] : NULL;
-
-			if ($parent_id !== NULL && $parent_id > 0 && isset($ids[$parent_id]) && $parent_id !== $item['id'])
-			{
-				$item['parent_id'] = $parent_id;
-			}
-			else
-			{
-				$item['parent_id'] = NULL;
-			}
-
-			$item['level'] = $this->location_level($item['id'], $parents, $ids);
-		}
-		unset($item);
-
 		$new_db->query('SET FOREIGN_KEY_CHECKS=0');
 
 		try
@@ -153,15 +137,70 @@ class Legacy_data_transfer {
 			$new_db->query('SET FOREIGN_KEY_CHECKS=1');
 		}
 
-		if ( ! empty($ids))
+		$fetched = count($rows);
+		$done = $fetched < $limit;
+
+		if ($done)
 		{
-			$max_id = max(array_keys($ids));
-			$new_db->query('ALTER TABLE locations AUTO_INCREMENT = '.((int) $max_id + 1));
+			$this->finalize_location_tree($new_db);
+			$current_max = (int) $new_db->select_max('id')->get('locations')->row()->id;
+
+			if ($current_max > 0)
+			{
+				$new_db->query('ALTER TABLE locations AUTO_INCREMENT = '.($current_max + 1));
+			}
 		}
 
+		$this->touch_runtime();
+
 		return array(
-			'count' => count($ids),
+			'count'       => count($batch),
+			'offset'      => $offset,
+			'next_offset' => $offset + $fetched,
+			'done'        => $done,
+			'total'       => $total,
 		);
+	}
+
+	protected function finalize_location_tree($new_db)
+	{
+		$rows = $this->old_db
+			->select('OrgID, ParentID')
+			->order_by('OrgID', 'ASC')
+			->get('publictbl')
+			->result_array();
+
+		$ids = array();
+		$parents = array();
+
+		foreach ($rows as $row)
+		{
+			$id = (int) ($row['OrgID'] ?? 0);
+
+			if ($id < 1)
+			{
+				continue;
+			}
+
+			$ids[$id] = TRUE;
+			$parents[$id] = $this->nullable_int($row['ParentID'] ?? NULL);
+		}
+
+		foreach ($parents as $id => $parent_id)
+		{
+			$resolved_parent = NULL;
+
+			if ($parent_id !== NULL && $parent_id > 0 && isset($ids[$parent_id]) && $parent_id !== $id)
+			{
+				$resolved_parent = $parent_id;
+			}
+
+			$new_db->where('id', $id)->update('locations', array(
+				'parent_id'  => $resolved_parent,
+				'level'      => $this->location_level($id, $parents, $ids),
+				'updated_at' => date('Y-m-d H:i:s'),
+			));
+		}
 	}
 
 	public function transfer_organizations_step($offset = 0, $limit = NULL)
@@ -173,6 +212,7 @@ class Legacy_data_transfer {
 
 		$limit = $limit === NULL ? $this->chunk_size : max(1, (int) $limit);
 		$offset = max(0, (int) $offset);
+		$total = (int) $this->old_db->count_all('interemp');
 		$has_currency = $this->old_db->field_exists('currency', 'interemp');
 		$location_ids = $this->location_id_set($new_db);
 		$now = date('Y-m-d H:i:s');
@@ -241,6 +281,7 @@ class Legacy_data_transfer {
 			'offset'      => $offset,
 			'next_offset' => $offset + $fetched,
 			'done'        => $done,
+			'total'       => $total,
 		);
 	}
 
@@ -253,6 +294,7 @@ class Legacy_data_transfer {
 
 		$limit = $limit === NULL ? $this->chunk_size : max(1, (int) $limit);
 		$offset = max(0, (int) $offset);
+		$total = (int) $this->old_db->count_all('interbar');
 		$org_by_reg = $this->organization_reg_map($new_db);
 		$now = date('Y-m-d H:i:s');
 
@@ -360,8 +402,14 @@ class Legacy_data_transfer {
 			'offset'      => $offset,
 			'next_offset' => $offset + $fetched,
 			'done'        => $done,
+			'total'       => $total,
 			'max_id'      => $max_id,
 		);
+	}
+
+	public function chunk_size()
+	{
+		return (int) $this->chunk_size;
 	}
 
 	public function source_counts()
