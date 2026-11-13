@@ -228,6 +228,12 @@ $show_admin = $CI->auth->is_admin();
 					<ul class="dropdown-menu dropdown-menu-dark app-dropdown dropdown-menu-end" aria-labelledby="userDropdown">
 						<li><span class="dropdown-item-text text-muted small"><?php echo html_escape($auth_user['username']); ?></span></li>
 						<li><hr class="dropdown-divider border-secondary"></li>
+						<li>
+							<a class="dropdown-item<?php echo ($nav_active === 'account_password') ? ' active' : ''; ?>" href="<?php echo site_url('account/password'); ?>">
+								<i class="fas fa-key me-2"></i><?php echo html_escape(app_line('nav_update_password')); ?>
+							</a>
+						</li>
+						<li><hr class="dropdown-divider border-secondary"></li>
 						<li><a class="dropdown-item" href="<?php echo site_url('login/logout'); ?>"><i class="fas fa-right-from-bracket me-2"></i><?php echo html_escape(app_line('nav_logout')); ?></a></li>
 					</ul>
 				</li>

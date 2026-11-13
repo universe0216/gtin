@@ -85,7 +85,8 @@ html[data-mdb-theme="dark"] body {
 	overflow: hidden;
 }
 
-.tools-checksum-panel {
+.tools-checksum-panel,
+.account-password-panel {
 	max-width: 36rem;
 }
 

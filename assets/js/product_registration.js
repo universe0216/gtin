@@ -3087,9 +3087,7 @@
 			(isImported ? ' data-imported="true"' : '') + '>' +
 			'<div class="procedure-tab-meta d-flex flex-wrap gap-3 mb-3 small text-muted align-items-center">' +
 				'<span><strong>' + escapeHtml(t('reg_procedure')) + ':</strong> ' + escapeHtml(tab.procedure_number) + '</span>' +
-				'<span><strong>' + escapeHtml(t('reg_organization')) + ':</strong> ' + escapeHtml(tab.organization_name) + '</span>' +
 				'<span><strong>' + escapeHtml(t('reg_factory_name')) + ':</strong> ' + escapeHtml(tab.factory_name || tab.organization_name || '') + '</span>' +
-				'<span><strong>' + escapeHtml(t('reg_status')) + ':</strong> <span class="procedure-tab-status-value">' + escapeHtml(tab.status || 'uploaded') + '</span></span>' +
 				'<span><strong>' + escapeHtml(t('reg_uploaded')) + ':</strong> ' + escapeHtml(tab.created_at || '') + '</span>' +
 				buildTabActionButton(tab, isImported) +
 			'</div>' +

@@ -24,6 +24,7 @@ $lang['nav_locations'] = 'Locations';
 $lang['nav_categories'] = 'Categories';
 $lang['nav_gtin_country_code'] = 'GTIN CountryCode';
 $lang['nav_logout'] = 'Logout';
+$lang['nav_update_password'] = 'Update Password';
 $lang['nav_toggle'] = 'Toggle navigation';
 $lang['nav_language'] = 'Language';
 
@@ -35,7 +36,16 @@ $lang['auth_admin_required'] = 'Administrator access required.';
 
 $lang['field_username'] = 'Username';
 $lang['field_password'] = 'Password';
+$lang['field_current_password'] = 'Current Password';
+$lang['field_new_password'] = 'New Password';
+$lang['field_confirm_password'] = 'Confirm Password';
 $lang['field_full_name'] = 'Full Name';
+
+$lang['title_update_password'] = 'Update Password';
+$lang['account_password_save'] = 'Update Password';
+$lang['account_password_incorrect'] = 'Current password is incorrect.';
+$lang['account_password_failed'] = 'Failed to update password.';
+$lang['account_password_updated'] = 'Password updated successfully.';
 
 $lang['common_cancel'] = 'Cancel';
 $lang['common_close'] = 'Close';

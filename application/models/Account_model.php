@@ -40,6 +40,17 @@ class Account_model extends CI_Model {
 			->row_array();
 	}
 
+	public function get_password_hash($id)
+	{
+		$row = $this->db
+			->select('password')
+			->where('id', (int) $id)
+			->get('accounts')
+			->row_array();
+
+		return $row ? $row['password'] : NULL;
+	}
+
 	public function get_product_editors($exclude_id = NULL)
 	{
 		$this->db

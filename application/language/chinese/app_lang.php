@@ -24,6 +24,7 @@ $lang['nav_locations'] = '地点';
 $lang['nav_categories'] = '分类';
 $lang['nav_gtin_country_code'] = 'GTIN 国家代码';
 $lang['nav_logout'] = '退出';
+$lang['nav_update_password'] = '修改密码';
 $lang['nav_toggle'] = '切换导航';
 $lang['nav_language'] = '语言';
 
@@ -35,7 +36,16 @@ $lang['auth_admin_required'] = '需要管理员权限。';
 
 $lang['field_username'] = '用户名';
 $lang['field_password'] = '密码';
+$lang['field_current_password'] = '当前密码';
+$lang['field_new_password'] = '新密码';
+$lang['field_confirm_password'] = '确认密码';
 $lang['field_full_name'] = '姓名';
+
+$lang['title_update_password'] = '修改密码';
+$lang['account_password_save'] = '修改密码';
+$lang['account_password_incorrect'] = '当前密码不正确。';
+$lang['account_password_failed'] = '密码修改失败。';
+$lang['account_password_updated'] = '密码已成功修改。';
 
 $lang['common_cancel'] = '取消';
 $lang['common_close'] = '关闭';
