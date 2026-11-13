@@ -18,6 +18,24 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				<div id="sourceDetailEmpty" class="text-muted py-5 text-center">
 					<?php echo html_escape(app_line('source_select_file')); ?>
 				</div>
+
+				<div id="sourceFolderContent" class="d-none">
+					<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+						<div>
+							<div class="text-muted small"><?php echo html_escape(app_line('source_selected_folder')); ?></div>
+							<div class="fw-semibold" id="sourceSelectedFolderPath"></div>
+							<div class="text-muted small mt-1"><?php echo html_escape(app_line('source_add_hint')); ?></div>
+						</div>
+						<button type="button" class="btn btn-primary" id="sourceAddBtn" data-mdb-ripple-init>
+							<i class="fas fa-file-circle-plus me-1"></i><?php echo html_escape(app_line('source_add_file')); ?>
+						</button>
+					</div>
+					<form id="sourceAddForm" class="d-none">
+						<input type="hidden" name="folder" id="sourceAddFolder" value="">
+						<input type="file" name="source_file" id="sourceAddInput" accept=".php,.js,.css,text/plain,application/javascript,text/css,text/x-php">
+					</form>
+				</div>
+
 				<div id="sourceDetailContent" class="d-none">
 					<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
 						<div>

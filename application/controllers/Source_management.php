@@ -122,6 +122,63 @@ class Source_management extends AuthenticatedController {
 		));
 	}
 
+	public function add()
+	{
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('common_invalid_method'),
+			), 405);
+		}
+
+		$folder = $this->input->post('folder');
+		$upload = isset($_FILES['source_file']) ? $_FILES['source_file'] : NULL;
+
+		try
+		{
+			$result = $this->source_manager->add_file($folder, $upload);
+		}
+		catch (RuntimeException $exception)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => $exception->getMessage(),
+			), 422);
+		}
+		catch (Exception $exception)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('source_add_failed'),
+			), 500);
+		}
+
+		$user = $this->auth->user();
+		$this->source_file_history_model->insert(array(
+			'relative_path' => $result['relative_path'],
+			'backup_path'   => '',
+			'uploaded_name' => 'create:'.$result['uploaded_name'],
+			'account_id'    => (int) $user['id'],
+		));
+
+		$history = $this->source_file_history_model->list_by_path($result['relative_path']);
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'message' => app_line('source_add_success'),
+			'tree'    => $this->source_manager->tree(),
+			'file'    => array(
+				'relative_path' => $result['relative_path'],
+				'basename'      => $result['basename'],
+				'extension'     => $result['extension'],
+				'size'          => (int) $result['size'],
+				'modified_at'   => $result['modified_at'],
+			),
+			'history' => $history,
+		));
+	}
+
 	public function restore()
 	{
 		if ($this->input->method(TRUE) !== 'POST')

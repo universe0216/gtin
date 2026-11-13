@@ -176,6 +176,86 @@ class Source_manager {
 		);
 	}
 
+	public function resolve_directory($relative_path)
+	{
+		$relative = $this->normalize_relative($relative_path);
+
+		if ($relative === '' || ! $this->is_allowed_relative($relative))
+		{
+			return NULL;
+		}
+
+		$absolute = $this->absolute_path($relative);
+
+		if ($absolute === NULL || ! is_dir($absolute))
+		{
+			return NULL;
+		}
+
+		return array(
+			'relative_path' => $relative,
+			'absolute_path' => $absolute,
+		);
+	}
+
+	public function add_file($directory_path, $upload)
+	{
+		$directory = $this->resolve_directory($directory_path);
+
+		if ($directory === NULL)
+		{
+			throw new RuntimeException(app_line('source_folder_not_found'));
+		}
+
+		if (empty($upload) || ! isset($upload['error']) || (int) $upload['error'] !== UPLOAD_ERR_OK)
+		{
+			throw new RuntimeException(app_line('source_upload_failed'));
+		}
+
+		$uploaded_name = basename((string) ($upload['name'] ?? ''));
+
+		if ( ! $this->is_valid_source_filename($uploaded_name))
+		{
+			throw new RuntimeException(app_line('source_invalid_filename'));
+		}
+
+		$extension = strtolower(pathinfo($uploaded_name, PATHINFO_EXTENSION));
+
+		if ( ! in_array($extension, $this->allowed_extensions, TRUE))
+		{
+			throw new RuntimeException(app_line('source_extension_mismatch'));
+		}
+
+		if ( ! is_uploaded_file($upload['tmp_name']))
+		{
+			throw new RuntimeException(app_line('source_upload_failed'));
+		}
+
+		$relative = $directory['relative_path'].'/'.$uploaded_name;
+		$absolute = $directory['absolute_path'].'/'.$uploaded_name;
+
+		if (is_file($absolute))
+		{
+			throw new RuntimeException(app_line('source_file_exists'));
+		}
+
+		if ( ! @move_uploaded_file($upload['tmp_name'], $absolute))
+		{
+			throw new RuntimeException(app_line('source_add_failed'));
+		}
+
+		@chmod($absolute, 0644);
+
+		return array(
+			'relative_path' => $relative,
+			'basename'      => $uploaded_name,
+			'extension'     => $extension,
+			'size'          => (int) filesize($absolute),
+			'modified_at'   => date('Y-m-d H:i:s', filemtime($absolute)),
+			'uploaded_name' => $uploaded_name,
+		);
+	}
+
 	public function resolve_backup($relative_path)
 	{
 		$relative = $this->normalize_relative($relative_path);
@@ -292,22 +372,24 @@ class Source_manager {
 			$children[] = array(
 				'label' => $file[1],
 				'value' => $file[0],
+				'type'  => 'file',
 				'icon'  => $this->file_icon($file[1]),
 			);
-		}
-
-		if ($children === array() && strpos($relative, '/') !== FALSE)
-		{
-			return NULL;
 		}
 
 		return array(
 			'label'    => basename($relative),
 			'value'    => $relative,
+			'type'     => 'folder',
 			'icon'     => 'fas fa-folder',
 			'expanded' => strpos($relative, '/') === FALSE,
 			'items'    => $children,
 		);
+	}
+
+	protected function is_valid_source_filename($name)
+	{
+		return (bool) preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*\.(php|js|css)$/', $name);
 	}
 
 	protected function should_skip_directory($name)
