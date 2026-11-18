@@ -317,6 +317,11 @@ class BasicController extends AuthenticatedController {
 			$filters['location_ids'] = $params['location_ids'];
 		}
 
+		if ( ! empty($params['category_ids']) && is_array($params['category_ids']))
+		{
+			$filters['category_ids'] = $params['category_ids'];
+		}
+
 		if ( ! empty($params['column_filters']) && is_array($params['column_filters']))
 		{
 			$filters['columns'] = $params['column_filters'];

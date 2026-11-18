@@ -22,6 +22,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					</div>
 					<button type="button" class="btn btn-secondary btn-sm d-none" id="productsLocationClear"><?php echo html_escape(app_line('common_clear')); ?></button>
 				</div>
+				<?php if ($entity === 'products'): ?>
+				<div class="products-location-filter">
+					<div id="productsCategoryDropDown" class="products-location-dropdown" aria-label="<?php echo html_escape(app_line('col_category_id')); ?>">
+						<div id="productsCategoryTree"></div>
+					</div>
+					<button type="button" class="btn btn-secondary btn-sm d-none" id="productsCategoryClear"><?php echo html_escape(app_line('common_clear')); ?></button>
+				</div>
+				<?php endif; ?>
 			</div>
 			<?php if ($entity === 'products' && ! empty($can_edit)): ?>
 				<button type="button" class="btn btn-sm btn-outline-danger d-none" id="productsDeleteSelectedBtn" data-mdb-ripple-init>

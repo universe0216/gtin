@@ -22,6 +22,7 @@ class Products extends BasicController {
 		array('key' => 'organization_name', 'label' => 'Organization'),
 		array('key' => 'brand', 'label' => 'Brand'),
 		array('key' => 'standard_number', 'label' => 'Standard Number'),
+		array('key' => 'category_name', 'label' => 'Category'),
 		array('key' => 'barcode_1d', 'label' => 'Barcode'),
 		array('key' => 'barcode_1d_type', 'label' => 'Barcode Type'),
 		array('key' => 'barcode_2d', 'label' => '2D Barcode'),
@@ -254,6 +255,8 @@ class Products extends BasicController {
 	{
 		$params = parent::list_query_params();
 		$params['location_ids'] = $this->location_model->filter_ids($this->input->get('location_id'));
+		$this->load->model('category_model');
+		$params['category_ids'] = $this->category_model->filter_ids($this->input->get('category_id'));
 
 		return $params;
 	}

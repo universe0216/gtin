@@ -11,6 +11,9 @@ class Product_model extends Basic_model {
 	{
 		parent::__construct();
 		$this->load->helper('product_key');
+		$category_sql = $this->category_name_sql();
+		$this->sortable_columns['category_name'] = $category_sql;
+		$this->filterable_columns['category_name'] = $category_sql;
 	}
 
 	public function insert($data)
@@ -121,10 +124,30 @@ class Product_model extends Basic_model {
 		'test_status'       => 'products.test_status',
 	);
 
+	protected function category_name_sql()
+	{
+		$product_id = $this->table.'.id';
+		$links = $this->db->dbprefix('product_category');
+		$categories = $this->db->dbprefix('categories');
+
+		return '(SELECT CONCAT_WS(\' / \', c5.name, c4.name, c3.name, c2.name, c1.name, c0.name)'
+			.' FROM '.$links.' pc'
+			.' INNER JOIN '.$categories.' c0 ON c0.id = pc.category_id'
+			.' LEFT JOIN '.$categories.' c1 ON c1.id = c0.parent_id'
+			.' LEFT JOIN '.$categories.' c2 ON c2.id = c1.parent_id'
+			.' LEFT JOIN '.$categories.' c3 ON c3.id = c2.parent_id'
+			.' LEFT JOIN '.$categories.' c4 ON c4.id = c3.parent_id'
+			.' LEFT JOIN '.$categories.' c5 ON c5.id = c4.parent_id'
+			.' WHERE pc.product_id = '.$product_id
+			.' ORDER BY c0.level DESC, c0.id ASC'
+			.' LIMIT 1)';
+	}
+
 	protected function prepare_list_query()
 	{
 		$this->db
 			->select('products.*, organizations.name AS organization_name')
+			->select($this->category_name_sql().' AS category_name', FALSE)
 			->from($this->table)
 			->join('organizations', 'organizations.id = products.org_id', 'left');
 	}
@@ -138,12 +161,64 @@ class Product_model extends Basic_model {
 	{
 		$ids = $this->location_filter_id_list($filters);
 
+		if ( ! empty($ids))
+		{
+			$this->db->where_in('organizations.location_id', $ids);
+		}
+
+		$this->apply_category_list_filter($filters);
+	}
+
+	protected function apply_column_filters(array $filters)
+	{
+		$columns = $filters['columns'] ?? array();
+		$category = trim((string) ($columns['category_name'] ?? ''));
+
+		if ($category !== '')
+		{
+			unset($columns['category_name']);
+			$filters['columns'] = $columns;
+			$this->db->like($this->category_name_sql(), $category, 'both', FALSE);
+		}
+
+		parent::apply_column_filters($filters);
+	}
+
+	protected function apply_list_order($sort)
+	{
+		if ( ! empty($sort['sql']) && ($sort['key'] ?? '') === 'category_name')
+		{
+			$this->db->order_by($sort['sql'], $sort['direction'] === 'asc' ? 'ASC' : 'DESC', FALSE);
+
+			return;
+		}
+
+		parent::apply_list_order($sort);
+	}
+
+	protected function apply_category_list_filter(array $filters)
+	{
+		$ids = array();
+
+		foreach ((array) ($filters['category_ids'] ?? array()) as $id)
+		{
+			if (is_numeric($id))
+			{
+				$ids[] = (int) $id;
+			}
+		}
+
 		if (empty($ids))
 		{
 			return;
 		}
 
-		$this->db->where_in('organizations.location_id', $ids);
+		$table = $this->db->dbprefix('product_category');
+		$this->db->where(
+			$this->table.'.id IN (SELECT product_id FROM '.$table.' WHERE category_id IN ('.implode(',', $ids).'))',
+			NULL,
+			FALSE
+		);
 	}
 
 	protected function location_filter_id_list(array $filters)

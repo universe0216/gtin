@@ -54,6 +54,7 @@ class Product_archieve_model extends Product_model {
 	{
 		$this->db
 			->select('products_archieve.*, COALESCE(organizations.name, archived_org.name) AS organization_name', FALSE)
+			->select($this->category_name_sql().' AS category_name', FALSE)
 			->from($this->table)
 			->join('organizations', 'organizations.id = products_archieve.org_id', 'left')
 			->join(
@@ -108,6 +109,12 @@ class Product_archieve_model extends Product_model {
 			if ($key === 'organization_name')
 			{
 				$this->db->like('COALESCE(organizations.name, archived_org.name)', $value, 'both', FALSE);
+				continue;
+			}
+
+			if ($key === 'category_name')
+			{
+				$this->db->like($this->filterable_columns[$key], $value, 'both', FALSE);
 				continue;
 			}
 

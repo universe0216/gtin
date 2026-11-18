@@ -128,6 +128,8 @@
 			'<span class="category-original">' + escapeHtml(record.original_name || '') + '</span>' +
 			'<span class="location-tag">' + escapeHtml(record.gpc_code || '') + '</span>' +
 			'<span class="category-level">' + escapeHtml(levelLabel(record.level)) + '</span>' +
+			'<span class="category-count">' + escapeHtml(String(Number(record.standard_count) || 0)) + '</span>' +
+			'<span class="category-count">' + escapeHtml(String(Number(record.product_count) || 0)) + '</span>' +
 			'<span class="location-actions">' + actions + '</span>' +
 		'</div>';
 
@@ -142,6 +144,8 @@
 			'<span>' + escapeHtml(t('category_original_name')) + '</span>' +
 			'<span>' + escapeHtml(t('category_code')) + '</span>' +
 			'<span>' + escapeHtml(t('category_level')) + '</span>' +
+			'<span class="category-count">' + escapeHtml(t('category_standard_count')) + '</span>' +
+			'<span class="category-count">' + escapeHtml(t('category_product_count')) + '</span>' +
 			'<span>' + escapeHtml(t('common_actions')) + '</span>' +
 		'</div>';
 		const roots = renderBranch(null, 0, visible);
@@ -378,11 +382,25 @@
 						original_name: record.original_name,
 						level: record.level,
 						sort_order: record.sort_order,
+						standard_count: record.standard_count != null ? record.standard_count : records[index].standard_count,
+						product_count: record.product_count != null ? record.product_count : records[index].product_count,
 					};
-					rebuildIndex();
 				}
 			}
 
+			(result.count_updates || []).forEach(function (item) {
+				const index = records.findIndex(function (row) {
+					return Number(row.id) === Number(item.id);
+				});
+
+				if (index < 0) {
+					return;
+				}
+
+				records[index].standard_count = Number(item.standard_count) || 0;
+				records[index].product_count = Number(item.product_count) || 0;
+			});
+			rebuildIndex();
 			renderTree();
 			showToast(result.message || t('common_record_updated'), 'success');
 

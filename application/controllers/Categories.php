@@ -113,13 +113,32 @@ class Categories extends BasicController {
 
 		$this->db->trans_commit();
 
+		$affected_ids = array((int) $id);
+
+		foreach ($sync['moved'] ?? array() as $previous_category_id)
+		{
+			$affected_ids[] = (int) $previous_category_id;
+		}
+
+		$count_updates = $this->model->assignment_counts_for($affected_ids);
 		$data = $this->present($this->model->get($id));
 		$data['standard_numbers'] = $this->standard_category_model->list_by_category($id);
 
+		foreach ($count_updates as $count)
+		{
+			if ((int) $count['id'] === (int) $id)
+			{
+				$data['standard_count'] = $count['standard_count'];
+				$data['product_count'] = $count['product_count'];
+				break;
+			}
+		}
+
 		return $this->json_response(array(
-			'success' => TRUE,
-			'message' => app_line('common_record_updated'),
-			'data'    => $data,
+			'success'       => TRUE,
+			'message'       => app_line('common_record_updated'),
+			'data'          => $data,
+			'count_updates' => $count_updates,
 		));
 	}
 

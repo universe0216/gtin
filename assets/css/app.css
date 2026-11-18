@@ -959,6 +959,10 @@ body.modal-open:has(#productDetailModal.show) .modal-backdrop:last-of-type {
 	min-width: 0;
 }
 
+.organization-location-dropdown-label.is-placeholder {
+	color: var(--app-text-muted);
+}
+
 .entity-list-table-scroll {
 	flex: 1 1 auto;
 	min-height: 0;
@@ -2694,11 +2698,11 @@ select.procedure-detail-info-input option {
 .category-head,
 .category-row {
 	display: grid;
-	grid-template-columns: 2.25rem minmax(12rem, 1.6fr) minmax(12rem, 1.4fr) 7rem 6.5rem minmax(4.5rem, auto);
+	grid-template-columns: 2.25rem minmax(12rem, 1.6fr) minmax(12rem, 1.4fr) 7rem 6.5rem 5.75rem 5.75rem minmax(4.5rem, auto);
 	align-items: center;
 	column-gap: 0.65rem;
 	min-height: 2.6rem;
-	min-width: 52rem;
+	min-width: 62rem;
 	padding: 0.3rem 0.75rem;
 	border-bottom: 1px solid var(--app-border-subtle);
 }
@@ -2714,6 +2718,18 @@ select.procedure-detail-info-input option {
 
 .category-row:hover {
 	background-color: var(--app-table-row-hover);
+}
+
+.category-count {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	color: #cbd5e1;
+	font-size: 0.8125rem;
+}
+
+.category-head .category-count {
+	color: inherit;
+	font-size: inherit;
 }
 
 .category-original,
