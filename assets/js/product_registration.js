@@ -43,8 +43,8 @@
 		usage: true,
 		notes: true,
 	};
-	const BARCODE_1D_TYPES = ['EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ITF-14', 'GS1-128', 'Code 128', 'Code 39'];
-	const BARCODE_2D_TYPES = ['QR', 'Data Matrix', 'GS1 DataMatrix', 'PDF417', 'Aztec'];
+	const BARCODE_1D_TYPES = config.barcode1dTypes || [];
+	const BARCODE_2D_TYPES = config.barcode2dTypes || [];
 
 	const uploadForms = document.querySelectorAll('.procedure-upload-form');
 	const uploadModalEl = document.getElementById('procedureUploadModal');

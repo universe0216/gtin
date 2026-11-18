@@ -3,6 +3,12 @@
 
 	const listConfig = window.ORGANIZATIONS_CONFIG || {};
 	const detailConfig = listConfig.detail;
+	const currencyOptions = (listConfig.currencyOptions || []).slice();
+	const currencyByValue = {};
+
+	currencyOptions.forEach(function (option) {
+		currencyByValue[String(option.value)] = option;
+	});
 
 	if (!detailConfig || !detailConfig.enabled) {
 		return;
@@ -158,17 +164,9 @@
 	}
 
 	function currencyLabel(value) {
-		const code = String(value == null ? '' : value);
+		const option = currencyByValue[String(value == null ? '' : value)];
 
-		if (code === '1') {
-			return t('currency_foreign');
-		}
-
-		if (code === '2') {
-			return t('currency_domestic');
-		}
-
-		return '';
+		return option ? String(option.label || '') : '';
 	}
 
 	function locationChildren(parentId) {
@@ -714,6 +712,58 @@
 		reg_date: 160,
 		processor_name: 160,
 	};
+	const barcode1dTypeOptions = listConfig.barcode1dTypes || [];
+	const barcode2dTypeOptions = listConfig.barcode2dTypes || [];
+
+	function listFilterColumn(options) {
+		const items = (options || []).map(function (value) {
+			return { label: value, value: value };
+		});
+
+		return {
+			filtertype: 'list',
+			filteritems: items,
+			createfilterwidget: function (columnInfo, columnElement, widget) {
+				widget.jqxDropDownList({
+					autoDropDownHeight: true,
+					placeHolder: ' ',
+					source: items,
+					displayMember: 'label',
+					valueMember: 'value',
+					popupZIndex: 999999,
+				});
+			},
+		};
+	}
+
+	function readProductColumnFilters() {
+		const filters = {};
+		let info = [];
+
+		try {
+			info = $('#organizationProductsGrid').jqxGrid('getfilterinformation') || [];
+		} catch (error) {
+			return filters;
+		}
+
+		info.forEach(function (item) {
+			const field = item && item.filtercolumn;
+			const group = item && item.filter;
+
+			if (!field || !group || typeof group.getfilters !== 'function') {
+				return;
+			}
+
+			const parts = group.getfilters() || [];
+			const value = parts.length ? String(parts[0].value == null ? '' : parts[0].value).trim() : '';
+
+			if (value !== '') {
+				filters[field] = value;
+			}
+		});
+
+		return filters;
+	}
 
 	function productIndexRenderer(row) {
 		let number = row + 1;
@@ -787,10 +837,20 @@
 				text: column.label,
 				datafield: column.key,
 				width: productColumnWidths[column.key] || 160,
+				filterable: true,
+				filtertype: 'input',
 			};
 
 			if (column.pinned) {
 				gridColumn.pinned = true;
+			}
+
+			if (column.key === 'barcode_1d_type') {
+				Object.assign(gridColumn, listFilterColumn(barcode1dTypeOptions));
+			}
+
+			if (column.key === 'barcode_2d_type') {
+				Object.assign(gridColumn, listFilterColumn(barcode2dTypeOptions));
 			}
 
 			columns.push(gridColumn);
@@ -838,10 +898,23 @@
 			datafields: buildProductDatafields(),
 			pagesize: perPage,
 			pagesizeoptions: ['10', '20', '50'],
+			filterable: true,
+			showfilterrow: true,
 			height: productsGridHeight(),
 			emptyMessage: t('org_products_empty'),
 			getParams: function () {
-				return productsState.search ? { q: productsState.search } : {};
+				const params = {};
+
+				if (productsState.search) {
+					params.q = productsState.search;
+				}
+
+				const columnFilters = readProductColumnFilters();
+				Object.keys(columnFilters).forEach(function (key) {
+					params['filter[' + key + ']'] = columnFilters[key];
+				});
+
+				return params;
 			},
 			onLoad: updateProductsMeta,
 			onError: function () {

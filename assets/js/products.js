@@ -101,6 +101,30 @@
 			escapeAttr(t('product_select_page')) + '"></div>';
 	}
 
+	const barcode1dTypeOptions = config.barcode1dTypes || [];
+	const barcode2dTypeOptions = config.barcode2dTypes || [];
+
+	function listFilterColumn(options) {
+		const items = (options || []).map(function (value) {
+			return { label: value, value: value };
+		});
+
+		return {
+			filtertype: 'list',
+			filteritems: items,
+			createfilterwidget: function (columnInfo, columnElement, widget) {
+				widget.jqxDropDownList({
+					autoDropDownHeight: true,
+					placeHolder: ' ',
+					source: items,
+					displayMember: 'label',
+					valueMember: 'value',
+					popupZIndex: 999999,
+				});
+			},
+		};
+	}
+
 	const datafields = [
 		{ name: 'id', type: 'number' },
 		{ name: '__rownum', type: 'number' },
@@ -131,6 +155,14 @@
 
 		if (column.pinned) {
 			gridColumn.pinned = true;
+		}
+
+		if (column.key === 'barcode_1d_type') {
+			Object.assign(gridColumn, listFilterColumn(barcode1dTypeOptions));
+		}
+
+		if (column.key === 'barcode_2d_type') {
+			Object.assign(gridColumn, listFilterColumn(barcode2dTypeOptions));
 		}
 
 		if (column.key === 'name' && (detailEnabled || rowAction.enabled)) {

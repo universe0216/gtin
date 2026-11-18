@@ -174,7 +174,7 @@ class Organization_model extends Basic_model {
 
 			if ($key === 'currency')
 			{
-				if ($value === '1' || $value === '2')
+				if (in_array($value, currency_values(), TRUE))
 				{
 					$this->db->where($this->filterable_columns[$key], $value);
 				}

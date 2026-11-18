@@ -55,5 +55,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		'emptySearchMessage' => $list_empty_search_message,
 		'exportUrl'          => site_url($entity.'/export'),
 		'detail'             => $detail_config ?? NULL,
+		'barcode1dTypes'     => barcode_1d_type_options(),
+		'barcode2dTypes'     => barcode_2d_type_options(),
+		'currencyOptions'    => currency_options_for_js(),
 	)); ?>;
 </script>

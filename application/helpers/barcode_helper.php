@@ -2,6 +2,49 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
+ * Load barcode_types config once and return the requested item.
+ */
+function barcode_types_config_item($key, $default = array())
+{
+	static $loaded = FALSE;
+	$CI =& get_instance();
+
+	if ( ! $loaded)
+	{
+		$CI->config->load('barcode_types', FALSE, TRUE);
+		$loaded = TRUE;
+	}
+
+	$value = $CI->config->item($key);
+
+	return is_array($value) ? $value : $default;
+}
+
+/**
+ * 1D barcode type labels for selects and filters.
+ */
+function barcode_1d_type_options()
+{
+	return barcode_types_config_item('barcode_1d_types');
+}
+
+/**
+ * 2D barcode type labels for selects and filters.
+ */
+function barcode_2d_type_options()
+{
+	return barcode_types_config_item('barcode_2d_types');
+}
+
+/**
+ * Checksum tool type definitions (key, label, length).
+ */
+function barcode_checksum_type_options()
+{
+	return barcode_types_config_item('barcode_checksum_types');
+}
+
+/**
  * Normalize a 1D barcode type label to a comparison key.
  */
 function barcode_normalize_1d_type($type)

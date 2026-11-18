@@ -41,14 +41,14 @@ class Products extends BasicController {
 			'name'    => 'barcode_1d_type',
 			'label'   => 'Barcode Type',
 			'type'    => 'select',
-			'options' => array('EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ITF-14', 'GS1-128', 'Code 128', 'Code 39'),
+			'options' => array(),
 		),
 		array('name' => 'barcode_1d', 'label' => 'Barcode', 'type' => 'text'),
 		array(
 			'name'    => 'barcode_2d_type',
 			'label'   => '2D Barcode Type',
 			'type'    => 'select',
-			'options' => array('QR', 'Data Matrix', 'GS1 DataMatrix', 'PDF417', 'Aztec'),
+			'options' => array(),
 		),
 		array('name' => 'barcode_2d', 'label' => '2D Barcode', 'type' => 'text'),
 		array('name' => 'package_type', 'label' => 'Package Type', 'type' => 'text'),
@@ -782,7 +782,7 @@ class Products extends BasicController {
 			'canEdit'       => $this->auth->can($this->permission_edit),
 			'deleteUrl'     => site_url('products/delete'),
 			'canDelete'     => $this->auth->can($this->permission_edit),
-			'fields'        => $this->localize_labeled($this->detail_fields),
+			'fields'        => $this->localize_labeled($this->detail_fields_with_barcode_options()),
 			'categoryNodes' => $this->category_model->tree_nodes(3),
 			'rowAction'     => array(
 				'type'    => 'delete',
@@ -790,5 +790,28 @@ class Products extends BasicController {
 				'enabled' => $this->auth->can($this->permission_edit),
 			),
 		);
+	}
+
+	protected function detail_fields_with_barcode_options()
+	{
+		$fields = $this->detail_fields;
+		$barcode_1d = barcode_1d_type_options();
+		$barcode_2d = barcode_2d_type_options();
+
+		foreach ($fields as &$field)
+		{
+			if (($field['name'] ?? '') === 'barcode_1d_type')
+			{
+				$field['options'] = $barcode_1d;
+			}
+
+			if (($field['name'] ?? '') === 'barcode_2d_type')
+			{
+				$field['options'] = $barcode_2d;
+			}
+		}
+		unset($field);
+
+		return $fields;
 	}
 }

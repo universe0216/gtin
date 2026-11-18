@@ -137,12 +137,8 @@ class Organizations extends BasicController {
 			'label'    => 'Currency',
 			'type'     => 'select',
 			'required' => FALSE,
-			'rules'    => array('trim', 'in_list[,1,2]'),
-			'options'  => array(
-				array('value' => '', 'label' => ''),
-				array('value' => '1', 'label' => 'Foreign'),
-				array('value' => '2', 'label' => 'Domestic'),
-			),
+			'rules'    => array('trim'),
+			'options'  => array(),
 		),
 		array(
 			'name'     => 'description',
@@ -174,11 +170,8 @@ class Organizations extends BasicController {
 		{
 			if (($field['name'] ?? '') === 'currency')
 			{
-				$field['options'] = array(
-					array('value' => '', 'label' => ''),
-					array('value' => '1', 'label' => app_line('currency_foreign')),
-					array('value' => '2', 'label' => app_line('currency_domestic')),
-				);
+				$field['options'] = currency_select_options(TRUE);
+				$field['rules'] = array('trim', currency_in_list_rule());
 			}
 		}
 		unset($field);
@@ -297,19 +290,9 @@ class Organizations extends BasicController {
 			return NULL;
 		}
 
-		$currency = (string) $value;
+		$label = currency_label($value);
 
-		if ($currency === '1')
-		{
-			return app_line('currency_foreign');
-		}
-
-		if ($currency === '2')
-		{
-			return app_line('currency_domestic');
-		}
-
-		return $currency;
+		return $label !== '' ? $label : (string) $value;
 	}
 
 	protected function location_history_label($value)
@@ -344,15 +327,18 @@ class Organizations extends BasicController {
 		}
 
 		$params = $this->list_query_params();
+		$filters = $this->list_filters_from_params($params);
 		$sort = $this->resolve_product_sort_for_columns($this->detail_product_columns);
-		$total = $this->product_model->count_by_organization($id, $params['search']);
+		$total = $this->product_model->count_by_organization($id, $params['search'], '', $filters);
 		$offset = ($params['page'] - 1) * $params['per_page'];
 		$records = $this->product_model->get_paginated_by_organization(
 			$id,
 			$params['per_page'],
 			$offset,
 			$params['search'],
-			$sort
+			$sort,
+			'',
+			$filters
 		);
 		$meta = $this->build_paginated_meta(
 			$total,
@@ -477,19 +463,7 @@ class Organizations extends BasicController {
 
 		if ($field === 'currency')
 		{
-			$currency = (string) ($record['currency'] ?? '');
-
-			if ($currency === '1')
-			{
-				return app_line('currency_foreign');
-			}
-
-			if ($currency === '2')
-			{
-				return app_line('currency_domestic');
-			}
-
-			return '';
+			return currency_label($record['currency'] ?? '');
 		}
 
 		return parent::export_value($field, $record);
@@ -563,14 +537,14 @@ class Organizations extends BasicController {
 					'name'    => 'barcode_1d_type',
 					'label'   => 'Barcode Type',
 					'type'    => 'select',
-					'options' => array('EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ITF-14', 'GS1-128', 'Code 128', 'Code 39'),
+					'options' => barcode_1d_type_options(),
 				),
 				array('name' => 'barcode_1d', 'label' => 'Barcode', 'type' => 'text'),
 				array(
 					'name'    => 'barcode_2d_type',
 					'label'   => '2D Barcode Type',
 					'type'    => 'select',
-					'options' => array('QR', 'Data Matrix', 'GS1 DataMatrix', 'PDF417', 'Aztec'),
+					'options' => barcode_2d_type_options(),
 				),
 				array('name' => 'barcode_2d', 'label' => '2D Barcode', 'type' => 'text'),
 				array('name' => 'package_type', 'label' => 'Package Type', 'type' => 'text'),

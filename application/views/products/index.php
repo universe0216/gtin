@@ -107,5 +107,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		'batchDeletePreviewUrl'   => ($entity === 'products' && ! empty($can_edit)) ? site_url('products/batch_delete_preview') : NULL,
 		'batchDeleteUrl'          => ($entity === 'products' && ! empty($can_edit)) ? site_url('products/batch_delete') : NULL,
 		'detail'                  => $detail_config ?? NULL,
+		'barcode1dTypes'          => barcode_1d_type_options(),
+		'barcode2dTypes'          => barcode_2d_type_options(),
 	)); ?>;
 </script>

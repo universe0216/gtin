@@ -161,18 +161,20 @@ class Product_model extends Basic_model {
 		return $ids;
 	}
 
-	public function count_by_organization($organization_id, $search = '', $normalized_key = '')
+	public function count_by_organization($organization_id, $search = '', $normalized_key = '', array $filters = array())
 	{
 		$this->prepare_organization_products_query($organization_id);
 		$this->apply_organization_product_search_filters($search, $normalized_key);
+		$this->apply_column_filters($filters);
 
 		return (int) $this->db->count_all_results();
 	}
 
-	public function get_paginated_by_organization($organization_id, $limit, $offset = 0, $search = '', $sort = array(), $normalized_key = '')
+	public function get_paginated_by_organization($organization_id, $limit, $offset = 0, $search = '', $sort = array(), $normalized_key = '', array $filters = array())
 	{
 		$this->prepare_organization_products_query($organization_id);
 		$this->apply_organization_product_search_filters($search, $normalized_key);
+		$this->apply_column_filters($filters);
 		$this->apply_list_order($sort);
 
 		return $this->db

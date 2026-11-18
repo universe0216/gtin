@@ -17,6 +17,12 @@
 	const locationClearBtn = document.getElementById('organizationLocationFilterClear');
 	const exportBtn = document.getElementById('organizationsExportBtn');
 	const locationNodes = (config.detail && config.detail.locationNodes) || [];
+	const currencyOptions = (config.currencyOptions || []).slice();
+	const currencyByValue = {};
+
+	currencyOptions.forEach(function (option) {
+		currencyByValue[String(option.value)] = option;
+	});
 
 	if (typeof JqxGrid === 'undefined' || !document.getElementById('organizationsGrid')) {
 		return;
@@ -70,15 +76,9 @@
 		}
 
 		if (columnfield === 'currency') {
-			const code = String(value == null ? '' : value);
+			const option = currencyByValue[String(value == null ? '' : value)];
 
-			if (code === '1') {
-				return 'organization-currency-foreign';
-			}
-
-			if (code === '2') {
-				return 'organization-currency-domestic';
-			}
+			return option && option.cssClass ? option.cssClass : '';
 		}
 
 		return '';
@@ -106,13 +106,10 @@
 			let value = parts.length ? String(parts[0].value == null ? '' : parts[0].value).trim() : '';
 
 			if (field === 'currency') {
-				if (value === '1' || value === t('currency_foreign')) {
-					value = '1';
-				} else if (value === '2' || value === t('currency_domestic')) {
-					value = '2';
-				} else {
-					value = '';
-				}
+				const match = currencyOptions.find(function (option) {
+					return value === String(option.value) || value === String(option.label);
+				});
+				value = match ? String(match.value) : '';
 			}
 
 			if (value !== '') {
@@ -169,21 +166,22 @@
 	}));
 
 	function currencyLabel(value) {
-		const code = String(value == null ? '' : value);
+		const option = currencyByValue[String(value == null ? '' : value)];
 
-		if (code === '1') {
-			return t('currency_foreign');
-		}
-
-		if (code === '2') {
-			return t('currency_domestic');
-		}
-
-		return '';
+		return option ? String(option.label || '') : '';
 	}
 
 	function currencyRenderer(row, column, value) {
 		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + escapeHtml(currencyLabel(value)) + '</div>';
+	}
+
+	function currencyFilterItems() {
+		return currencyOptions.map(function (option) {
+			return {
+				label: option.label,
+				value: String(option.value),
+			};
+		});
 	}
 
 	const gridColumns = [
@@ -214,19 +212,14 @@
 		}
 
 		if (column.key === 'currency') {
+			const filterItems = currencyFilterItems();
 			gridColumn.filtertype = 'list';
-			gridColumn.filteritems = [
-				{ label: t('currency_foreign'), value: '1' },
-				{ label: t('currency_domestic'), value: '2' },
-			];
+			gridColumn.filteritems = filterItems;
 			gridColumn.createfilterwidget = function (columnInfo, columnElement, widget) {
 				widget.jqxDropDownList({
 					autoDropDownHeight: true,
 					placeHolder: ' ',
-					source: [
-						{ label: t('currency_foreign'), value: '1' },
-						{ label: t('currency_domestic'), value: '2' },
-					],
+					source: filterItems,
 					displayMember: 'label',
 					valueMember: 'value',
 					popupZIndex: 999999,
