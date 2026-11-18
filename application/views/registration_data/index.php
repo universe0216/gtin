@@ -40,12 +40,26 @@ foreach ($editors as $editor)
 						<?php else: ?>
 							<?php foreach ($registrations as $index => $registration): ?>
 								<?php
-									$account_id = (int) $registration['account_id'];
+									$account_id = (int) ($registration['account_id'] ?? 0);
+									$status_key = strtolower(trim((string) ($registration['status'] ?? '')));
 									$current_label = trim((string) ($registration['processor_name'] ?? ''));
 
 									if ($current_label === '')
 									{
 										$current_label = trim((string) ($registration['processor_username'] ?? ''));
+									}
+
+									if ($status_key === 'processing')
+									{
+										$status_label = 'processing';
+									}
+									elseif ($status_key === 'completed' || $status_key === 'saved' || $status_key === 'done')
+									{
+										$status_label = 'completed';
+									}
+									else
+									{
+										$status_label = 'uploaded';
 									}
 								?>
 								<tr class="registration-data-row" data-registration-id="<?php echo (int) $registration['id']; ?>">
@@ -53,15 +67,18 @@ foreach ($editors as $editor)
 									<td><?php echo html_escape($registration['file_name']); ?></td>
 									<td><?php echo html_escape($registration['procedure_number']); ?></td>
 									<td><?php echo html_escape($registration['organization_name']); ?></td>
-									<td><?php echo html_escape($registration['status']); ?></td>
+									<td><?php echo html_escape($status_label); ?></td>
 									<td class="text-end"><?php echo (int) $registration['total_products']; ?></td>
 									<td>
 										<select
 											class="form-select form-select-sm registration-data-user"
 											data-registration-id="<?php echo (int) $registration['id']; ?>"
-											data-account-id="<?php echo $account_id; ?>"
+											data-account-id="<?php echo $account_id > 0 ? $account_id : ''; ?>"
 											aria-label="<?php echo html_escape(app_line('reg_data_user')); ?>"
 										>
+											<?php if ($account_id < 1): ?>
+												<option value="" selected></option>
+											<?php endif; ?>
 											<?php if ($account_id && empty($editor_ids[$account_id])): ?>
 												<option value="<?php echo $account_id; ?>" selected>
 													<?php echo html_escape($current_label); ?>

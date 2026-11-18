@@ -170,6 +170,16 @@ class Product_model extends Basic_model {
 		return (int) $this->db->count_all_results();
 	}
 
+	public function get_by_organization($organization_id)
+	{
+		$this->prepare_organization_products_query($organization_id);
+		$this->apply_list_order(array());
+
+		return $this->db
+			->get()
+			->result_array();
+	}
+
 	public function get_paginated_by_organization($organization_id, $limit, $offset = 0, $search = '', $sort = array(), $normalized_key = '', array $filters = array())
 	{
 		$this->prepare_organization_products_query($organization_id);
@@ -321,22 +331,36 @@ class Product_model extends Basic_model {
 
 	public function find_catalog_match($organization_id, $barcode, $name)
 	{
-		$this->db
-			->from($this->table)
-			->where('org_id', (int) $organization_id);
-
 		$barcode = trim((string) $barcode);
 
 		if ($barcode !== '')
 		{
-			$this->db->where('barcode_1d', $barcode);
+			return $this->find_by_barcode_1d($barcode);
 		}
-		else
+
+		$this->db
+			->from($this->table)
+			->where('org_id', (int) $organization_id)
+			->where('name', trim((string) $name));
+
+		return $this->db
+			->limit(1)
+			->get()
+			->row_array();
+	}
+
+	public function find_by_barcode_1d($barcode)
+	{
+		$barcode = trim((string) $barcode);
+
+		if ($barcode === '')
 		{
-			$this->db->where('name', trim((string) $name));
+			return NULL;
 		}
 
 		return $this->db
+			->from($this->table)
+			->where('barcode_1d', $barcode)
 			->limit(1)
 			->get()
 			->row_array();

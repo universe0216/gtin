@@ -47,10 +47,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								type="button"
 								class="procedure-tab-nav-close <?php echo $tab_completed ? 'product-registration-tab-close-btn' : 'product-registration-tab-delete-btn'; ?>"
 								data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
-								<?php if ( ! $tab_completed): ?>
-									data-file-name="<?php echo html_escape($tab['file_name']); ?>"
-								<?php endif; ?>
-								aria-label="<?php echo html_escape(app_line($tab_completed ? 'reg_close_tab' : 'reg_stop_procedure')); ?>"
+								data-file-name="<?php echo html_escape($tab['file_name']); ?>"
+								aria-label="<?php echo html_escape(app_line('reg_close_tab')); ?>"
 								data-mdb-ripple-init
 							>
 								<i class="fas fa-times" aria-hidden="true"></i>
@@ -87,11 +85,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 									</button>
 									<button
 										type="button"
-										class="btn btn-sm btn-outline-secondary product-registration-tab-close-btn"
+										class="btn btn-sm btn-outline-warning product-registration-tab-reset-all-btn"
 										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
 										data-mdb-ripple-init
 									>
-										<i class="fas fa-times me-1"></i> <?php echo html_escape(app_line('common_close')); ?>
+										<i class="fas fa-undo me-1"></i> <?php echo html_escape(app_line('reg_reset_all')); ?>
 									</button>
 								</div>
 							<?php else: ?>
@@ -122,12 +120,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 									</button>
 									<button
 										type="button"
-										class="btn btn-sm btn-outline-danger product-registration-tab-delete-btn"
+										class="btn btn-sm btn-outline-warning product-registration-tab-reset-all-btn"
 										data-product-registration-id="<?php echo (int) $tab['product_registration_id']; ?>"
-										data-file-name="<?php echo html_escape($tab['file_name']); ?>"
 										data-mdb-ripple-init
 									>
-										<i class="fas fa-trash me-1"></i> <?php echo html_escape(app_line('common_delete')); ?>
+										<i class="fas fa-undo me-1"></i> <?php echo html_escape(app_line('reg_reset_all')); ?>
 									</button>
 								</div>
 							<?php endif; ?>

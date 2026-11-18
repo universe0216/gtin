@@ -91,12 +91,30 @@
 		modalEl.addEventListener('hidden.mdb.modal', resetModal);
 	}
 
+	function refreshDatePickers() {
+		if (!window.jQuery || !infoWrap) {
+			return;
+		}
+
+		infoWrap.querySelectorAll('.jqx-app-date-host').forEach(function (host) {
+			const $host = window.jQuery(host);
+
+			if ($host.data('jqxDateTimeInput') && host.offsetWidth > 0) {
+				$host.jqxDateTimeInput('refresh');
+			}
+		});
+	}
+
 	function setInfoLoading(isLoading) {
 		if (infoLoading) {
 			infoLoading.classList.toggle('d-none', !isLoading);
 		}
 		if (infoWrap) {
 			infoWrap.classList.toggle('d-none', isLoading);
+		}
+
+		if (!isLoading) {
+			window.requestAnimationFrame(refreshDatePickers);
 		}
 	}
 
@@ -575,7 +593,7 @@
 		})
 			.then(function (result) {
 				const record = result.data || {};
-				detailState.organizationName = record.name || detailState.organizationName;
+				detailState.organizationName = String(record.name || detailState.organizationName || '').trim();
 
 				if (modalTitle) {
 					modalTitle.textContent = detailState.organizationName;
@@ -1049,7 +1067,7 @@
 			signal: detailRequest.signal,
 		})
 			.then(function (result) {
-				detailState.organizationName = result.data.name || '—';
+				detailState.organizationName = String(result.data.name || '').trim() || '—';
 				if (modalTitle) {
 					modalTitle.textContent = detailState.organizationName;
 				}

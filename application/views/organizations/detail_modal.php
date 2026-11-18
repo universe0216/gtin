@@ -6,10 +6,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div class="modal-content">
 			<div class="modal-header history-procedure-modal-header entity-detail-modal-header">
 				<div class="entity-detail-modal-header-start">
-					<h6 class="modal-title mb-0 entity-detail-modal-title" id="organizationDetailModalLabel">
-						<i class="fas fa-building me-1 text-primary"></i>
-						<span id="organizationDetailModalTitle">—</span>
-					</h6>
+					<h6 class="modal-title mb-0 entity-detail-modal-title" id="organizationDetailModalLabel"><i class="fas fa-building me-1 text-primary"></i><span id="organizationDetailModalTitle">—</span></h6>
 					<div class="entity-detail-tab-options btn-group btn-group-sm" role="tablist" id="organizationDetailTabs">
 						<button
 							type="button"

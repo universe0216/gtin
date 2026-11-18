@@ -502,6 +502,13 @@ class BasicController extends AuthenticatedController {
 		{
 			$value = $this->input->post($field['name']);
 			$type = isset($field['type']) ? $field['type'] : 'text';
+			$rules = isset($field['rules']) ? (array) $field['rules'] : array();
+
+			// form_validation trim does not change input->post(); apply it here.
+			if (is_string($value) && in_array('trim', $rules, TRUE))
+			{
+				$value = trim($value);
+			}
 
 			if (($type === 'number' || $type === 'date' || $type === 'select' || $type === 'location') && ($value === '' || $value === FALSE))
 			{

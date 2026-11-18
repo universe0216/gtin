@@ -278,11 +278,11 @@ function barcode_item_reference($barcode, $prefix)
 }
 
 /**
- * Lowest unused item reference from 000 through 999.
+ * Lowest unused item reference from 001 through 999.
  */
 function barcode_next_item_reference(array $used_refs)
 {
-	for ($item_reference = 0; $item_reference <= 999; $item_reference++)
+	for ($item_reference = 1; $item_reference <= 999; $item_reference++)
 	{
 		if (empty($used_refs[$item_reference]))
 		{

@@ -710,6 +710,21 @@ class Product_registration_processor {
 		);
 	}
 
+	public function company_prefix_for_factory($factory_name)
+	{
+		$this->CI->load->model('organization_model');
+
+		$factory_name = trim((string) $factory_name);
+		$organization = $factory_name === '' ? NULL : $this->CI->organization_model->get_by_name($factory_name);
+
+		if ( ! $organization)
+		{
+			return '';
+		}
+
+		return $this->normalize_gs1_prefix($organization['gs1_prefix'] ?? '');
+	}
+
 	protected function calculate_available_barcodes($organization_name, $count)
 	{
 		$count = (int) $count;
@@ -733,7 +748,7 @@ class Product_registration_processor {
 		$used = $this->get_used_product_numbers((int) $organization['id'], $prefix);
 		$available = array();
 
-		for ($product_number = 0; $product_number < 1000 && count($available) < $count; $product_number++)
+		for ($product_number = 1; $product_number < 1000 && count($available) < $count; $product_number++)
 		{
 			if (isset($used[$product_number]))
 			{

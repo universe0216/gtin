@@ -135,21 +135,27 @@ html[data-mdb-theme="dark"] body {
 .organization-date-field,
 .jqx-app-date-field {
 	width: 100%;
+	position: relative;
 }
 
-.organization-date-field .jqx-app-date-host,
-.organization-date-field .jqx-widget,
-.organization-date-field .jqx-datetimeinput,
-.jqx-app-date-field .jqx-app-date-host,
-.jqx-app-date-field .jqx-widget,
-.jqx-app-date-field .jqx-datetimeinput {
+.organization-date-field > .jqx-app-date-host,
+.jqx-app-date-field > .jqx-app-date-host {
 	width: 100% !important;
+	position: relative;
 }
 
-.organization-date-field .jqx-input,
-.jqx-app-date-field .jqx-input {
+.organization-date-field .jqx-input-content,
+.jqx-app-date-field .jqx-input-content {
+	left: 0 !important;
+	width: calc(100% - 30px) !important;
 	box-sizing: border-box;
 }
+
+.organization-date-field .jqx-action-button,
+.jqx-app-date-field .jqx-action-button {
+	left: auto !important;
+	right: 0 !important;
+	width: 28px !important;
 }
 
 #checksumDigit[readonly] {
@@ -1714,27 +1720,28 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	background-color: var(--app-bg);
 }
 
-.procedure-detail-reject-reason {
-	margin-bottom: 1rem;
-}
-
 .procedure-detail-reject-reason-label {
-	display: block;
-	justify-self: start;
-	text-align: left;
-	margin-bottom: 0.35rem;
 	color: #f87171;
 }
 
 .procedure-detail-reject-reason-input,
-.procedure-detail-reject-reason-input:focus,
 .procedure-detail-reject-reason-input:disabled,
 .procedure-detail-reject-reason-input[readonly] {
 	border-color: #dc3545;
 	color: #fecaca;
 	background-color: rgba(220, 53, 69, 0.12);
-	box-shadow: none;
 	resize: vertical;
+}
+
+.procedure-detail-reject-reason-input:focus {
+	border-color: #dc3545;
+	color: #fecaca;
+	background-color: rgba(220, 53, 69, 0.18);
+	box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.2);
+}
+
+.procedure-detail-reject-reason-input[readonly],
+.procedure-detail-reject-reason-input:disabled {
 	cursor: default;
 }
 
@@ -2365,6 +2372,33 @@ select.procedure-detail-info-input option {
 	background-color: var(--app-accent-soft) !important;
 	color: #dbeafe !important;
 	border-color: rgba(77, 127, 212, 0.28);
+}
+
+/* --app-accent-soft is translucent. Pinned cells sit above the scrolled
+   cells, so the selection has to be the same tint painted on the row surface. */
+.jqx-grid-cell.jqx-grid-cell-pinned.jqx-grid-cell-selected,
+.jqx-grid-cell.jqx-grid-cell-pinned.jqx-fill-state-pressed {
+	background-color: #212c3e !important;
+}
+
+.jqx-grid-cell.jqx-grid-cell-pinned.jqx-grid-cell-alt.jqx-grid-cell-selected,
+.jqx-grid-cell.jqx-grid-cell-pinned.jqx-grid-cell-alt.jqx-fill-state-pressed {
+	background-color: #283447 !important;
+}
+
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-rejected.jqx-grid-cell-selected,
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-rejected.jqx-fill-state-pressed {
+	background-color: #2a1b1f !important;
+}
+
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-approved.jqx-grid-cell-selected,
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-approved.jqx-fill-state-pressed {
+	background-color: #16291f !important;
+}
+
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-warning.jqx-grid-cell-selected,
+.jqx-grid-cell.jqx-grid-cell-pinned.procedure-grid-row-warning.jqx-fill-state-pressed {
+	background-color: #2a2414 !important;
 }
 
 .jqx-grid-cell.jqx-grid-cell-hover,

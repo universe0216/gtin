@@ -30,6 +30,7 @@
 			},
 			deleteBtnSelector: null,
 			closeBtnSelector: null,
+			closeConfirms: false,
 			onBeforePrepend: null,
 			onAfterPrepend: null,
 		}, options);
@@ -135,18 +136,38 @@
 			});
 		}
 
+		function runDelete(registrationId) {
+			if (typeof settings.onDelete === 'function') {
+				const handled = settings.onDelete(registrationId);
+
+				if (handled !== false) {
+					return handled;
+				}
+			}
+
+			return deleteRegistration(registrationId);
+		}
+
 		function openDeleteModal(registrationId, fileName) {
 			if (!registrationId) {
 				return;
 			}
 
+			const confirmSettings = typeof settings.deleteConfirmFor === 'function'
+				? settings.deleteConfirmFor(registrationId) || settings.deleteConfirm
+				: settings.deleteConfirm;
+
+			if (confirmSettings.skip) {
+				return runDelete(registrationId);
+			}
+
 			window.showConfirm({
 				title: fileName || '—',
-				message: settings.deleteConfirm.message,
-				confirmLabel: settings.deleteConfirm.confirmLabel,
+				message: confirmSettings.message,
+				confirmLabel: confirmSettings.confirmLabel,
 			})
 				.then(function () {
-					return deleteRegistration(registrationId);
+					return runDelete(registrationId);
 				})
 				.catch(function (error) {
 					if (window.isConfirmCancelled(error)) {
@@ -216,6 +237,15 @@
 					if (closeBtn) {
 						event.preventDefault();
 						event.stopPropagation();
+
+						if (settings.closeConfirms) {
+							openDeleteModal(
+								closeBtn.getAttribute(settings.idAttribute),
+								closeBtn.getAttribute('data-file-name')
+							);
+							return;
+						}
+
 						closeTab(closeBtn.getAttribute(settings.idAttribute));
 						return;
 					}

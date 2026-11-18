@@ -204,7 +204,7 @@ CREATE TABLE `product_registrations`  (
   `file_name` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
   `procedure_number` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
   `organization_name` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-  `account_id` int UNSIGNED NOT NULL,
+  `account_id` int UNSIGNED NULL DEFAULT NULL,
   `status` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'uploaded',
   `total_products` int UNSIGNED NOT NULL DEFAULT 0,
   `approved` int UNSIGNED NOT NULL DEFAULT 0,

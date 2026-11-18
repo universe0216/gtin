@@ -211,8 +211,12 @@
 
 	// --------------------------------------------------------------- tab grids
 
-	function registerTabData(tab) {
+	function registerTabData(tab, context) {
 		if (tab && tab.product_registration_id !== undefined) {
+			if ((context && context.imported) || tab.imported) {
+				tab.imported = true;
+			}
+
 			tabData.set(String(tab.product_registration_id), tab);
 		}
 	}
@@ -403,6 +407,7 @@
 			file_name: tab.file_name,
 			processor_name: tab.processor_name || '',
 			status: tab.status || 'uploaded',
+			imported: !!tab.imported,
 			item_status: normalizeItemStatus(row.item_status || row.status || 'pending'),
 			rejection_reason: row.message || '',
 			created_at: tab.created_at || '',
@@ -432,10 +437,22 @@
 		return activeItemStatus() === 'pending';
 	}
 
+	function registrationCanEdit(tab) {
+		if (!tab) {
+			return false;
+		}
+
+		if (tab.imported) {
+			return true;
+		}
+
+		return String(tab.status || '').toLowerCase() !== 'completed';
+	}
+
 	function canReviewActiveRow() {
 		const tab = getActiveTab();
 
-		if (!tab || tab.status === 'completed') {
+		if (!registrationCanEdit(tab)) {
 			return false;
 		}
 
@@ -446,7 +463,7 @@
 	function canAcceptActiveRow() {
 		const tab = getActiveTab();
 
-		if (!tab || tab.status === 'completed') {
+		if (!registrationCanEdit(tab)) {
 			return false;
 		}
 
@@ -480,7 +497,7 @@
 	function canResetActiveRow() {
 		const tab = getActiveTab();
 
-		return !!(tab && tab.status !== 'completed' && activeDetail);
+		return !!(registrationCanEdit(tab) && activeDetail);
 	}
 
 	function updateReviewButtonState() {
@@ -1483,7 +1500,7 @@
 			return;
 		}
 
-		if (!tab || tab.status === 'completed' || valueInput.disabled) {
+		if (!registrationCanEdit(tab) || valueInput.disabled) {
 			showToast(t('reg_completed_locked'), 'error');
 			return;
 		}
@@ -1637,16 +1654,24 @@
 
 	function renderRejectionReasonBlock(payload) {
 		const reason = rejectionReasonText(payload);
+		const itemStatus = normalizeItemStatus(payload.item_status || 'pending');
 
-		if (!reason) {
+		if (itemStatus !== 'rejected') {
 			return '';
 		}
 
-		return '<div class="procedure-detail-reject-reason">' +
+		const editable = payload.imported || String(payload.status || '').toLowerCase() !== 'completed';
+		const regId = activeDetail ? activeDetail.regId : '';
+
+		return '<div class="procedure-detail-info-item procedure-detail-reject-reason">' +
 			'<label class="procedure-detail-info-label procedure-detail-reject-reason-label" for="procedureDetailRejectReason">' +
 				escapeHtml(t('common_reason')) +
 			'</label>' +
-			'<textarea id="procedureDetailRejectReason" class="form-control form-control-sm procedure-detail-info-input procedure-detail-reject-reason-input" rows="3" readonly>' +
+			'<textarea id="procedureDetailRejectReason" class="form-control form-control-sm procedure-detail-info-input procedure-detail-reject-reason-input" rows="3"' +
+				' data-item-id="' + escapeAttr(payload.id) + '"' +
+				' data-reg-id="' + escapeAttr(regId) + '"' +
+				' data-saved-value="' + escapeAttr(reason) + '"' +
+				(editable ? '' : ' readonly') + '>' +
 				escapeHtml(reason) +
 			'</textarea>' +
 		'</div>';
@@ -1657,6 +1682,7 @@
 			return;
 		}
 
+		const grid = productDetailInfo.querySelector('.procedure-detail-info-grid');
 		const existing = productDetailInfo.querySelector('.procedure-detail-reject-reason');
 		const reasonHtml = renderRejectionReasonBlock(payload);
 
@@ -1668,12 +1694,115 @@
 			return;
 		}
 
-		if (existing) {
-			existing.outerHTML = reasonHtml;
+		if (!grid) {
 			return;
 		}
 
-		productDetailInfo.insertAdjacentHTML('afterbegin', reasonHtml);
+		if (existing) {
+			const input = existing.querySelector('textarea');
+			const nextReason = rejectionReasonText(payload);
+
+			if (input && document.activeElement !== input && input.value !== nextReason) {
+				input.value = nextReason;
+				input.setAttribute('data-saved-value', nextReason);
+				input.classList.remove('is-invalid');
+			}
+
+			return;
+		}
+
+		grid.insertAdjacentHTML('afterbegin', reasonHtml);
+	}
+
+	function saveRejectReason(input) {
+		const itemId = input.getAttribute('data-item-id');
+		const regId = input.getAttribute('data-reg-id');
+		const value = input.value.trim();
+		const saved = input.getAttribute('data-saved-value') || '';
+
+		if (!itemId || input.readOnly || value === saved) {
+			return;
+		}
+
+		if (!value) {
+			input.classList.add('is-invalid');
+			showToast(t('reg_reject_reason_required'), 'error');
+			return;
+		}
+
+		const formData = new FormData();
+		formData.append('reason', value);
+		formData.append('update_reason', '1');
+
+		barcodeSaveQueue = barcodeSaveQueue.then(function () {
+			return fetchApi(baseUrl + '/reject_item/' + itemId, {
+				method: 'POST',
+				body: formData,
+			});
+		}).then(function (result) {
+			if (result && result.data && result.data.skipped) {
+				return;
+			}
+
+			if (input.value.trim() !== value) {
+				return;
+			}
+
+			input.value = value;
+			input.setAttribute('data-saved-value', value);
+			input.classList.remove('is-invalid');
+
+			const rowIndex = rowIndexForItem(regId, itemId);
+			const tab = tabData.get(String(regId));
+
+			if (rowIndex >= 0 && tab && tab.rows[rowIndex]) {
+				tab.rows[rowIndex].message = value;
+				tab.rows[rowIndex].item_status = 'rejected';
+				refreshGridRow(regId, rowIndex);
+			}
+
+			if (result && result.data && result.data.registration_status) {
+				setRegistrationStatus(regId, result.data.registration_status);
+			}
+
+			if (result && result.message) {
+				showToast(result.message, 'success');
+			}
+		}).catch(function (error) {
+			showToast(error.message || t('reg_reject_failed'), 'error');
+		});
+	}
+
+	function scheduleRejectReasonSave(input) {
+		const key = (input.getAttribute('data-item-id') || '') + ':reject_reason';
+
+		clearTimeout(barcodeSaveTimers.get(key));
+		barcodeSaveTimers.set(key, setTimeout(function () {
+			barcodeSaveTimers.delete(key);
+			saveRejectReason(input);
+		}, 400));
+	}
+
+	function flushRejectReasonSave() {
+		if (!productDetailInfo) {
+			return;
+		}
+
+		const input = productDetailInfo.querySelector('.procedure-detail-reject-reason-input');
+
+		if (!input) {
+			return;
+		}
+
+		const key = (input.getAttribute('data-item-id') || '') + ':reject_reason';
+
+		if (!barcodeSaveTimers.has(key)) {
+			return;
+		}
+
+		clearTimeout(barcodeSaveTimers.get(key));
+		barcodeSaveTimers.delete(key);
+		saveRejectReason(input);
 	}
 
 	function barcodeTypeOptions(field, currentValue) {
@@ -1822,9 +1951,15 @@
 				method: 'POST',
 				body: formData,
 			});
-		}).then(function () {
+		}).then(function (result) {
 			if (input.getAttribute('data-saved-value') !== null && input.value === value) {
 				input.setAttribute('data-saved-value', value);
+			}
+
+			const status = result && result.data && result.data.registration_status;
+
+			if (status) {
+				setRegistrationStatus(regId, status);
 			}
 		}).catch(function (error) {
 			showToast(error.message || t('reg_barcode_save_failed'), 'error');
@@ -1957,6 +2092,8 @@
 	}
 
 	function flushBarcodeFieldSaves() {
+		flushRejectReasonSave();
+
 		const pendingKeys = [];
 
 		barcodeSaveTimers.forEach(function (timer, key) {
@@ -1981,7 +2118,7 @@
 	function renderDetailInfo(payload) {
 		const columns = payload.columns || [];
 		const cells = payload.cells || [];
-		const editable = payload.status !== 'completed';
+		const editable = payload.imported || String(payload.status || '').toLowerCase() !== 'completed';
 		const fields = [];
 
 		columns.forEach(function (column, index) {
@@ -2023,8 +2160,10 @@
 		}).join('');
 
 		productDetailInfo.innerHTML =
-			renderRejectionReasonBlock(payload) +
-			'<div class="procedure-detail-info-grid">' + fieldsHtml + '</div>';
+			'<div class="procedure-detail-info-grid">' +
+				renderRejectionReasonBlock(payload) +
+				fieldsHtml +
+			'</div>';
 	}
 
 	// ---------------------------------------------------------------- images
@@ -2525,18 +2664,39 @@
 		}
 	}, 300);
 
-	function importRegistrationTab(registrationId) {
-		if (!registrationId) {
-			return;
+	function refreshImportedTab(tab) {
+		const key = String(tab.product_registration_id);
+		tab.imported = true;
+		tabData.set(key, tab);
+
+		const tabButton = document.getElementById('product-registration-tab-' + key + '-tab');
+		const pane = paneFor(key);
+
+		if (tabButton) {
+			tabButton.removeAttribute('data-completed');
+			tabButton.setAttribute('data-imported', 'true');
+
+			const completedIcon = tabButton.querySelector('.procedure-tab-completed-icon');
+
+			if (completedIcon) {
+				completedIcon.remove();
+			}
 		}
 
-		if (procedureTabs.tabExists(registrationId)) {
-			if (importModal) {
-				importModal.hide();
+		if (pane) {
+			pane.setAttribute('data-imported', 'true');
+			const actions = pane.querySelector('.procedure-tab-meta .ms-auto');
+
+			if (actions) {
+				actions.outerHTML = buildTabActionButton(tab, true);
 			}
 
-			procedureTabs.activateTab(registrationId);
-			showToast(t('reg_already_open'), 'success');
+			ensureGrid(key);
+		}
+	}
+
+	function importRegistrationTab(registrationId) {
+		if (!registrationId) {
 			return;
 		}
 
@@ -2544,7 +2704,14 @@
 
 		fetchApi(baseUrl + '/import_tab/' + registrationId)
 			.then(function (result) {
-				procedureTabs.prependTabs([result.tab], { imported: true });
+				const tab = result.tab;
+
+				if (procedureTabs.tabExists(registrationId)) {
+					refreshImportedTab(tab);
+					procedureTabs.activateTab(registrationId);
+				} else {
+					procedureTabs.prependTabs([tab], { imported: true });
+				}
 
 				if (importModal) {
 					importModal.hide();
@@ -2581,6 +2748,7 @@
 		if (isCompleted) {
 			return '<button type="button" class="procedure-tab-nav-close product-registration-tab-close-btn"' +
 				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-file-name="' + escapeAttr(tab.file_name) + '"' +
 				' aria-label="' + t('reg_close_tab') + '"' +
 				' data-mdb-ripple-init>' +
 				'<i class="fas fa-times" aria-hidden="true"></i>' +
@@ -2590,14 +2758,14 @@
 		return '<button type="button" class="procedure-tab-nav-close product-registration-tab-delete-btn"' +
 			' data-product-registration-id="' + tab.product_registration_id + '"' +
 			' data-file-name="' + escapeAttr(tab.file_name) + '"' +
-			' aria-label="' + t('reg_stop_procedure') + '"' +
+			' aria-label="' + t('reg_close_tab') + '"' +
 			' data-mdb-ripple-init>' +
 			'<i class="fas fa-times" aria-hidden="true"></i>' +
 		'</button>';
 	}
 
 	function buildTabButton(tab, isActive, isImported) {
-		const isCompleted = isImported || tab.status === 'completed';
+		const isCompleted = String(tab.status || '').toLowerCase() === 'completed';
 		const showSavedCheck = isCompleted || String(tab.status || '').toLowerCase() === 'saved';
 		const showProcessing = !showSavedCheck && String(tab.status || '').toLowerCase() === 'processing';
 
@@ -2611,6 +2779,7 @@
 					'aria-controls="product-registration-tab-' + tab.product_registration_id + '" ' +
 					'aria-selected="' + (isActive ? 'true' : 'false') + '" ' +
 					'data-product-registration-id="' + tab.product_registration_id + '"' +
+					(isImported ? ' data-imported="true"' : '') +
 					(isCompleted ? ' data-completed="true"' : '') + '>' +
 					'<i class="fas ' + (/\.(xls|xlsx)$/i.test(tab.file_name || '') ? 'fa-file-excel' : 'fa-file-zipper') + ' me-1"></i>' + escapeHtml(tab.file_name) +
 					'<span class="badge bg-secondary ms-2">' + (tab.rows || []).length + '</span>' +
@@ -2621,7 +2790,7 @@
 						? '<i class="fas fa-spinner fa-spin ms-2 procedure-tab-processing-icon" title="' + escapeAttr(t('reg_processing')) + '" aria-label="' + escapeAttr(t('reg_processing')) + '"></i>'
 						: '') +
 				'</button>' +
-				buildTabNavCloseButton(tab, isCompleted) +
+				buildTabNavCloseButton(tab, isCompleted || isImported) +
 			'</div>' +
 		'</li>';
 	}
@@ -2648,6 +2817,7 @@
 		}
 
 		syncTabStatusIcon(key, nextStatus);
+		syncTabActions(key);
 	}
 
 	function syncTabStatusIcon(registrationId, status) {
@@ -2661,6 +2831,13 @@
 		const processingIcon = tabButton.querySelector('.procedure-tab-processing-icon');
 
 		if (normalized === 'processing') {
+			tabButton.removeAttribute('data-completed');
+			const completedIcon = tabButton.querySelector('.procedure-tab-completed-icon');
+
+			if (completedIcon) {
+				completedIcon.remove();
+			}
+
 			if (processingIcon) {
 				return;
 			}
@@ -2715,9 +2892,8 @@
 		}
 
 		document.querySelectorAll('.product-registration-tab-delete-btn[' + ID_ATTR + '="' + key + '"]').forEach(function (button) {
-			button.classList.remove('product-registration-tab-delete-btn', 'btn-outline-danger');
+			button.classList.remove('product-registration-tab-delete-btn', 'btn-outline-danger', 'btn-outline-secondary');
 			button.classList.add('product-registration-tab-close-btn');
-			button.removeAttribute('data-file-name');
 
 			if (button.classList.contains('procedure-tab-nav-close')) {
 				button.setAttribute('aria-label', t('reg_close_tab'));
@@ -2767,18 +2943,65 @@
 		}
 	}
 
+	function syncOpenBarcode2dInputs(itemId, typeValue, barcodeValue) {
+		const typeInput = barcodeFieldInput('barcode_2d_type');
+		const valueInput = barcodeFieldInput('barcode_2d');
+		let changed = false;
+
+		if (typeInput && typeInput.getAttribute('data-item-id') === String(itemId)) {
+			typeInput.value = typeValue;
+			typeInput.setAttribute('data-saved-value', typeValue);
+			changed = true;
+		}
+
+		if (valueInput && valueInput.getAttribute('data-item-id') === String(itemId)) {
+			valueInput.value = barcodeValue;
+			valueInput.setAttribute('data-saved-value', barcodeValue);
+			changed = true;
+		}
+
+		if (changed) {
+			syncBarcodeTabFromFields({ showTab: true });
+		}
+	}
+
 	function applyAutoProcessResult(registrationId, data) {
 		const payload = data || {};
 
 		(payload.assigned || []).forEach(function (item) {
 			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_1d_type', 'EAN-13');
 			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_1d', item.barcode);
+			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_2d_type', 'QR');
+			applyBarcodeFieldLocally(registrationId, item.id, 'barcode_2d', item.barcode_2d || '');
 			syncOpenBarcodeInputs(item.id, 'EAN-13', item.barcode);
+			syncOpenBarcode2dInputs(item.id, 'QR', item.barcode_2d || '');
 
 			const rowIndex = rowIndexForItem(registrationId, item.id);
 
 			if (rowIndex >= 0) {
 				markRowAccepted(registrationId, rowIndex);
+			}
+		});
+
+		(payload.accepted || []).forEach(function (item) {
+			if (item.barcode_2d) {
+				applyBarcodeFieldLocally(registrationId, item.id, 'barcode_2d_type', item.barcode_2d_type || 'QR');
+				applyBarcodeFieldLocally(registrationId, item.id, 'barcode_2d', item.barcode_2d);
+				syncOpenBarcode2dInputs(item.id, item.barcode_2d_type || 'QR', item.barcode_2d);
+			}
+
+			const rowIndex = rowIndexForItem(registrationId, item.id);
+
+			if (rowIndex >= 0) {
+				markRowAccepted(registrationId, rowIndex);
+			}
+		});
+
+		(payload.rejected || []).forEach(function (item) {
+			const rowIndex = rowIndexForItem(registrationId, item.id);
+
+			if (rowIndex >= 0) {
+				markRowRejected(registrationId, rowIndex, item.message);
 			}
 		});
 
@@ -2827,6 +3050,8 @@
 	function focusAutoProcessRow(registrationId, data) {
 		const payload = data || {};
 		const changed = (payload.assigned && payload.assigned[0])
+			|| (payload.accepted && payload.accepted[0])
+			|| (payload.rejected && payload.rejected[0])
 			|| (payload.cleared && payload.cleared[0])
 			|| (payload.warned && payload.warned[0]);
 
@@ -2851,6 +3076,8 @@
 
 		const maxSteps = ((tab && tab.rows) ? tab.rows.length : 0) + 1;
 		let assignedCount = 0;
+		let acceptedCount = 0;
+		let rejectedCount = 0;
 		let clearedCount = 0;
 		let warnedCount = 0;
 		let step = 0;
@@ -2860,9 +3087,21 @@
 		function finish() {
 			if (assignedCount) {
 				showToast(t('reg_auto_process_done').replace('%d', String(assignedCount)), 'success');
-			} else if (clearedCount) {
+			}
+
+			if (acceptedCount) {
+				showToast(t('reg_auto_process_accepted').replace('%d', String(acceptedCount)), 'success');
+			}
+
+			if (rejectedCount) {
+				showToast(t('reg_auto_process_rejected').replace('%d', String(rejectedCount)), 'success');
+			}
+
+			if (clearedCount) {
 				showToast(t('reg_auto_process_cleared'), 'success');
-			} else if (!warnedCount) {
+			}
+
+			if (!assignedCount && !acceptedCount && !rejectedCount && !clearedCount && !warnedCount) {
 				showToast(t('reg_auto_process_none'), 'success');
 			}
 
@@ -2894,6 +3133,8 @@
 				return wait(160).then(function () {
 					applyAutoProcessResult(registrationId, data);
 					assignedCount += (data.assigned || []).length;
+					acceptedCount += (data.accepted || []).length;
+					rejectedCount += (data.rejected || []).length;
 					clearedCount += (data.cleared || []).length;
 					warnedCount += (data.warned || []).length;
 					return wait(AUTO_PROCESS_STEP_MS).then(next);
@@ -2935,10 +3176,31 @@
 		});
 	}
 
+	function registrationHasPendingItems(registrationId) {
+		const tab = tabData.get(String(registrationId));
+
+		if (!tab || !Array.isArray(tab.rows)) {
+			return false;
+		}
+
+		return tab.rows.some(function (row) {
+			const status = normalizeItemStatus(row.item_status || row.status || 'pending');
+			return status !== 'approved' && status !== 'rejected';
+		});
+	}
+
 	function saveRegistrationProducts(button) {
 		const registrationId = button.getAttribute(ID_ATTR);
 
 		if (!registrationId) {
+			return;
+		}
+
+		if (registrationHasPendingItems(registrationId)) {
+			showAlert({
+				message: t('reg_save_pending'),
+				variant: 'danger',
+			});
 			return;
 		}
 
@@ -2974,15 +3236,61 @@
 		'</button>';
 	}
 
+	function buildResetAllButton(tab) {
+		return '<button type="button" class="btn btn-sm btn-outline-warning product-registration-tab-reset-all-btn"' +
+			' data-product-registration-id="' + tab.product_registration_id + '"' +
+			' data-mdb-ripple-init>' +
+			'<i class="fas fa-undo me-1"></i> ' + escapeHtml(t('reg_reset_all')) +
+		'</button>';
+	}
+
+	function buildWorkingTabActions(tab) {
+		return '<div class="ms-auto d-flex gap-2">' +
+			buildSendButton(tab) +
+			'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-auto-process-btn"' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-barcode me-1"></i> ' + escapeHtml(t('reg_auto_process')) +
+			'</button>' +
+			'<button type="button" class="btn btn-sm btn-outline-primary product-registration-tab-save-btn"' +
+				' data-product-registration-id="' + tab.product_registration_id + '"' +
+				' data-mdb-ripple-init>' +
+				'<i class="fas fa-save me-1"></i> ' + escapeHtml(t('common_save')) +
+			'</button>' +
+			buildResetAllButton(tab) +
+		'</div>';
+	}
+
 	function buildCompletedTabActions(tab) {
 		return '<div class="ms-auto d-flex gap-2">' +
 			buildDownloadButton(tab) +
-			'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-close-btn"' +
-				' data-product-registration-id="' + tab.product_registration_id + '"' +
-				' data-mdb-ripple-init>' +
-				'<i class="fas fa-times me-1"></i> ' + escapeHtml(t('common_close')) +
-			'</button>' +
+			buildResetAllButton(tab) +
 		'</div>';
+	}
+
+	function syncTabActions(registrationId) {
+		const key = String(registrationId);
+		const tab = tabData.get(key);
+		const pane = paneFor(key);
+
+		if (!tab || !pane) {
+			return;
+		}
+
+		const actions = pane.querySelector('.procedure-tab-meta .ms-auto');
+
+		if (!actions) {
+			return;
+		}
+
+		const isCompleted = String(tab.status || '').toLowerCase() === 'completed';
+		const showingCompleted = !!actions.querySelector('.product-registration-tab-download-btn');
+
+		if (isCompleted === showingCompleted) {
+			return;
+		}
+
+		actions.outerHTML = isCompleted ? buildCompletedTabActions(tab) : buildWorkingTabActions(tab);
 	}
 
 	function downloadFileName(disposition, fallback) {
@@ -3051,32 +3359,101 @@
 		});
 	}
 
-	function buildTabActionButton(tab, isImported) {
-		const isCompleted = isImported || String(tab.status || '').toLowerCase() === 'completed';
-
-		if (isCompleted) {
+	function buildTabActionButton(tab) {
+		if (String(tab.status || '').toLowerCase() === 'completed') {
 			return buildCompletedTabActions(tab);
 		}
 
-		return '<div class="ms-auto d-flex gap-2">' +
-			buildSendButton(tab) +
-			'<button type="button" class="btn btn-sm btn-outline-secondary product-registration-tab-auto-process-btn"' +
-				' data-product-registration-id="' + tab.product_registration_id + '"' +
-				' data-mdb-ripple-init>' +
-				'<i class="fas fa-barcode me-1"></i> ' + escapeHtml(t('reg_auto_process')) +
-			'</button>' +
-			'<button type="button" class="btn btn-sm btn-outline-primary product-registration-tab-save-btn"' +
-				' data-product-registration-id="' + tab.product_registration_id + '"' +
-				' data-mdb-ripple-init>' +
-				'<i class="fas fa-save me-1"></i> ' + escapeHtml(t('common_save')) +
-			'</button>' +
-			'<button type="button" class="btn btn-sm btn-outline-danger product-registration-tab-delete-btn"' +
-				' data-product-registration-id="' + tab.product_registration_id + '"' +
-				' data-file-name="' + escapeAttr(tab.file_name) + '"' +
-				' data-mdb-ripple-init>' +
-				'<i class="fas fa-trash me-1"></i> ' + escapeHtml(t('common_delete')) +
-			'</button>' +
-		'</div>';
+		return buildWorkingTabActions(tab);
+	}
+
+	function clearRowBarcodeCells(tab, row) {
+		const cells = (row.cells || []).slice();
+
+		[
+			['type of 1d barcode'],
+			['1d barcode', 'barcode'],
+			['type of 2d barcode'],
+			['2d barcode'],
+		].forEach(function (names) {
+			const cellIndex = findColumnIndex(tab.columns || [], names);
+
+			if (cellIndex < 0) {
+				return;
+			}
+
+			while (cells.length <= cellIndex) {
+				cells.push('');
+			}
+
+			cells[cellIndex] = '';
+		});
+
+		row.cells = cells;
+	}
+
+	function applyResetAll(regId) {
+		const tab = tabData.get(String(regId));
+
+		if (!tab) {
+			return;
+		}
+
+		(tab.rows || []).forEach(function (row, rowIndex) {
+			row.item_status = 'pending';
+			row.status = 'pending';
+			row.message = '';
+			clearRowBarcodeCells(tab, row);
+			refreshGridRow(regId, rowIndex);
+		});
+
+		if (activeDetail && String(activeDetail.regId) === String(regId)) {
+			const row = getActiveRow();
+
+			if (row) {
+				clearOpenBarcodeFields(regId, row.id);
+				syncModalHeaderForRow(regId, activeDetail.rowIndex);
+			}
+
+			updateAssignableBarcodeDisplay();
+			updateReviewButtonState();
+		}
+	}
+
+	function resetAllProducts(button) {
+		const registrationId = button.getAttribute(ID_ATTR);
+
+		if (!registrationId || button.disabled) {
+			return;
+		}
+
+		showConfirm({
+			title: t('reg_reset_all'),
+			message: t('reg_reset_all_confirm'),
+			confirmLabel: t('reg_reset_all'),
+			confirmClass: 'btn btn-warning',
+		}).then(function () {
+			button.disabled = true;
+			flushBarcodeFieldSaves();
+
+			barcodeSaveQueue = barcodeSaveQueue.then(function () {
+				return fetchApi(baseUrl + '/reset_all/' + registrationId, { method: 'POST' });
+			}).then(function (result) {
+				applyResetAll(registrationId);
+				setRegistrationStatus(registrationId, result.data && result.data.registration_status);
+				showToast(result.message || t('reg_reset_all_success'), 'success');
+			}).catch(function (error) {
+				showToast(error.message || t('reg_reset_all_failed'), 'error');
+			}).finally(function () {
+				button.disabled = false;
+			});
+		}).catch(function (error) {
+			if (isConfirmCancelled(error)) {
+				return;
+			}
+
+			showToast(error.message || t('reg_reset_all_failed'), 'error');
+		});
 	}
 
 	function buildTabPane(tab, isActive, isImported) {
@@ -3113,12 +3490,38 @@
 			return baseUrl + '/delete/' + registrationId;
 		},
 		deleteConfirm: {
-			message: t('reg_stop_confirm'),
-			confirmLabel: t('reg_stop_label'),
+			message: t('reg_unassign_confirm'),
+			confirmLabel: t('reg_unassign_label'),
 			errorMessage: t('reg_delete_failed'),
+		},
+		deleteConfirmFor: function (registrationId) {
+			const tab = tabData.get(String(registrationId));
+
+			if (String(tab && tab.status || '').toLowerCase() === 'completed') {
+				return {
+					skip: true,
+				};
+			}
+
+			return null;
+		},
+		onDelete: function (registrationId) {
+			const tab = tabData.get(String(registrationId));
+
+			if (String(tab && tab.status || '').toLowerCase() !== 'completed') {
+				return false;
+			}
+
+			if (activeDetail && String(activeDetail.regId) === String(registrationId) && productModal) {
+				productModal.hide();
+			}
+
+			tabData.delete(String(registrationId));
+			procedureTabs.closeTab(registrationId);
 		},
 		deleteBtnSelector: '.product-registration-tab-delete-btn',
 		closeBtnSelector: '.product-registration-tab-close-btn',
+		closeConfirms: true,
 		onBeforePrepend: registerTabData,
 		onAfterPrepend: function (tab) {
 			ensureGrid(tab.product_registration_id);
@@ -3379,6 +3782,13 @@
 				return;
 			}
 
+			const resetAllButton = event.target.closest('.product-registration-tab-reset-all-btn');
+
+			if (resetAllButton) {
+				resetAllProducts(resetAllButton);
+				return;
+			}
+
 			const button = event.target.closest('.product-registration-tab-save-btn');
 
 			if (!button || button.disabled) {
@@ -3393,26 +3803,6 @@
 	procedureTabs.init();
 	initSendModal();
 	watchIncomingRegistrations();
-
-	// A finished registration stays in the catalog. Its tab control only closes the tab.
-	document.addEventListener('click', function (event) {
-		const deleteBtn = event.target.closest('.product-registration-tab-delete-btn');
-
-		if (!deleteBtn) {
-			return;
-		}
-
-		const registrationId = deleteBtn.getAttribute(ID_ATTR);
-		const tab = tabData.get(String(registrationId));
-
-		if (!tab || String(tab.status || '').toLowerCase() !== 'completed') {
-			return;
-		}
-
-		event.preventDefault();
-		event.stopPropagation();
-		procedureTabs.closeTab(registrationId);
-	}, true);
 
 	initImportModal();
 	initProductModal();
@@ -3543,6 +3933,14 @@
 
 	if (productDetailInfo) {
 		productDetailInfo.addEventListener('input', function (event) {
+			const reasonInput = event.target.closest('.procedure-detail-reject-reason-input');
+
+			if (reasonInput && !reasonInput.readOnly) {
+				reasonInput.classList.remove('is-invalid');
+				scheduleRejectReasonSave(reasonInput);
+				return;
+			}
+
 			const input = event.target.closest('[data-barcode-field]');
 
 			if (!input || input.disabled || input.tagName === 'SELECT') {

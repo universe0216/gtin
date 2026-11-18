@@ -167,6 +167,12 @@
 
 		sync(host, { valueInput: valueInput });
 
+		window.requestAnimationFrame(function () {
+			if ($host.data('jqxDateTimeInput') && host.offsetWidth > 0) {
+				$host.jqxDateTimeInput('refresh');
+			}
+		});
+
 		return $host;
 	}
 

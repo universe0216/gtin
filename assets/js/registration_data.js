@@ -143,9 +143,23 @@
 		return name || String(editor.username || '');
 	}
 
+	function registrationStatusLabel(status) {
+		const key = String(status || '').toLowerCase();
+
+		if (key === 'processing') {
+			return 'processing';
+		}
+
+		if (key === 'completed' || key === 'saved' || key === 'done') {
+			return 'completed';
+		}
+
+		return 'uploaded';
+	}
+
 	function userOptions(accountId) {
 		const selected = String(accountId || '');
-		let html = '';
+		let html = selected ? '' : '<option value="" selected></option>';
 		let found = false;
 
 		editors.forEach(function (editor) {
@@ -270,7 +284,7 @@
 				'<td>' + escapeHtml(fileName) + '</td>' +
 				'<td>' + escapeHtml(tab.procedure_number || '') + '</td>' +
 				'<td>' + escapeHtml(tab.organization_name || '') + '</td>' +
-				'<td>' + escapeHtml(tab.status || 'uploaded') + '</td>' +
+				'<td>' + escapeHtml(registrationStatusLabel(tab.status || 'uploaded')) + '</td>' +
 				'<td class="text-end">' + escapeHtml(tab.total_products || (tab.rows || []).length || 0) + '</td>' +
 				'<td>' +
 					'<select class="form-select form-select-sm registration-data-user"' +
