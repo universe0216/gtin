@@ -46,7 +46,7 @@
 
 		itemsBody.innerHTML = items.map(function (item, index) {
 			return '<tr>' +
-				'<td>' + (index + 1) + '</td>' +
+				'<td class="text-center">' + (index + 1) + '</td>' +
 				'<td>' + escapeHtml(item.product_procedure_number || '') + '</td>' +
 				'<td>' + escapeHtml(item.name || '') + '</td>' +
 				'<td>' + escapeHtml(statusLabel(item.status)) + '</td>' +

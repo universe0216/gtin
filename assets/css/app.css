@@ -159,7 +159,7 @@ html[data-mdb-theme="dark"] body {
 }
 
 #checksumDigit[readonly] {
-	font-size: 1.25rem;
+	font-size: 14px;
 	letter-spacing: 0.08em;
 }
 
@@ -1144,6 +1144,12 @@ body.modal-open:has(#productDetailModal.show) .modal-backdrop:last-of-type {
 	min-height: 34px;
 }
 
+#organizationDetailInfoWrap {
+	width: 100%;
+	max-width: 1000px;
+	margin: 20px auto;
+}
+
 .entity-detail-info-form .entity-detail-info-item .form-control,
 .entity-detail-info-form .entity-detail-info-item .form-select {
 	background-color: rgba(15, 23, 42, 0.6);
@@ -1902,10 +1908,10 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 .procedure-detail-info-value {
 	box-sizing: border-box;
 	min-width: 0;
-	min-height: calc(1.5 * 0.775rem + 4.5px + 3.68px + 2px);
+	min-height: calc(1.5 * 14px + 4.5px + 3.68px + 2px);
 	padding: 4.5px 0.75rem 3.68px;
 	font-family: inherit;
-	font-size: 0.775rem;
+	font-size: 14px;
 	font-weight: 400;
 	line-height: 1.5;
 	color: #e2e8f0;
@@ -2812,6 +2818,18 @@ select.procedure-detail-info-input option {
 
 .settings-pairs-table input.form-control {
 	min-width: 0;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):not([type="hidden"]),
+textarea,
+select,
+.form-control,
+.form-select,
+.jqx-input,
+.jqx-input-content,
+.jqx-combobox-input,
+.jqx-dropdownlist-content {
+	font-size: 14px;
 }
 
 @media (max-width: 900px) {

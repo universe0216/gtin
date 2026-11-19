@@ -71,14 +71,14 @@
 					{ name: 'created_at', type: 'string' },
 				],
 				columns: [
-					{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
-					{ text: t('reg_file'), datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
-					{ text: t('reg_procedure'), datafield: 'procedure_number', width: 130 },
-					{ text: t('reg_organization'), datafield: 'organization_name' },
-					{ text: t('reg_processor'), datafield: 'processor_name', width: 160 },
-					{ text: t('col_total_items'), datafield: 'total_items', width: 90, cellsalign: 'right' },
-					{ text: t('common_status'), datafield: 'status', width: 120 },
-					{ text: t('reg_uploaded'), datafield: 'created_at', width: 170 },
+					{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 70, align: 'center', cellsalign: 'center', cellsrenderer: JqxGrid.rowNumberRenderer },
+					{ text: t('reg_file'), datafield: 'file_name', width: 360, cellsrenderer: fileRenderer },
+					{ text: t('reg_procedure'), datafield: 'procedure_number', width: 200 },
+					{ text: t('reg_organization'), datafield: 'organization_name', minwidth: 280 },
+					{ text: t('reg_processor'), datafield: 'processor_name', width: 220 },
+					{ text: t('col_total_items'), datafield: 'total_items', width: 120, cellsalign: 'right' },
+					{ text: t('common_status'), datafield: 'status', width: 140 },
+					{ text: t('reg_uploaded'), datafield: 'created_at', width: 200 },
 				],
 			};
 		}
@@ -96,15 +96,15 @@
 				{ name: 'created_at', type: 'string' },
 			],
 			columns: [
-				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
-				{ text: t('reg_file'), datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
-				{ text: t('reg_procedure'), datafield: 'procedure_number', width: 130 },
-				{ text: t('reg_organization'), datafield: 'organization_name' },
-				{ text: t('reg_processor'), datafield: 'processor_name', width: 160 },
-				{ text: t('reg_products'), datafield: 'total_products', width: 100, cellsalign: 'right' },
-				{ text: t('reg_approved'), datafield: 'approved', width: 100, cellsalign: 'right' },
-				{ text: t('reg_rejected'), datafield: 'rejected', width: 100, cellsalign: 'right' },
-				{ text: t('reg_completed'), datafield: 'created_at', width: 170 },
+				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 70, align: 'center', cellsalign: 'center', cellsrenderer: JqxGrid.rowNumberRenderer },
+				{ text: t('reg_file'), datafield: 'file_name', width: 360, cellsrenderer: fileRenderer },
+				{ text: t('reg_procedure'), datafield: 'procedure_number', width: 200 },
+				{ text: t('reg_organization'), datafield: 'organization_name', minwidth: 280 },
+				{ text: t('reg_processor'), datafield: 'processor_name', width: 220 },
+				{ text: t('reg_products'), datafield: 'total_products', width: 130, cellsalign: 'right' },
+				{ text: t('reg_approved'), datafield: 'approved', width: 130, cellsalign: 'right' },
+				{ text: t('reg_rejected'), datafield: 'rejected', width: 130, cellsalign: 'right' },
+				{ text: t('reg_completed'), datafield: 'created_at', width: 200 },
 			],
 		};
 	}
@@ -167,13 +167,13 @@
 
 		const datafields = [];
 		const gridColumns = [
-			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, align: 'center', cellsalign: 'center', cellsrenderer: JqxGrid.rowNumberRenderer },
 		];
 
 		(columns || []).forEach(function (column, index) {
 			const field = 'c' + index;
 			datafields.push({ name: field, type: 'string' });
-			gridColumns.push({ text: column, datafield: field });
+			gridColumns.push({ text: column, datafield: field, width: 220 });
 		});
 
 		(extraColumns || []).forEach(function (extra) {
@@ -279,9 +279,9 @@
 
 	function renderProcedureTable(tab, elements) {
 		renderModalGrid(elements.tableWrapEl, tab.columns || [], tab.rows || [], [
-			{ text: t('col_status'), key: 'status', width: 120 },
-			{ text: t('col_message'), key: 'message', width: 220 },
-			{ text: t('col_barcode'), key: 'barcode', width: 160 },
+			{ text: t('col_status'), key: 'status', width: 140 },
+			{ text: t('col_message'), key: 'message', width: 320 },
+			{ text: t('col_barcode'), key: 'barcode', width: 220 },
 		]);
 	}
 

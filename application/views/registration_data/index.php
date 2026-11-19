@@ -121,7 +121,7 @@ foreach ($editors as $editor)
 				<table class="table table-sm procedure-data-table mb-0" id="registrationDataItemsTable">
 					<thead>
 						<tr>
-							<th>#</th>
+							<th class="text-center">#</th>
 							<th><?php echo html_escape(app_line('reg_product_number')); ?></th>
 							<th><?php echo html_escape(app_line('reg_product_name')); ?></th>
 							<th><?php echo html_escape(app_line('common_status')); ?></th>

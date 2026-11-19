@@ -297,7 +297,7 @@
 
 	/** cellsrenderer that prints a 1-based row number. */
 	function rowNumberRenderer(row) {
-		return '<div class="jqx-grid-cell-leftalign procedure-row-index" style="margin-top:6px;">' + (row + 1) + '</div>';
+		return '<div class="jqx-grid-cell-middle-align procedure-row-index" style="margin-top:6px;">' + (row + 1) + '</div>';
 	}
 
 	/** cellsrenderer that prints escaped HTML left-aligned with the cell. */

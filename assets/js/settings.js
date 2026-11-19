@@ -175,12 +175,29 @@
 				: pairRowHtml('', '');
 		}
 
+		setPairHeaders(data.key);
+
 		hideAlert();
 		setActiveKey(data.key);
 	}
 
+	function setPairHeaders(key) {
+		const fieldHeader = document.getElementById('settingsFieldHeader');
+		const valueHeader = document.getElementById('settingsValueHeader');
+		const isMapper = key === 'prod_pub_json_mapper' || key === 'org_pub_json_mapper';
+
+		if (fieldHeader) {
+			fieldHeader.textContent = isMapper ? t('settings_json_key') : t('settings_field');
+		}
+
+		if (valueHeader) {
+			valueHeader.textContent = isMapper ? t('settings_db_column') : t('settings_value');
+		}
+	}
+
 	function hideEditor() {
 		currentKey = null;
+		setPairHeaders('');
 
 		if (editor) {
 			editor.classList.add('d-none');

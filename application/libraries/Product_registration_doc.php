@@ -11,8 +11,15 @@ class Product_registration_doc {
 
 	public function render($fields, $barcode_png, $barcode_2d_png)
 	{
-		$template = APPPATH.'templates/product_registration.doc';
+		return $this->render_template(
+			APPPATH.'templates/product_registration.doc',
+			$fields,
+			array($barcode_png, $barcode_2d_png)
+		);
+	}
 
+	public function render_template($template, $fields, $images = array())
+	{
 		if ( ! is_file($template))
 		{
 			throw new RuntimeException('Document template was not found.');
@@ -25,7 +32,7 @@ class Product_registration_doc {
 			'{date}'         => $this->xml_text($fields['date'] ?? ''),
 		);
 
-		return $this->fill_docx($template, $values, array($barcode_png, $barcode_2d_png));
+		return $this->fill_docx($template, $values, $images);
 	}
 
 	protected function fill_docx($template, $values, $images)

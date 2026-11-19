@@ -36,6 +36,8 @@
 	const organizationDeleteUrl = (detailConfig.deleteUrl || '').replace(/\/$/, '');
 	const organizationDeletePreviewUrl = (detailConfig.deletePreviewUrl || '').replace(/\/$/, '');
 	const organizationRestoreUrl = (detailConfig.restoreUrl || '').replace(/\/$/, '');
+	const organizationDownloadUrl = (detailConfig.downloadUrl || '').replace(/\/$/, '');
+	const organizationDownloadBtn = document.getElementById('organizationDetailDownloadBtn');
 	const organizationDeleteBtn = document.getElementById('organizationDetailDeleteBtn');
 	const organizationRestoreBtn = document.getElementById('organizationDetailRestoreBtn');
 	const perPage = detailConfig.perPage || 10;
@@ -795,7 +797,7 @@
 			}
 		}
 
-		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + number + '</div>';
+		return '<div class="jqx-grid-cell-middle-align" style="margin-top:6px;">' + number + '</div>';
 	}
 
 	function productSelectRenderer(row, column, value, defaultHtml, props, rowdata) {
@@ -830,8 +832,8 @@
 				filterable: false,
 				width: 56,
 				pinned: true,
-				cellsalign: 'right',
-				align: 'right',
+				cellsalign: 'center',
+				align: 'center',
 				cellsrenderer: productIndexRenderer,
 			},
 		];
@@ -1107,6 +1109,9 @@
 
 		detailState.organizationId = null;
 		detailState.organizationName = '';
+		if (organizationDownloadBtn) {
+			organizationDownloadBtn.disabled = true;
+		}
 		productsState.search = '';
 		productsLoaded = false;
 		historyLoaded = false;
@@ -1181,6 +1186,9 @@
 		}
 
 		detailState.organizationId = organizationId;
+		if (organizationDownloadBtn) {
+			organizationDownloadBtn.disabled = !organizationDownloadUrl;
+		}
 		productsState.search = '';
 		productsLoaded = false;
 		historyLoaded = false;
@@ -1461,6 +1469,76 @@
 
 			showToast(error.message || t('product_restore_failed'), 'error');
 		});
+	}
+
+	function downloadFileName(disposition, fallback) {
+		const header = String(disposition || '');
+		const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
+		const plain = /filename="([^"]+)"/i.exec(header);
+
+		if (encoded) {
+			try {
+				return decodeURIComponent(encoded[1]);
+			} catch (error) {
+				return encoded[1];
+			}
+		}
+
+		if (plain) {
+			return plain[1];
+		}
+
+		return fallback;
+	}
+
+	function downloadOrganization() {
+		if (!detailState.organizationId || !organizationDownloadUrl || !organizationDownloadBtn || organizationDownloadBtn.disabled) {
+			return;
+		}
+
+		organizationDownloadBtn.disabled = true;
+
+		fetch(organizationDownloadUrl + '/' + detailState.organizationId, {
+			credentials: 'same-origin',
+		}).then(function (response) {
+			const type = response.headers.get('content-type') || '';
+
+			if (type.indexOf('application/json') !== -1) {
+				return response.json().then(function (data) {
+					throw new Error((data && data.message) || t('org_download_failed'));
+				});
+			}
+
+			if (!response.ok) {
+				throw new Error(t('org_download_failed'));
+			}
+
+			return response.blob().then(function (blob) {
+				return {
+					blob: blob,
+					filename: downloadFileName(response.headers.get('content-disposition'), 'organization.zip'),
+				};
+			});
+		}).then(function (file) {
+			const url = URL.createObjectURL(file.blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = file.filename;
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			URL.revokeObjectURL(url);
+		}).catch(function (error) {
+			showToast(error.message || t('org_download_failed'), 'error');
+		}).finally(function () {
+			if (organizationDownloadBtn && detailState.organizationId) {
+				organizationDownloadBtn.disabled = false;
+			}
+		});
+	}
+
+	if (organizationDownloadBtn) {
+		organizationDownloadBtn.addEventListener('click', downloadOrganization);
 	}
 
 	if (organizationDeleteBtn) {

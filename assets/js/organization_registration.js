@@ -35,7 +35,7 @@
 
 	function buildGrid(tab, container) {
 		const columns = [
-			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+			{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, align: 'center', cellsalign: 'center', cellsrenderer: JqxGrid.rowNumberRenderer },
 		];
 		const datafields = [];
 

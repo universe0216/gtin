@@ -77,7 +77,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 						<table class="table table-sm table-hover mb-0">
 							<thead>
 								<tr>
-									<th>#</th>
+									<th class="text-center">#</th>
 									<th><?php echo html_escape(app_line('col_name')); ?></th>
 									<th><?php echo html_escape(app_line('col_barcode_1d')); ?></th>
 								</tr>

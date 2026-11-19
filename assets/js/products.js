@@ -89,7 +89,7 @@
 			}
 		}
 
-		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px; text-align: center;">' + number + '</div>';
+		return '<div class="jqx-grid-cell-middle-align" style="margin-top:6px;">' + number + '</div>';
 	}
 
 	function selectRenderer(row, column, value, defaultHtml, props, rowdata) {
@@ -145,7 +145,7 @@
 			sortable: false,
 			filterable: false,
 			cellsalign: 'center',
-			align: 'right',
+			align: 'center',
 			cellsrenderer: indexRenderer,
 		},
 	].concat(columns.map(function (column) {
@@ -982,7 +982,7 @@
 
 		deleteBatchBody.innerHTML = deleteBatchRows.map(function (row) {
 			return '<tr>' +
-				'<td>' + escapeHtml(row.row_index || '') + '</td>' +
+				'<td class="text-center">' + escapeHtml(row.row_index || '') + '</td>' +
 				'<td>' + escapeHtml(row.name || '') + '</td>' +
 				'<td>' + escapeHtml(row.barcode_1d || '') + '</td>' +
 			'</tr>';

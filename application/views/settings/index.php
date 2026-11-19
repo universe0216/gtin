@@ -72,8 +72,8 @@ $settings = $settings ?? array();
 						<table class="table table-sm align-middle settings-pairs-table mb-0">
 							<thead>
 								<tr>
-									<th style="width: 40%"><?php echo html_escape(app_line('settings_field')); ?></th>
-									<th><?php echo html_escape(app_line('settings_value')); ?></th>
+									<th style="width: 40%" id="settingsFieldHeader"><?php echo html_escape(app_line('settings_field')); ?></th>
+									<th id="settingsValueHeader"><?php echo html_escape(app_line('settings_value')); ?></th>
 									<th style="width: 3.5rem"></th>
 								</tr>
 							</thead>

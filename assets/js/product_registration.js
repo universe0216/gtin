@@ -253,7 +253,7 @@
 			},
 			{
 				text: '#', datafield: '__num', width: 56, pinned: true, sortable: false,
-				filterable: false, cellsalign: 'right', cellclassname: rowStateClass,
+				filterable: false, align: 'center', cellsalign: 'center', cellclassname: rowStateClass,
 			},
 		];
 
@@ -1282,7 +1282,7 @@
 			}
 		}
 
-		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + number + '</div>';
+		return '<div class="jqx-grid-cell-middle-align" style="margin-top:6px;">' + number + '</div>';
 	}
 
 	function updateSimilarOrgLabel() {
@@ -1350,8 +1350,8 @@
 						pinned: true,
 						sortable: false,
 						filterable: false,
-						cellsalign: 'right',
-						align: 'right',
+						cellsalign: 'center',
+						align: 'center',
 						cellsrenderer: similarIndexRenderer,
 					},
 					{ text: t('col_name'), datafield: 'name', width: 220, pinned: true },
@@ -2601,7 +2601,7 @@
 				{ name: 'created_at', type: 'string' },
 			],
 			columns: [
-				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, cellsrenderer: JqxGrid.rowNumberRenderer },
+				{ text: '#', datafield: '__rownum', sortable: false, filterable: false, width: 60, align: 'center', cellsalign: 'center', cellsrenderer: JqxGrid.rowNumberRenderer },
 				{ text: t('reg_file'), datafield: 'file_name', width: 240, cellsrenderer: fileRenderer },
 				{ text: t('reg_procedure'), datafield: 'procedure_number', width: 130 },
 				{ text: t('reg_organization'), datafield: 'organization_name' },

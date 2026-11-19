@@ -155,7 +155,7 @@
 			}
 		}
 
-		return '<div class="jqx-grid-cell-leftalign" style="margin-top:6px;">' + number + '</div>';
+		return '<div class="jqx-grid-cell-middle-align" style="margin-top:6px;">' + number + '</div>';
 	}
 
 	const datafields = [
@@ -192,8 +192,8 @@
 			pinned: true,
 			sortable: false,
 			filterable: false,
-			cellsalign: 'right',
-			align: 'right',
+			cellsalign: 'center',
+			align: 'center',
 			cellsrenderer: indexRenderer,
 			cellclassname: organizationRowClass,
 		},

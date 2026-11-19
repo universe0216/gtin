@@ -62,6 +62,14 @@ class Organizations extends BasicController {
 		array('key' => 'processor_name', 'label' => 'Processor'),
 	);
 	protected $fields = array(
+		
+		array(
+			'name'     => 'reg_number',
+			'label'    => 'Registration Number',
+			'type'     => 'number',
+			'required' => TRUE,
+			'rules'    => array('trim', 'integer'),
+		),
 		array(
 			'name'     => 'name',
 			'label'    => 'Name',
@@ -69,12 +77,34 @@ class Organizations extends BasicController {
 			'required' => TRUE,
 			'rules'    => array('trim', 'max_length[255]'),
 		),
+		
 		array(
-			'name'     => 'reg_number',
-			'label'    => 'Registration Number',
-			'type'     => 'number',
-			'required' => FALSE,
-			'rules'    => array('trim', 'integer'),
+			'name'     => 'gs1_prefix',
+			'label'    => 'GS1 Prefix',
+			'type'     => 'text',
+			'required' => TRUE,
+			'rules'    => array('trim', 'max_length[50]'),
+		),
+		array(
+			'name'     => 'init_date',
+			'label'    => 'Initial Date',
+			'type'     => 'date',
+			'required' => TRUE,
+			'rules'    => array('trim'),
+		),
+		array(
+			'name'     => 'reg_date',
+			'label'    => 'Registration Date',
+			'type'     => 'date',
+			'required' => TRUE,
+			'rules'    => array('trim'),
+		),
+		array(
+			'name'     => 'expiry_date',
+			'label'    => 'Expiry Date',
+			'type'     => 'date',
+			'required' => TRUE,
+			'rules'    => array('trim'),
 		),
 		array(
 			'name'     => 'parent_org',
@@ -84,37 +114,9 @@ class Organizations extends BasicController {
 			'rules'    => array('trim', 'max_length[255]'),
 		),
 		array(
-			'name'     => 'gs1_prefix',
-			'label'    => 'GS1 Prefix',
-			'type'     => 'text',
-			'required' => FALSE,
-			'rules'    => array('trim', 'max_length[50]'),
-		),
-		array(
-			'name'     => 'init_date',
-			'label'    => 'Initial Date',
-			'type'     => 'date',
-			'required' => FALSE,
-			'rules'    => array('trim'),
-		),
-		array(
-			'name'     => 'reg_date',
-			'label'    => 'Registration Date',
-			'type'     => 'date',
-			'required' => FALSE,
-			'rules'    => array('trim'),
-		),
-		array(
-			'name'     => 'expiry_date',
-			'label'    => 'Expiry Date',
-			'type'     => 'date',
-			'required' => FALSE,
-			'rules'    => array('trim'),
-		),
-		array(
 			'name'     => 'address',
 			'label'    => 'Address',
-			'type'     => 'textarea',
+			'type'     => 'text',
 			'required' => FALSE,
 			'rules'    => array('trim'),
 		),
@@ -136,14 +138,14 @@ class Organizations extends BasicController {
 			'name'     => 'currency',
 			'label'    => 'Currency',
 			'type'     => 'select',
-			'required' => FALSE,
+			'required' => TRUE,
 			'rules'    => array('trim'),
 			'options'  => array(),
 		),
 		array(
 			'name'     => 'description',
 			'label'    => 'Description',
-			'type'     => 'textarea',
+			'type'     => 'text',
 			'required' => FALSE,
 			'rules'    => array('trim'),
 		),
@@ -218,6 +220,37 @@ class Organizations extends BasicController {
 			'data'    => $record,
 			'fields'  => $this->detail_info_fields,
 		));
+	}
+
+	public function download($id = NULL)
+	{
+		$this->auth->require_permission($this->permission_view);
+		$organization = $this->model->get($id);
+
+		if ( ! $organization)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('org_not_found'),
+			), 404);
+		}
+
+		$this->load->library('organization_publication_export');
+
+		try
+		{
+			$archive = $this->organization_publication_export->build_download($organization);
+		}
+		catch (Exception $exception)
+		{
+			return $this->json_response(array(
+				'success' => FALSE,
+				'message' => app_line('org_download_failed'),
+			), 500);
+		}
+
+		$this->load->helper('download');
+		force_download($archive['filename'], $archive['binary']);
 	}
 
 	public function history($id = NULL)
@@ -484,6 +517,7 @@ class Organizations extends BasicController {
 		return array(
 			'enabled'         => TRUE,
 			'detailUrl'       => site_url('organizations/detail'),
+			'downloadUrl'     => site_url($this->entity.'/download'),
 			'historyUrl'      => site_url('organizations/history'),
 			'productsUrl'     => site_url('organizations/products'),
 			'updateUrl'       => site_url('organizations/update'),

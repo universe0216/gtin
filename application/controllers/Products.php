@@ -36,7 +36,6 @@ class Products extends BasicController {
 		array('name' => 'name', 'label' => 'Name', 'type' => 'text'),
 		array('name' => 'brand', 'label' => 'Brand', 'type' => 'text'),
 		array('name' => 'standard_number', 'label' => 'Standard Number', 'type' => 'text'),
-		array('name' => 'category_id', 'label' => 'Category', 'type' => 'category'),
 		array('name' => 'organization_name', 'label' => 'Organization', 'type' => 'text', 'readonly' => TRUE),
 		array(
 			'name'    => 'barcode_1d_type',
@@ -64,6 +63,8 @@ class Products extends BasicController {
 		array('name' => 'effect', 'label' => 'Effect', 'type' => 'textarea'),
 		array('name' => 'usage', 'label' => 'Usage', 'type' => 'textarea'),
 		array('name' => 'description', 'label' => 'Description', 'type' => 'textarea'),
+		array('name' => 'category_id', 'label' => 'Category', 'type' => 'category'),
+
 	);
 	protected $fields = array(
 		array(

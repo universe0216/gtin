@@ -86,8 +86,37 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				}
 			}
 
+			function prefixContainsDigits(prefix, digits) {
+				const parts = String(prefix).split('-');
+				const start = parts[0];
+				const end = parts.length > 1 ? parts[1] : parts[0];
+
+				if (!/^\d+$/.test(start) || !/^\d+$/.test(end) || start.length !== end.length) {
+					return false;
+				}
+
+				const width = start.length;
+				const startNum = parseInt(start, 10);
+				const endNum = parseInt(end, 10);
+				let probeStart;
+				let probeEnd;
+
+				if (digits.length >= width) {
+					probeStart = parseInt(digits.slice(0, width), 10);
+					probeEnd = probeStart;
+				} else {
+					const scale = Math.pow(10, width - digits.length);
+					probeStart = parseInt(digits, 10) * scale;
+					probeEnd = probeStart + scale - 1;
+				}
+
+				return probeStart <= endNum && probeEnd >= startNum;
+			}
+
 			function filterEntries() {
 				const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+				const digits = query.replace(/\D/g, '');
+				const numericQuery = /^\d+$/.test(query);
 
 				if (!query) {
 					grid.setData(allEntries.slice());
@@ -96,7 +125,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 				}
 
 				const filtered = allEntries.filter(function (entry) {
-					return (entry.prefix + ' ' + entry.country).toLowerCase().indexOf(query) !== -1;
+					if ((entry.prefix + ' ' + entry.country).toLowerCase().indexOf(query) !== -1) {
+						return true;
+					}
+
+					return numericQuery && prefixContainsDigits(entry.prefix, digits);
 				});
 
 				grid.setData(filtered);

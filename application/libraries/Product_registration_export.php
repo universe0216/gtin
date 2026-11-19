@@ -74,6 +74,8 @@ class Product_registration_export {
 			$entries = $this->collect_entries($registration, array($this->catalog_item($product)));
 		}
 
+		$this->apply_publication_json($entries, $product, 'prod_pub_json_mapper');
+
 		$barcode = trim((string) ($product['barcode_1d'] ?? ''));
 
 		return array(
@@ -338,6 +340,82 @@ class Product_registration_export {
 		$used[strtolower($name)] = TRUE;
 
 		return $name;
+	}
+
+	protected function apply_publication_json(&$entries, $record, $setting_key)
+	{
+		$mapper = $this->publication_mapper($setting_key);
+
+		if ($mapper === NULL)
+		{
+			return;
+		}
+
+		$json = $this->json_document($this->mapped_payload($record, $mapper));
+		$replaced = FALSE;
+
+		foreach ($entries as $index => $entry)
+		{
+			if (preg_match('/\.json$/i', (string) ($entry['name'] ?? '')))
+			{
+				$entries[$index]['data'] = $json;
+				$replaced = TRUE;
+				break;
+			}
+		}
+
+		if ($replaced)
+		{
+			return;
+		}
+
+		$entries[] = array(
+			'name' => $this->file_part($record['name'] ?? '').'.json',
+			'data' => $json,
+		);
+	}
+
+	protected function publication_mapper($setting_key)
+	{
+		$CI =& get_instance();
+		$CI->load->model('settings_model');
+		$row = $CI->settings_model->get($setting_key);
+
+		if ( ! $row)
+		{
+			return NULL;
+		}
+
+		$decoded = json_decode((string) ($row['settings'] ?? ''), TRUE);
+
+		return is_array($decoded) ? $decoded : array();
+	}
+
+	protected function mapped_payload($record, array $mapper)
+	{
+		$payload = array();
+
+		foreach ($mapper as $json_key => $column)
+		{
+			$json_key = trim((string) $json_key);
+			$column = trim((string) $column);
+
+			if ($json_key === '' || ! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $column))
+			{
+				continue;
+			}
+
+			$value = $record[$column] ?? '';
+
+			if (is_array($value) || is_object($value) || $value === NULL)
+			{
+				$value = '';
+			}
+
+			$payload[$json_key] = (string) $value;
+		}
+
+		return $payload;
 	}
 
 	protected function json_document($payload)

@@ -130,6 +130,7 @@ class Organization_archieve extends Organizations {
 		return array(
 			'enabled'            => TRUE,
 			'detailUrl'          => site_url('organization_archieve/detail'),
+			'downloadUrl'        => site_url('organization_archieve/download'),
 			'historyUrl'         => site_url('organization_archieve/history'),
 			'productsUrl'        => site_url('organization_archieve/products'),
 			'canEdit'            => FALSE,
