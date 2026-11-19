@@ -1584,7 +1584,16 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	display: flex;
 	align-items: center;
 	gap: 0.75rem;
+	flex: 1 1 auto;
 	flex-wrap: wrap;
+	min-width: 0;
+}
+
+.procedure-detail-header-warning {
+	color: #fbbf24;
+	font-size: 0.875rem;
+	font-weight: 500;
+	line-height: 1.4;
 }
 
 .procedure-detail-header-org {

@@ -1630,11 +1630,15 @@
 		const orgName = escapeHtml(payload.organization_name || '');
 		const productNumber = escapeHtml(payload.product_procedure_number || 'Product');
 		const itemStatus = normalizeItemStatus(payload.item_status || 'pending');
+		const warningMessage = itemStatus === 'warning'
+			? (String(payload.rejection_reason || '').trim() || t('reg_similar_warning'))
+			: '';
 
 		productModalTitle.innerHTML =
 			(orgName ? '<span class="procedure-detail-header-org">' + orgName + '</span>' : '') +
 			'<span class="procedure-detail-header-product">' + productNumber + '</span>' +
-			'<span class="badge ' + productStatusBadgeClass(itemStatus) + '">' + escapeHtml(productStatusLabel(itemStatus)) + '</span>';
+			'<span class="badge ' + productStatusBadgeClass(itemStatus) + '">' + escapeHtml(productStatusLabel(itemStatus)) + '</span>' +
+			(warningMessage ? '<span class="procedure-detail-header-warning">' + escapeHtml(warningMessage) + '</span>' : '');
 		updateDetailReason(payload);
 	}
 
