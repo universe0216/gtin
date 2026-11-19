@@ -16,7 +16,7 @@ foreach ($editors as $editor)
 		</button>
 	</div>
 
-	<div class="registration-data-split">
+	<div class="registration-data-list">
 		<section class="app-panel registration-data-panel">
 			<div class="registration-data-scroll">
 				<table class="table table-hover table-sm procedure-data-table mb-0" id="registrationDataTable">
@@ -28,6 +28,7 @@ foreach ($editors as $editor)
 							<th><?php echo html_escape(app_line('reg_organization')); ?></th>
 							<th><?php echo html_escape(app_line('common_status')); ?></th>
 							<th class="text-end"><?php echo html_escape(app_line('reg_products')); ?></th>
+							<th class="registration-data-uploaded-col"><?php echo html_escape(app_line('reg_uploaded')); ?></th>
 							<th class="registration-data-user-col"><?php echo html_escape(app_line('reg_data_user')); ?></th>
 							<th class="registration-data-actions-col text-end"><?php echo html_escape(app_line('common_actions')); ?></th>
 						</tr>
@@ -35,7 +36,7 @@ foreach ($editors as $editor)
 					<tbody>
 						<?php if (empty($registrations)): ?>
 							<tr>
-								<td colspan="8" class="text-muted"><?php echo html_escape(app_line('reg_data_empty')); ?></td>
+								<td colspan="9" class="text-muted"><?php echo html_escape(app_line('reg_data_empty')); ?></td>
 							</tr>
 						<?php else: ?>
 							<?php foreach ($registrations as $index => $registration): ?>
@@ -62,13 +63,14 @@ foreach ($editors as $editor)
 										$status_label = 'uploaded';
 									}
 								?>
-								<tr class="registration-data-row" data-registration-id="<?php echo (int) $registration['id']; ?>">
+								<tr class="registration-data-row" data-registration-id="<?php echo (int) $registration['id']; ?>" data-uploaded="<?php echo html_escape($registration['created_at'] ?? ''); ?>">
 									<td class="registration-data-index"><?php echo (int) $index + 1; ?></td>
 									<td><?php echo html_escape($registration['file_name']); ?></td>
 									<td><?php echo html_escape($registration['procedure_number']); ?></td>
 									<td><?php echo html_escape($registration['organization_name']); ?></td>
 									<td><?php echo html_escape($status_label); ?></td>
 									<td class="text-end"><?php echo (int) $registration['total_products']; ?></td>
+									<td class="registration-data-uploaded"><?php echo html_escape($registration['created_at'] ?? ''); ?></td>
 									<td>
 										<select
 											class="form-select form-select-sm registration-data-user"
@@ -115,29 +117,39 @@ foreach ($editors as $editor)
 				</table>
 			</div>
 		</section>
-
-		<section class="app-panel registration-data-panel">
-			<div class="registration-data-scroll">
-				<table class="table table-sm procedure-data-table mb-0" id="registrationDataItemsTable">
-					<thead>
-						<tr>
-							<th class="text-center">#</th>
-							<th><?php echo html_escape(app_line('reg_product_number')); ?></th>
-							<th><?php echo html_escape(app_line('reg_product_name')); ?></th>
-							<th><?php echo html_escape(app_line('common_status')); ?></th>
-							<th><?php echo html_escape(app_line('reg_barcode_title')); ?></th>
-							<th><?php echo html_escape(app_line('reg_data_message')); ?></th>
-						</tr>
-					</thead>
-					<tbody id="registrationDataItemsBody">
-						<tr>
-							<td colspan="6" class="text-muted" id="registrationDataItemsEmpty"><?php echo html_escape(app_line('reg_data_select')); ?></td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</section>
 	</div>
+</div>
+
+<div class="registration-data-drawer" id="registrationDataDrawer" hidden>
+	<div class="registration-data-drawer-backdrop" data-registration-drawer-close></div>
+	<aside class="registration-data-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="registrationDataDrawerTitle">
+		<div class="registration-data-drawer-header">
+			<div class="min-w-0">
+				<div class="registration-data-drawer-eyebrow"><?php echo html_escape(app_line('reg_products')); ?></div>
+				<h2 class="registration-data-drawer-title" id="registrationDataDrawerTitle"></h2>
+			</div>
+			<button type="button" class="btn-close btn-close-white" data-registration-drawer-close aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
+		</div>
+		<div class="registration-data-scroll">
+			<table class="table table-sm procedure-data-table mb-0" id="registrationDataItemsTable">
+				<thead>
+					<tr>
+						<th class="text-center">#</th>
+						<th><?php echo html_escape(app_line('reg_product_number')); ?></th>
+						<th><?php echo html_escape(app_line('reg_product_name')); ?></th>
+						<th><?php echo html_escape(app_line('common_status')); ?></th>
+						<th><?php echo html_escape(app_line('reg_barcode_title')); ?></th>
+						<th><?php echo html_escape(app_line('reg_data_message')); ?></th>
+					</tr>
+				</thead>
+				<tbody id="registrationDataItemsBody">
+					<tr>
+						<td colspan="6" class="text-muted" id="registrationDataItemsEmpty"><?php echo html_escape(app_line('reg_data_select')); ?></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</aside>
 </div>
 
 <div class="modal fade" id="registrationDataUploadModal" tabindex="-1" aria-labelledby="registrationDataUploadModalLabel" aria-hidden="true">

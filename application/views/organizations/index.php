@@ -6,11 +6,18 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		<div>
 			<h1 class="h4 mb-0"><?php echo html_escape($title); ?></h1>
 		</div>
-		<?php if ( ! empty($can_edit) && ! empty($add_url)): ?>
-			<a href="<?php echo html_escape($add_url); ?>" class="btn btn-sm btn-primary" data-mdb-ripple-init>
-				<i class="fas fa-plus me-1"></i> <?php echo html_escape($add_label ?? 'Add New'); ?>
-			</a>
-		<?php endif; ?>
+		<div class="d-flex flex-wrap align-items-center gap-2">
+			<?php if ( ! empty($can_edit) && ($entity ?? '') === 'organizations'): ?>
+				<button type="button" class="btn btn-sm btn-primary" id="organizationAddBtn" data-mdb-ripple-init>
+					<i class="fas fa-plus me-1"></i> <?php echo html_escape(app_line('org_add_new')); ?>
+				</button>
+			<?php endif; ?>
+			<?php if ( ! empty($can_edit) && ! empty($add_url)): ?>
+				<a href="<?php echo html_escape($add_url); ?>" class="btn btn-sm btn-primary" data-mdb-ripple-init>
+					<i class="fas fa-file-import me-1"></i> <?php echo html_escape($add_label ?? 'Add New'); ?>
+				</a>
+			<?php endif; ?>
+		</div>
 	</div>
 
 	<div class="organizations-layout">
@@ -32,7 +39,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 					<option value="expiring_2_months"><?php echo html_escape(app_line('org_expiry_filter_2_months')); ?></option>
 				</select>
 			</div>
-			<button type="button" class="btn btn-sm btn-primary" id="organizationsExportBtn" data-mdb-ripple-init>
+			<button type="button" class="btn btn-sm btn-outline-primary" id="organizationsExportBtn" data-mdb-ripple-init>
 				<i class="fas fa-file-excel me-1"></i> <?php echo html_escape(app_line('common_download_excel')); ?>
 			</button>
 		</div>
@@ -41,6 +48,32 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		</div>
 	</div>
 </div>
+
+<?php if ( ! empty($can_edit) && ($entity ?? '') === 'organizations'): ?>
+<div class="modal fade" id="organizationCreateModal" tabindex="-1" aria-labelledby="organizationCreateModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable organization-create-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="organizationCreateModalLabel"><?php echo html_escape(app_line('org_add_new')); ?></h5>
+				<button type="button" class="btn-close btn-close-white" data-mdb-dismiss="modal" aria-label="<?php echo html_escape(app_line('common_close')); ?>"></button>
+			</div>
+			<form id="organizationCreateInfoForm" class="entity-detail-info-form">
+				<div class="modal-body">
+					<div id="organizationCreateAlert" class="alert alert-danger d-none" role="alert"></div>
+					<div id="organizationCreateFields" class="entity-detail-info-grid"></div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" data-mdb-dismiss="modal" data-mdb-ripple-init><?php echo html_escape(app_line('common_cancel')); ?></button>
+					<button type="submit" class="btn btn-primary" id="organizationCreateSaveBtn" data-mdb-ripple-init>
+						<span class="organization-create-save-label"><?php echo html_escape(app_line('common_save')); ?></span>
+						<span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
 
 <?php $this->load->view('organizations/detail_modal', array('detail_config' => $detail_config ?? array())); ?>
 <?php $this->load->view('products/detail_modal', array('product_detail' => ($detail_config['productDetail'] ?? array()))); ?>
@@ -58,5 +91,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 		'barcode1dTypes'     => barcode_1d_type_options(),
 		'barcode2dTypes'     => barcode_2d_type_options(),
 		'currencyOptions'    => currency_options_for_js(),
+		'createUrl'          => ( ! empty($can_edit) && ($entity ?? '') === 'organizations') ? site_url('organizations/create') : '',
 	)); ?>;
 </script>

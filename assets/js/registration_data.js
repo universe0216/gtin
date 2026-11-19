@@ -9,6 +9,8 @@
 	const baseUrl = String(config.baseUrl || '').replace(/\/$/, '');
 	const table = document.getElementById('registrationDataTable');
 	const itemsBody = document.getElementById('registrationDataItemsBody');
+	const itemsDrawer = document.getElementById('registrationDataDrawer');
+	const itemsDrawerTitle = document.getElementById('registrationDataDrawerTitle');
 	const uploadModalEl = document.getElementById('registrationDataUploadModal');
 	const openUploadBtn = document.getElementById('registrationDataUploadBtn');
 	const editors = Array.isArray(config.editors) ? config.editors : [];
@@ -70,12 +72,50 @@
 		}
 	}
 
-	function loadItems(registrationId) {
+	function rowFileName(row) {
+		const cell = row && row.children ? row.children[1] : null;
+
+		return cell ? cell.textContent.trim() : '';
+	}
+
+	function openItemsDrawer(row) {
+		if (!itemsDrawer) {
+			return;
+		}
+
+		if (itemsDrawerTitle) {
+			itemsDrawerTitle.textContent = rowFileName(row) || t('reg_products');
+		}
+
+		itemsDrawer.hidden = false;
+		window.requestAnimationFrame(function () {
+			itemsDrawer.classList.add('is-open');
+		});
+	}
+
+	function closeItemsDrawer() {
+		if (!itemsDrawer || itemsDrawer.hidden) {
+			return;
+		}
+
+		itemsDrawer.classList.remove('is-open');
+		selectedId = null;
+		selectRow(null);
+
+		window.setTimeout(function () {
+			if (!itemsDrawer.classList.contains('is-open')) {
+				itemsDrawer.hidden = true;
+			}
+		}, 220);
+	}
+
+	function loadItems(registrationId, row) {
 		if (!registrationId || !itemsBody) {
 			return;
 		}
 
 		selectedId = String(registrationId);
+		openItemsDrawer(row || (table ? table.querySelector('.registration-data-row[data-registration-id="' + registrationId + '"]') : null));
 
 		itemsBody.innerHTML = '<tr><td colspan="6" class="text-muted">' + escapeHtml(t('reg_data_select')) + '</td></tr>';
 
@@ -194,6 +234,8 @@
 	}
 
 	function clearItemsPanel() {
+		closeItemsDrawer();
+
 		if (!itemsBody) {
 			return;
 		}
@@ -232,7 +274,7 @@
 				const remaining = tbody ? tbody.querySelectorAll('.registration-data-row') : [];
 
 				if (!remaining.length && tbody) {
-					tbody.innerHTML = '<tr><td colspan="8" class="text-muted">' + escapeHtml(t('reg_data_empty')) + '</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="9" class="text-muted">' + escapeHtml(t('reg_data_empty')) + '</td></tr>';
 				}
 
 				if (wasSelected) {
@@ -277,15 +319,16 @@
 
 		const id = tab.product_registration_id;
 		const fileName = tab.file_name || '';
-
-		tbody.insertAdjacentHTML('afterbegin',
-			'<tr class="registration-data-row" data-registration-id="' + id + '">' +
+		const uploaded = tab.created_at || '';
+		const rowHtml =
+			'<tr class="registration-data-row" data-registration-id="' + id + '" data-uploaded="' + escapeAttr(uploaded) + '">' +
 				'<td class="registration-data-index">1</td>' +
 				'<td>' + escapeHtml(fileName) + '</td>' +
 				'<td>' + escapeHtml(tab.procedure_number || '') + '</td>' +
 				'<td>' + escapeHtml(tab.organization_name || '') + '</td>' +
 				'<td>' + escapeHtml(registrationStatusLabel(tab.status || 'uploaded')) + '</td>' +
 				'<td class="text-end">' + escapeHtml(tab.total_products || (tab.rows || []).length || 0) + '</td>' +
+				'<td class="registration-data-uploaded">' + escapeHtml(uploaded) + '</td>' +
 				'<td>' +
 					'<select class="form-select form-select-sm registration-data-user"' +
 						' data-registration-id="' + id + '"' +
@@ -303,8 +346,17 @@
 						'<i class="fas fa-trash"></i>' +
 					'</button>' +
 				'</td>' +
-			'</tr>'
-		);
+			'</tr>';
+		const rows = Array.prototype.slice.call(tbody.querySelectorAll('.registration-data-row'));
+		const newer = rows.find(function (row) {
+			return String(row.getAttribute('data-uploaded') || '') > uploaded;
+		});
+
+		if (newer) {
+			newer.insertAdjacentHTML('beforebegin', rowHtml);
+		} else {
+			tbody.insertAdjacentHTML('beforeend', rowHtml);
+		}
 
 		reindexRows();
 	}
@@ -312,7 +364,7 @@
 	function addUploadedRegistrations(tabs) {
 		const uploaded = tabs || [];
 
-		uploaded.slice().reverse().forEach(insertUploadedRegistration);
+		uploaded.forEach(insertUploadedRegistration);
 
 		const first = uploaded[0];
 
@@ -381,7 +433,7 @@
 			}
 
 			selectRow(row);
-			loadItems(row.getAttribute('data-registration-id'));
+			loadItems(row.getAttribute('data-registration-id'), row);
 		});
 
 		table.addEventListener('change', function (event) {
@@ -392,6 +444,20 @@
 			}
 
 			assignRegistration(select);
+		});
+	}
+
+	if (itemsDrawer) {
+		itemsDrawer.addEventListener('click', function (event) {
+			if (event.target.closest('[data-registration-drawer-close]')) {
+				closeItemsDrawer();
+			}
+		});
+
+		document.addEventListener('keydown', function (event) {
+			if (event.key === 'Escape' && itemsDrawer.classList.contains('is-open')) {
+				closeItemsDrawer();
+			}
 		});
 	}
 })();

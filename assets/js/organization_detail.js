@@ -254,15 +254,34 @@
 		return '<span class="organization-location-dropdown-label">' + escapeHtml(text || '') + '</span>';
 	}
 
-	function destroyLocationPicker() {
+	function locationElements(prefix) {
+		if (!prefix || prefix === 'organizationDetail') {
+			return {
+				hiddenId: 'organizationDetailField_location_id',
+				dropId: 'organizationLocationDropDown',
+				treeId: 'organizationLocationTree',
+				clearId: 'organizationLocationClear',
+			};
+		}
+
+		return {
+			hiddenId: prefix + 'Field_location_id',
+			dropId: prefix + 'LocationDropDown',
+			treeId: prefix + 'LocationTree',
+			clearId: prefix + 'LocationClear',
+		};
+	}
+
+	function destroyLocationPicker(prefix) {
 		const $ = window.jQuery;
+		const ids = locationElements(prefix);
 
 		if (!$ || !$.fn) {
 			return;
 		}
 
-		const $tree = $('#organizationLocationTree');
-		const $drop = $('#organizationLocationDropDown');
+		const $tree = $('#' + ids.treeId);
+		const $drop = $('#' + ids.dropId);
 
 		if ($tree.length && $tree.data('jqxTree')) {
 			$tree.jqxTree('destroy');
@@ -273,17 +292,18 @@
 		}
 	}
 
-	function mountLocationPicker() {
+	function mountLocationPicker(prefix) {
 		const $ = window.jQuery;
-		const hidden = document.getElementById('organizationDetailField_location_id');
-		const clearBtn = document.getElementById('organizationLocationClear');
+		const ids = locationElements(prefix);
+		const hidden = document.getElementById(ids.hiddenId);
+		const clearBtn = document.getElementById(ids.clearId);
 
 		if (!$ || !$.fn || !$.fn.jqxDropDownButton || !$.fn.jqxTree || !hidden) {
 			return;
 		}
 
-		const $drop = $('#organizationLocationDropDown');
-		const $tree = $('#organizationLocationTree');
+		const $drop = $('#' + ids.dropId);
+		const $tree = $('#' + ids.treeId);
 		let applyingSelection = false;
 
 		function showSelection(id) {
@@ -370,16 +390,17 @@
 		}
 	}
 
-	function renderLocationPicker(selectedId) {
+	function renderLocationPicker(selectedId, prefix) {
 		const id = selectedId == null ? '' : String(selectedId);
+		const ids = locationElements(prefix);
 
 		return (
 			'<div class="organization-location-picker">' +
-				'<input type="hidden" name="location_id" id="organizationDetailField_location_id" value="' + escapeAttr(id) + '">' +
-				'<div id="organizationLocationDropDown" class="organization-location-dropdown" aria-label="' + escapeAttr(t('col_location_id')) + '">' +
-					'<div id="organizationLocationTree"></div>' +
+				'<input type="hidden" name="location_id" id="' + ids.hiddenId + '" value="' + escapeAttr(id) + '">' +
+				'<div id="' + ids.dropId + '" class="organization-location-dropdown" aria-label="' + escapeAttr(t('col_location_id')) + '">' +
+					'<div id="' + ids.treeId + '"></div>' +
 				'</div>' +
-				'<button type="button" class="btn btn-secondary btn-sm organization-location-clear" id="organizationLocationClear">' +
+				'<button type="button" class="btn btn-secondary btn-sm organization-location-clear" id="' + ids.clearId + '">' +
 					escapeHtml(t('common_clear')) +
 				'</button>' +
 			'</div>'
@@ -409,16 +430,17 @@
 		return html;
 	}
 
-	function renderEditableField(field, data) {
+	function renderEditableField(field, data, prefix) {
+		const fieldPrefix = prefix || 'organizationDetail';
 		const fieldName = field.name;
 		const value = data[fieldName] ?? '';
-		const inputId = 'organizationDetailField_' + fieldName;
+		const inputId = fieldPrefix + 'Field_' + fieldName;
 
 		if (fieldName === 'location_id') {
 			return (
 				'<div class="entity-detail-info-item organization-location-field">' +
 					'<div class="entity-detail-info-label">' + escapeHtml(field.label) + '</div>' +
-					renderLocationPicker(value) +
+					renderLocationPicker(value, fieldPrefix) +
 				'</div>'
 			);
 		}
@@ -1601,6 +1623,119 @@
 				productsGrid.gotoFirst();
 				productsGrid.reload();
 			}
+		});
+	}
+
+	const organizationCreateUrl = (listConfig.createUrl || '').replace(/\/$/, '');
+	const organizationAddBtn = document.getElementById('organizationAddBtn');
+	const organizationCreateModalEl = document.getElementById('organizationCreateModal');
+	const organizationCreateForm = document.getElementById('organizationCreateInfoForm');
+	const organizationCreateFields = document.getElementById('organizationCreateFields');
+	const organizationCreateAlert = document.getElementById('organizationCreateAlert');
+	const organizationCreateSaveBtn = document.getElementById('organizationCreateSaveBtn');
+	const organizationCreateModal = organizationCreateModalEl && typeof mdb !== 'undefined'
+		? mdb.Modal.getOrCreateInstance(organizationCreateModalEl)
+		: null;
+
+	function hideCreateAlert() {
+		if (!organizationCreateAlert) {
+			return;
+		}
+
+		organizationCreateAlert.classList.add('d-none');
+		organizationCreateAlert.textContent = '';
+	}
+
+	function showCreateAlert(message) {
+		if (!organizationCreateAlert) {
+			return;
+		}
+
+		organizationCreateAlert.textContent = message;
+		organizationCreateAlert.classList.remove('d-none');
+	}
+
+	function setCreateSaving(isSaving) {
+		if (!organizationCreateSaveBtn) {
+			return;
+		}
+
+		organizationCreateSaveBtn.disabled = isSaving;
+		const spinner = organizationCreateSaveBtn.querySelector('.spinner-border');
+
+		if (spinner) {
+			spinner.classList.toggle('d-none', !isSaving);
+		}
+	}
+
+	function resetCreateForm() {
+		if (!organizationCreateFields) {
+			return;
+		}
+
+		if (window.JqxDate && typeof window.JqxDate.destroyIn === 'function') {
+			window.JqxDate.destroyIn(organizationCreateForm);
+		}
+
+		destroyLocationPicker('organizationCreate');
+		hideCreateAlert();
+		organizationCreateFields.innerHTML = editableFields.map(function (field) {
+			return renderEditableField(field, {}, 'organizationCreate');
+		}).join('');
+		mountLocationPicker('organizationCreate');
+		mountDatePickers(organizationCreateForm);
+	}
+
+	function submitCreateOrganization(event) {
+		event.preventDefault();
+
+		if (!organizationCreateUrl || !organizationCreateForm) {
+			return;
+		}
+
+		if (window.JqxDate && typeof window.JqxDate.syncForm === 'function') {
+			window.JqxDate.syncForm(organizationCreateForm);
+		}
+
+		hideCreateAlert();
+		setCreateSaving(true);
+
+		fetchApi(organizationCreateUrl, {
+			method: 'POST',
+			body: new FormData(organizationCreateForm),
+		}).then(function (result) {
+			showToast(result.message || t('org_created'), 'success');
+			document.dispatchEvent(new CustomEvent('organizationsListRefresh'));
+
+			if (organizationCreateModal) {
+				organizationCreateModal.hide();
+			}
+		}).catch(function (error) {
+			showCreateAlert(error.message || t('org_create_failed'));
+		}).finally(function () {
+			setCreateSaving(false);
+		});
+	}
+
+	if (organizationAddBtn && organizationCreateModal && organizationCreateForm && editableFields.length) {
+		organizationAddBtn.addEventListener('click', function () {
+			resetCreateForm();
+			organizationCreateModal.show();
+			const nameInput = document.getElementById('organizationCreateField_name');
+
+			if (nameInput) {
+				window.setTimeout(function () {
+					nameInput.focus();
+				}, 150);
+			}
+		});
+		organizationCreateForm.addEventListener('submit', submitCreateOrganization);
+		organizationCreateModalEl.addEventListener('hidden.mdb.modal', function () {
+			if (window.JqxDate && typeof window.JqxDate.destroyIn === 'function') {
+				window.JqxDate.destroyIn(organizationCreateForm);
+			}
+
+			destroyLocationPicker('organizationCreate');
 		});
 	}
 

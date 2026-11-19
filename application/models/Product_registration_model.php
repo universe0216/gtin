@@ -21,7 +21,8 @@ class Product_registration_model extends CI_Model {
 			->select('product_registrations.*, accounts.full_name AS processor_name, accounts.username AS processor_username')
 			->join('accounts', 'accounts.id = product_registrations.account_id', 'left')
 			->where('product_registrations.status !=', 'completed')
-			->order_by('product_registrations.id', 'DESC')
+			->order_by('product_registrations.created_at', 'ASC')
+			->order_by('product_registrations.id', 'ASC')
 			->get($this->table)
 			->result_array();
 	}

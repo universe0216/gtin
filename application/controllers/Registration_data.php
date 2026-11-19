@@ -57,7 +57,7 @@ class Registration_data extends AuthenticatedController {
 			$rows[] = array(
 				'id'                       => (int) $item['id'],
 				'product_procedure_number' => $item['product_procedure_number'],
-				'name'                     => $item['name'],
+				'name'                     => $this->item_product_name($item),
 				'status'                   => $item['status'],
 				'barcode'                  => $item['barcode'] ?? '',
 				'message'                  => $item['message'] ?? '',
@@ -165,6 +165,30 @@ class Registration_data extends AuthenticatedController {
 			'success' => TRUE,
 			'message' => app_line('reg_data_deleted'),
 		));
+	}
+
+	protected function item_product_name($item)
+	{
+		$info = json_decode($item['info'] ?? '', TRUE);
+		$columns = (is_array($info) && isset($info['columns']) && is_array($info['columns'])) ? $info['columns'] : array();
+		$cells = (is_array($info) && isset($info['cells']) && is_array($info['cells'])) ? $info['cells'] : array();
+
+		foreach ($columns as $index => $column)
+		{
+			$label = strtolower(trim((string) preg_replace('/\s+/', ' ', (string) $column)));
+
+			if ($label === 'product name' && isset($cells[$index]))
+			{
+				$name = trim((string) $cells[$index]);
+
+				if ($name !== '')
+				{
+					return $name;
+				}
+			}
+		}
+
+		return $item['name'] ?? '';
 	}
 
 	protected function open_registration($id)
