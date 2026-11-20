@@ -2955,6 +2955,119 @@ select,
 	font-size: 14px;
 }
 
+.statistics-filter-grid {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 0.75rem;
+}
+
+.statistics-filter {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	min-width: 10rem;
+	margin: 0;
+	color: var(--app-text-muted);
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+.statistics-filter .form-control,
+.statistics-filter .form-select {
+	min-width: 10rem;
+	text-transform: none;
+	letter-spacing: normal;
+	font-weight: 400;
+}
+
+.statistics-filter-action {
+	min-width: 0;
+}
+
+.statistics-total {
+	display: inline-flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 14rem;
+	padding: 1rem 1.25rem;
+	background: var(--app-surface);
+	border: 1px solid var(--app-border);
+	border-radius: 0.5rem;
+}
+
+.statistics-total-label,
+.statistics-metric-share,
+.statistics-groups-meta {
+	color: var(--app-text-muted);
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.statistics-total-value {
+	font-size: 2.25rem;
+	font-weight: 600;
+	line-height: 1.1;
+}
+
+.statistics-total-period {
+	color: var(--app-text-muted);
+	font-size: 0.85rem;
+}
+
+.statistics-groups-meta {
+	margin-bottom: 0.6rem;
+}
+
+.statistics-metrics {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+	gap: 0.75rem;
+}
+
+.statistics-metric {
+	padding: 0.85rem 0.95rem;
+	background: var(--app-surface);
+	border: 1px solid var(--app-border);
+	border-radius: 0.5rem;
+}
+
+.statistics-metric-name {
+	min-height: 2.4em;
+	font-size: 0.85rem;
+	line-height: 1.35;
+}
+
+.statistics-metric-value {
+	margin-top: 0.35rem;
+	font-size: 1.6rem;
+	font-weight: 600;
+	line-height: 1.1;
+}
+
+.statistics-metric-share {
+	margin-top: 0.25rem;
+}
+
+.statistics-metric-bar {
+	height: 4px;
+	margin-top: 0.65rem;
+	overflow: hidden;
+	background: rgba(148, 163, 184, 0.16);
+	border-radius: 999px;
+}
+
+.statistics-metric-bar > span {
+	display: block;
+	height: 100%;
+	background: var(--app-accent);
+	border-radius: inherit;
+}
+
 @media (max-width: 900px) {
 	.settings-layout {
 		grid-template-columns: 1fr;

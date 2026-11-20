@@ -85,6 +85,55 @@ class History extends AuthenticatedController {
 		$this->load->view('layouts/main', $data);
 	}
 
+	public function statistics()
+	{
+		$this->load->model('product_model');
+
+		$group = $this->input->get('group') === 'category' ? 'category' : 'location';
+		$max_level = $group === 'category' ? 4 : 3;
+		$level = (int) $this->input->get('level');
+
+		if ($level < 1 || $level > $max_level)
+		{
+			$level = 1;
+		}
+
+		$date_from = $this->statistics_date($this->input->get('date_from'));
+		$date_to = $this->statistics_date($this->input->get('date_to'));
+		$first_visit = $this->input->get('group') === NULL
+			&& $this->input->get('date_from') === NULL
+			&& $this->input->get('date_to') === NULL;
+
+		if ($first_visit)
+		{
+			$date_from = date('Y-01-01');
+			$date_to = date('Y-m-d');
+		}
+
+		if ($date_from !== NULL && $date_to !== NULL && $date_from > $date_to)
+		{
+			$swap = $date_from;
+			$date_from = $date_to;
+			$date_to = $swap;
+		}
+
+		$stats = $this->product_model->registration_statistics($date_from, $date_to, $group, $level);
+
+		$data = array(
+			'title'      => app_line('title_statistics'),
+			'nav_active' => 'history_statistics',
+			'group'      => $group,
+			'level'      => $level,
+			'date_from'  => $date_from ?? '',
+			'date_to'    => $date_to ?? '',
+			'total'      => (int) $stats['total'],
+			'groups'     => $stats['groups'],
+		);
+
+		$data['content'] = $this->load->view('history/statistics', $data, TRUE);
+		$this->load->view('layouts/main', $data);
+	}
+
 	public function activity_log()
 	{
 		$this->auth->require_admin();
@@ -387,6 +436,25 @@ class History extends AuthenticatedController {
 			'success' => TRUE,
 			'tab'     => $tab,
 		));
+	}
+
+	protected function statistics_date($value)
+	{
+		$value = trim((string) $value);
+
+		if ($value === '')
+		{
+			return NULL;
+		}
+
+		$date = DateTime::createFromFormat('Y-m-d', $value);
+
+		if ( ! $date || $date->format('Y-m-d') !== $value)
+		{
+			return NULL;
+		}
+
+		return $value;
 	}
 
 	protected function json_response($payload, $status = 200)

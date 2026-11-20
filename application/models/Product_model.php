@@ -534,4 +534,225 @@ class Product_model extends Basic_model {
 
 		return array_values($ids);
 	}
+
+	public function registration_statistics($from, $to, $group, $level)
+	{
+		$group = $group === 'category' ? 'category' : 'location';
+		$max_level = $group === 'category' ? 4 : 3;
+		$level = (int) $level;
+
+		if ($level < 1 || $level > $max_level)
+		{
+			$level = 1;
+		}
+
+		$counts = $group === 'category'
+			? $this->category_registration_counts($from, $to)
+			: $this->location_registration_counts($from, $to);
+		$nodes = $this->statistics_nodes($group === 'category' ? 'categories' : 'locations');
+
+		return array(
+			'total'  => array_sum($counts),
+			'groups' => $this->rollup_statistic_groups($counts, $nodes, $level),
+		);
+	}
+
+	protected function location_registration_counts($from, $to)
+	{
+		$this->db
+			->select('organizations.location_id AS group_id, COUNT(*) AS total', FALSE)
+			->from($this->table)
+			->join('organizations', 'organizations.id = products.org_id', 'left');
+		$this->apply_reg_date_period($from, $to);
+
+		return $this->statistic_count_map(
+			$this->db->group_by('organizations.location_id')->get()->result_array()
+		);
+	}
+
+	protected function category_registration_counts($from, $to)
+	{
+		$category_sql = '(SELECT pc.category_id FROM product_category pc'
+			.' INNER JOIN categories c ON c.id = pc.category_id'
+			.' WHERE pc.product_id = products.id'
+			.' ORDER BY c.level DESC, c.id ASC LIMIT 1)';
+		$where = array();
+		$binds = array();
+		$from = $this->statistic_date($from);
+		$to = $this->statistic_date($to);
+
+		if ($from !== NULL)
+		{
+			$where[] = 'products.reg_date >= ?';
+			$binds[] = $from;
+		}
+
+		if ($to !== NULL)
+		{
+			$where[] = 'products.reg_date <= ?';
+			$binds[] = $to;
+		}
+
+		if ($from !== NULL || $to !== NULL)
+		{
+			$where[] = 'products.reg_date IS NOT NULL';
+		}
+
+		$sql = 'SELECT group_id, COUNT(*) AS total FROM ('
+			.'SELECT '.$category_sql.' AS group_id FROM products';
+
+		if ( ! empty($where))
+		{
+			$sql .= ' WHERE '.implode(' AND ', $where);
+		}
+
+		$sql .= ') AS product_categories GROUP BY group_id';
+
+		return $this->statistic_count_map($this->db->query($sql, $binds)->result_array());
+	}
+
+	protected function apply_reg_date_period($from, $to)
+	{
+		$from = $this->statistic_date($from);
+		$to = $this->statistic_date($to);
+
+		if ($from !== NULL)
+		{
+			$this->db->where('products.reg_date >=', $from);
+		}
+
+		if ($to !== NULL)
+		{
+			$this->db->where('products.reg_date <=', $to);
+		}
+
+		if ($from !== NULL || $to !== NULL)
+		{
+			$this->db->where('products.reg_date IS NOT NULL', NULL, FALSE);
+		}
+	}
+
+	protected function statistic_date($value)
+	{
+		$value = trim((string) $value);
+
+		if ($value === '')
+		{
+			return NULL;
+		}
+
+		$date = DateTime::createFromFormat('Y-m-d', $value);
+
+		if ( ! $date || $date->format('Y-m-d') !== $value)
+		{
+			return NULL;
+		}
+
+		return $value;
+	}
+
+	protected function statistic_count_map(array $rows)
+	{
+		$counts = array();
+
+		foreach ($rows as $row)
+		{
+			$id = (int) ($row['group_id'] ?? 0);
+			$counts[$id] = ($counts[$id] ?? 0) + (int) $row['total'];
+		}
+
+		return $counts;
+	}
+
+	protected function statistics_nodes($table)
+	{
+		$rows = $this->db
+			->select('id, parent_id, level, name')
+			->from($table)
+			->get()
+			->result_array();
+		$nodes = array();
+
+		foreach ($rows as $row)
+		{
+			$id = (int) $row['id'];
+			$nodes[$id] = array(
+				'id'        => $id,
+				'parent_id' => (int) $row['parent_id'],
+				'level'     => (int) $row['level'],
+				'name'      => (string) $row['name'],
+			);
+		}
+
+		return $nodes;
+	}
+
+	protected function rollup_statistic_groups(array $counts, array $nodes, $level)
+	{
+		$groups = array();
+
+		foreach ($counts as $id => $count)
+		{
+			$count = (int) $count;
+
+			if ($count < 1)
+			{
+				continue;
+			}
+
+			$target_id = 0;
+			$name = '';
+
+			if ($id > 0 && isset($nodes[$id]))
+			{
+				$node = $this->statistic_ancestor($nodes, $id, $level);
+				$target_id = (int) $node['id'];
+				$name = $node['name'];
+			}
+
+			if ( ! isset($groups[$target_id]))
+			{
+				$groups[$target_id] = array(
+					'id'    => $target_id,
+					'name'  => $name,
+					'total' => 0,
+				);
+			}
+
+			$groups[$target_id]['total'] += $count;
+		}
+
+		$rows = array_values($groups);
+		usort($rows, function ($left, $right) {
+			if ($left['total'] !== $right['total'])
+			{
+				return $right['total'] - $left['total'];
+			}
+
+			return strcasecmp($left['name'], $right['name']);
+		});
+
+		return $rows;
+	}
+
+	protected function statistic_ancestor(array $nodes, $id, $level)
+	{
+		$current = $nodes[$id];
+		$seen = array();
+
+		while ((int) $current['level'] > (int) $level)
+		{
+			$parent_id = (int) $current['parent_id'];
+
+			if ($parent_id < 1 || ! isset($nodes[$parent_id]) || isset($seen[(int) $current['id']]))
+			{
+				break;
+			}
+
+			$seen[(int) $current['id']] = TRUE;
+			$current = $nodes[$parent_id];
+		}
+
+		return $current;
+	}
 }

@@ -32,6 +32,7 @@ $organization_children = array(
 $history_children = array(
 	'history_products'       => array('label' => app_line('nav_products'), 'url' => site_url('history/products')),
 	'history_organizations'  => array('label' => app_line('nav_organizations'), 'url' => site_url('history/organizations')),
+	'history_statistics'     => array('label' => app_line('nav_statistics'), 'url' => site_url('history/statistics')),
 	'products_archieve'      => array('label' => app_line('nav_products_archieve'), 'url' => site_url('products_archieve'), 'permission' => 'product.view'),
 	'organization_archieve'  => array('label' => app_line('nav_organizations_archieve'), 'url' => site_url('organization_archieve'), 'permission' => 'organization.view'),
 	'history_activity_log'   => array('label' => app_line('nav_activity_log'), 'url' => site_url('history/activity_log'), 'admin' => TRUE),
