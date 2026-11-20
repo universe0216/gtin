@@ -1898,7 +1898,7 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 
 .procedure-barcode-preview-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: repeat(1, minmax(0, 1fr));
 	gap: 1rem;
 	height: 100%;
 	min-height: 0;
@@ -1912,7 +1912,7 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	border: 1px solid var(--app-border-subtle);
 	border-radius: 0.5rem;
 	background-color: var(--app-surface-raised);
-	overflow: hidden;
+	overflow: auto;
 }
 
 .procedure-barcode-preview-title {
@@ -1936,7 +1936,7 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 
 .procedure-barcode-preview-body {
 	flex: 1 1 auto;
-	min-height: 220px;
+	min-height: 150px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1947,6 +1947,13 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 .procedure-barcode-svg {
 	max-width: 100%;
 	height: auto;
+}
+
+.procedure-barcode-svg canvas,
+.procedure-barcode-svg svg {
+	max-width: 100%;
+	height: auto;
+	background-color: #ffffff;
 }
 
 .procedure-barcode-svg text {
@@ -1960,8 +1967,12 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	justify-content: center;
 }
 
-.procedure-qr-code img {
+.procedure-qr-code img,
+.procedure-qr-code canvas {
+	max-width: 100%;
+	height: auto;
 	border-radius: 0.35rem;
+	background-color: #ffffff;
 }
 
 .procedure-detail-info-grid {
@@ -2015,7 +2026,8 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	flex: 1 1 auto;
 }
 
-.procedure-barcode-auto-assign {
+.procedure-barcode-auto-assign,
+.procedure-barcode-auto-generate {
 	flex: 0 0 auto;
 	white-space: nowrap;
 }

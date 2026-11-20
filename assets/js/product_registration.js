@@ -99,10 +99,13 @@
 	let rejectModal;
 	let importGrid = null;
 	let similarGrid = null;
+	let similarGridBound = false;
+	let similarReloadPending = false;
 	let similarQuery = '';
 	let similarMode = 'similar';
 	let productImageViewer = null;
 	let productQrCodeInstance = null;
+	let barcode2dRenderToken = 0;
 	let barcodeTypingTimer = null;
 
 	// Per-tab data + grids; the grid is the single source of truth for the
@@ -1346,7 +1349,7 @@
 					{
 						text: '#',
 						datafield: '__rownum',
-						width: 56,
+						width: 50,
 						pinned: true,
 						sortable: false,
 						filterable: false,
@@ -1354,11 +1357,10 @@
 						align: 'center',
 						cellsrenderer: similarIndexRenderer,
 					},
-					{ text: t('col_name'), datafield: 'name', width: 220, pinned: true },
 					{
 						text: t('col_similarity'),
 						datafield: 'similarity_rate',
-						width: 100,
+						width: 60,
 						pinned: true,
 						sortable: false,
 						filterable: false,
@@ -1369,19 +1371,21 @@
 					{
 						text: t('reg_reuse'),
 						datafield: 'id',
-						width: 110,
+						width: 80,
 						pinned: true,
 						sortable: false,
 						filterable: false,
 						cellsrenderer: similarReuseRenderer,
 					},
-					{ text: t('col_organization_name'), datafield: 'organization_name', width: 200 },
-					{ text: t('col_brand'), datafield: 'brand', width: 150 },
-					{ text: t('col_standard_number'), datafield: 'standard_number', width: 170 },
+					{ text: t('col_name'), datafield: 'name', width: 180 },
+
 					{ text: t('col_barcode_1d'), datafield: 'barcode_1d', width: 170 },
 					{ text: t('col_barcode_1d_type'), datafield: 'barcode_1d_type', width: 140 },
 					{ text: t('col_barcode_2d'), datafield: 'barcode_2d', width: 170 },
 					{ text: t('col_barcode_2d_type'), datafield: 'barcode_2d_type', width: 150 },
+					{ text: t('col_organization_name'), datafield: 'organization_name', width: 200 },
+					{ text: t('col_brand'), datafield: 'brand', width: 150 },
+					{ text: t('col_standard_number'), datafield: 'standard_number', width: 170 },
 					{ text: t('col_package_type'), datafield: 'package_type', width: 150 },
 					{ text: t('col_price'), datafield: 'price', width: 120 },
 					{ text: t('col_reg_date'), datafield: 'reg_date', width: 160 },
@@ -1428,6 +1432,19 @@
 
 			JqxGrid.bindCellButtons(similarGrid.$el, '.procedure-similar-reuse', function (id, event, button) {
 				reuseCatalogBarcode(button);
+			});
+
+			similarGrid.$el.on('bindingcomplete', function () {
+				similarGridBound = true;
+
+				if (!similarReloadPending) {
+					return;
+				}
+
+				similarReloadPending = false;
+				applySimilarEmptyMessage();
+				similarGrid.gotoFirst();
+				similarGrid.reload();
 			});
 		}
 
@@ -1530,11 +1547,18 @@
 	}
 
 	function reloadSimilarGrid() {
+		const created = !similarGrid;
+
 		if (!similarGrid) {
 			ensureSimilarGrid();
 		}
 
 		if (!similarGrid) {
+			return;
+		}
+
+		if (created || !similarGridBound) {
+			similarReloadPending = !created;
 			return;
 		}
 
@@ -1832,40 +1856,44 @@
 			' data-saved-value="' + saved + '"' +
 			disabled;
 
-		if (field === 'barcode_1d' || field === 'barcode_2d') {
-			const input = '<input type="text" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
+		if (field === 'barcode_2d') {
+			return '<textarea rows="3" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
+				dataAttrs + '>' + escapeHtml(value) + '</textarea>';
+		}
+
+		if (field === 'barcode_1d') {
+			return '<input type="text" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
 				dataAttrs + ' value="' + saved + '">';
-
-			if (field === 'barcode_1d' && editable) {
-				return '<div class="procedure-barcode-value-control">' +
-					input +
-					'<button type="button" class="btn btn-sm btn-outline-primary procedure-barcode-auto-assign">' +
-						escapeHtml(t('reg_auto_assign')) +
-					'</button>' +
-				'</div>';
-			}
-
-			if (field === 'barcode_2d' && editable) {
-				return '<div class="procedure-barcode-value-control">' +
-					input +
-					'<button type="button" class="btn btn-sm btn-outline-primary procedure-barcode-auto-generate">' +
-						escapeHtml(t('reg_auto_generate')) +
-					'</button>' +
-				'</div>';
-			}
-
-			return input;
 		}
 
 		const options = barcodeTypeOptions(field, value).map(function (option) {
 			const selected = option === String(value || '') ? ' selected' : '';
 			return '<option value="' + escapeAttr(option) + '"' + selected + '>' + escapeHtml(option) + '</option>';
 		}).join('');
-
-		return '<select class="form-select form-select-sm procedure-detail-info-input"' + dataAttrs + '>' +
+		const select = '<select class="form-select form-select-sm procedure-detail-info-input"' + dataAttrs + '>' +
 			'<option value=""></option>' +
 			options +
 		'</select>';
+
+		if (field === 'barcode_1d_type' && editable) {
+			return '<div class="procedure-barcode-value-control">' +
+				select +
+				'<button type="button" class="btn btn-sm btn-outline-primary procedure-barcode-auto-assign">' +
+					escapeHtml(t('reg_auto_assign')) +
+				'</button>' +
+			'</div>';
+		}
+
+		if (field === 'barcode_2d_type' && editable) {
+			return '<div class="procedure-barcode-value-control">' +
+				select +
+				'<button type="button" class="btn btn-sm btn-outline-primary procedure-barcode-auto-generate">' +
+					escapeHtml(t('reg_auto_generate')) +
+				'</button>' +
+			'</div>';
+		}
+
+		return select;
 	}
 
 	function renderProductFieldControl(field, value, editable, itemId, regId) {
@@ -2375,6 +2403,97 @@
 		return currentBarcodeFieldValue('barcode_2d_type');
 	}
 
+	const GS1_FIXED_AI = {
+		'00': 18, '01': 14, '02': 14,
+		'11': 6, '12': 6, '13': 6, '14': 6, '15': 6, '16': 6, '17': 6, '18': 6, '19': 6,
+		'20': 2,
+		'402': 17,
+		'410': 13, '411': 13, '412': 13, '413': 13, '414': 13, '415': 13, '416': 13, '417': 13, '418': 13, '419': 13,
+		'422': 3, '424': 3, '426': 3,
+		'7001': 13, '7003': 10, '7006': 6, '7007': 6, '7040': 4,
+		'8001': 14, '8005': 6, '8006': 18, '8017': 18, '8018': 18, '8026': 18, '8111': 4,
+	};
+
+	(function addGs1MeasureAis() {
+		const prefixes = ['310', '311', '312', '313', '314', '315', '316', '320', '321', '322', '323', '324', '325', '326', '327', '328', '329', '330', '331', '332', '333', '334', '335', '336', '337', '340', '341', '342', '343', '344', '345', '346', '347', '348', '349', '350', '351', '352', '353', '354', '355', '356', '357', '360', '361', '362', '363', '364', '365', '366', '367', '368', '369'];
+
+		prefixes.forEach(function (prefix) {
+			for (let decimal = 0; decimal <= 9; decimal++) {
+				GS1_FIXED_AI[prefix + decimal] = 6;
+			}
+		});
+	}());
+
+	function gs1Parenthesize(value) {
+		const text = String(value || '').trim();
+
+		if (text.indexOf('(') !== -1 || !/^\d+$/.test(text)) {
+			return text;
+		}
+
+		function parse(index) {
+			if (index === text.length) {
+				return '';
+			}
+
+			const widths = [4, 3, 2];
+
+			for (let widthIndex = 0; widthIndex < widths.length; widthIndex++) {
+				const width = widths[widthIndex];
+
+				if (index + width > text.length) {
+					continue;
+				}
+
+				const ai = text.slice(index, index + width);
+				const dataLength = GS1_FIXED_AI[ai];
+
+				if (!dataLength || index + width + dataLength > text.length) {
+					continue;
+				}
+
+				const rest = parse(index + width + dataLength);
+
+				if (rest !== null) {
+					return '(' + ai + ')' + text.slice(index + width, index + width + dataLength) + rest;
+				}
+			}
+
+			return null;
+		}
+
+		return parse(0) || text;
+	}
+
+	function barcode1dSymbol(type) {
+		const symbols = {
+			ean13: 'ean13',
+			ean8: 'ean8',
+			upca: 'upca',
+			upce: 'upce',
+			itf14: 'itf14',
+			gs1128: 'gs1-128',
+			code128: 'code128',
+			code39: 'code39',
+		};
+
+		return symbols[normalizeBarcodeType(type)] || '';
+	}
+
+	function barcode2dSymbol(type) {
+		const key = String(type || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+		const symbols = {
+			qr: 'qrcode',
+			qrcode: 'qrcode',
+			datamatrix: 'datamatrix',
+			gs1datamatrix: 'gs1datamatrix',
+			pdf417: 'pdf417',
+			aztec: 'azteccode',
+		};
+
+		return symbols[key] || '';
+	}
+
 	function barcodePreviewSpec(type, value) {
 		const typeKey = normalizeBarcodeType(type);
 		const text = String(value || '').trim();
@@ -2449,6 +2568,50 @@
 			return;
 		}
 
+		if (typeof bwipjs !== 'undefined' && procedureBarcodeSvg && spec) {
+			try {
+				const canvas = document.createElement('canvas');
+				const typeKey = normalizeBarcodeType(barcodeType);
+				const retailText = typeKey === 'ean13' || typeKey === 'ean8' || typeKey === 'upca' || typeKey === 'upce';
+				const options = {
+					bcid: barcode1dSymbol(barcodeType),
+					text: spec.ean128 ? gs1Parenthesize(barcodeValue) : spec.value,
+					scale: 3,
+					height: 12,
+					includetext: true,
+					textfont: 'OCR-B',
+					textsize: 9,
+				};
+
+				if (retailText) {
+					options.text1font = 'OCR-B';
+					options.text1size = 11;
+				} else {
+					options.textxalign = 'center';
+				}
+
+				if (spec.ean128) {
+					options.dontlint = true;
+				}
+
+				bwipjs.toCanvas(canvas, options);
+				procedureBarcodeSvg.innerHTML = '';
+				procedureBarcodeSvg.appendChild(canvas);
+				procedureBarcodeSvg.classList.remove('d-none');
+
+				if (procedureBarcodeEmpty) {
+					procedureBarcodeEmpty.classList.add('d-none');
+				}
+			} catch (error) {
+				if (procedureBarcodeEmpty && !barcodeValueStillShort(barcodeType, barcodeValue)) {
+					procedureBarcodeEmpty.textContent = t('reg_barcode_render_failed');
+					procedureBarcodeEmpty.classList.remove('d-none');
+				}
+			}
+
+			return;
+		}
+
 		if (typeof JsBarcode !== 'undefined' && procedureBarcodeSvg && spec) {
 			try {
 				const options = {
@@ -2472,10 +2635,13 @@
 					options.ean128 = true;
 				}
 
-				JsBarcode(procedureBarcodeSvg, spec.value, options);
+				const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+				procedureBarcodeSvg.innerHTML = '';
+				procedureBarcodeSvg.appendChild(svg);
+				JsBarcode(svg, spec.value, options);
 
 				if (spec.wideText) {
-					applyBarcodeTextSpacing(procedureBarcodeSvg);
+					applyBarcodeTextSpacing(svg);
 				}
 
 				procedureBarcodeSvg.classList.remove('d-none');
@@ -2495,20 +2661,68 @@
 		}
 	}
 
+	function showBarcode2dFailure() {
+		if (procedureQrEmpty) {
+			procedureQrEmpty.textContent = t('reg_barcode_render_failed');
+			procedureQrEmpty.classList.remove('d-none');
+		}
+	}
+
+	function showBarcode2dCanvas(canvas) {
+		if (!procedureQrCode) {
+			return;
+		}
+
+		procedureQrCode.innerHTML = '';
+		procedureQrCode.appendChild(canvas);
+
+		if (procedureQrEmpty) {
+			procedureQrEmpty.classList.add('d-none');
+		}
+	}
+
+	function renderBarcode2dWithQrCode(barcodeValue) {
+		if (typeof QRCode === 'undefined' || !procedureQrCode) {
+			showBarcode2dFailure();
+			return;
+		}
+
+		try {
+			procedureQrCode.innerHTML = '';
+			productQrCodeInstance = new QRCode(procedureQrCode, {
+				text: barcodeValue,
+				width: 180,
+				height: 180,
+				colorDark: '#000000',
+				colorLight: '#ffffff',
+				correctLevel: QRCode.CorrectLevel.M,
+			});
+
+			if (procedureQrEmpty) {
+				procedureQrEmpty.classList.add('d-none');
+			}
+		} catch (error) {
+			showBarcode2dFailure();
+		}
+	}
+
 	function renderBarcode2dPreview(value) {
 		const barcodeValue = (value || '').trim();
-		const barcodeType = currentBarcode2dType() || 'QR';
+		const barcodeType = currentBarcode2dType();
+		const symbol = barcode2dSymbol(barcodeType) || (barcodeType ? '' : 'qrcode');
+		const typeLabel = barcodeType || (symbol === 'qrcode' ? 'QR' : '');
+		const renderToken = ++barcode2dRenderToken;
 
 		resetBarcode2dPreview();
 
 		if (procedureBarcode2dMeta) {
-			if (barcodeValue) {
+			if (barcodeValue && typeLabel) {
 				procedureBarcode2dMeta.textContent = t('reg_barcode_2d_typed', {
-					type: barcodeType,
+					type: typeLabel,
 					value: barcodeValue,
 				});
-			} else if (barcodeType) {
-				procedureBarcode2dMeta.textContent = t('reg_barcode_2d_typed_empty', { type: barcodeType });
+			} else if (typeLabel) {
+				procedureBarcode2dMeta.textContent = t('reg_barcode_2d_typed_empty', { type: typeLabel });
 			} else {
 				procedureBarcode2dMeta.textContent = t('reg_barcode_2d_meta');
 			}
@@ -2518,31 +2732,51 @@
 			return;
 		}
 
-		if (typeof QRCode !== 'undefined' && procedureQrCode) {
+		if (!symbol) {
+			showBarcode2dFailure();
+			return;
+		}
+
+		if (typeof bwipjs !== 'undefined' && procedureQrCode) {
 			try {
-				procedureQrCode.innerHTML = '';
-				productQrCodeInstance = new QRCode(procedureQrCode, {
+				const canvas = document.createElement('canvas');
+				const rendered = bwipjs.toCanvas(canvas, {
+					bcid: symbol,
 					text: barcodeValue,
-					width: 180,
-					height: 180,
-					colorDark: '#000000',
-					colorLight: '#ffffff',
-					correctLevel: QRCode.CorrectLevel.M,
+					scale: symbol === 'pdf417' ? 2 : 3,
+					paddingwidth: 1,
+					paddingheight: 1,
 				});
 
-				if (procedureQrEmpty) {
-					procedureQrEmpty.classList.add('d-none');
+				if (rendered && typeof rendered.then === 'function') {
+					rendered.then(function () {
+						if (renderToken !== barcode2dRenderToken) {
+							return;
+						}
+
+						showBarcode2dCanvas(canvas);
+					}).catch(function () {
+						if (renderToken === barcode2dRenderToken) {
+							showBarcode2dFailure();
+						}
+					});
+					return;
 				}
+
+				showBarcode2dCanvas(canvas);
 			} catch (error) {
-				if (procedureQrEmpty) {
-					procedureQrEmpty.textContent = t('reg_barcode_render_failed');
-					procedureQrEmpty.classList.remove('d-none');
-				}
+				showBarcode2dFailure();
 			}
-		} else if (procedureQrEmpty) {
-			procedureQrEmpty.textContent = t('reg_barcode_render_failed');
-			procedureQrEmpty.classList.remove('d-none');
+
+			return;
 		}
+
+		if (symbol === 'qrcode') {
+			renderBarcode2dWithQrCode(barcodeValue);
+			return;
+		}
+
+		showBarcode2dFailure();
 	}
 
 	function renderBarcodePreviews() {

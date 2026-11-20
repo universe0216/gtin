@@ -268,20 +268,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 									<div class="procedure-barcode-preview-card">
 										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_barcode_1d_title')); ?></h6>
 										<div class="procedure-barcode-preview-fields">
-											<label class="form-label" for="procedureBarcodeInput"><?php echo html_escape(app_line('reg_barcode_value')); ?></label>
-											<input type="text" class="form-control" id="procedureBarcodeInput" placeholder="<?php echo html_escape(app_line('reg_barcode_placeholder')); ?>" readonly>
 											<p class="text-muted small mt-2 mb-0" id="procedureBarcodeFullValue"><?php echo html_escape(app_line('reg_barcode_full')); ?></p>
 										</div>
 										<div class="procedure-barcode-preview-body">
-											<svg id="procedureBarcodeSvg" class="procedure-barcode-svg d-none"></svg>
+											<div id="procedureBarcodeSvg" class="procedure-barcode-svg d-none"></div>
 											<p class="text-muted small mb-0 procedure-barcode-empty" id="procedureBarcodeEmpty"><?php echo html_escape(app_line('reg_barcode_empty')); ?></p>
 										</div>
 									</div>
 									<div class="procedure-barcode-preview-card">
 										<h6 class="procedure-barcode-preview-title"><?php echo html_escape(app_line('reg_barcode_2d_title')); ?></h6>
 										<div class="procedure-barcode-preview-fields">
-											<label class="form-label" for="procedureBarcode2dInput"><?php echo html_escape(app_line('reg_barcode_value')); ?></label>
-											<textarea class="form-control" id="procedureBarcode2dInput" rows="3" readonly placeholder="<?php echo html_escape(app_line('reg_barcode_2d_placeholder')); ?>"></textarea>
 											<p class="text-muted small mt-2 mb-0" id="procedureBarcode2dMeta"><?php echo html_escape(app_line('reg_barcode_2d_meta')); ?></p>
 										</div>
 										<div class="procedure-barcode-preview-body">
@@ -404,11 +400,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 <script src="<?php echo base_url('assets/vendor/jsbarcode/JsBarcode.all.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/qrcode/qrcode.min.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/bwip-js/bwip-js-min.js'); ?>"></script>
 <script>
 	window.PRODUCT_REGISTRATION_CONFIG = {
 		baseUrl: <?php echo json_encode(site_url('product_registration')); ?>,
 		initialTabs: <?php echo json_encode($tabs); ?>,
 		barcode1dTypes: <?php echo json_encode(barcode_1d_type_options()); ?>,
-		barcode2dTypes: <?php echo json_encode(barcode_2d_type_options()); ?>
+		barcode2dTypes: <?php echo json_encode(barcode_2d_type_options()); ?>,
+		default1dType: 'EAN 13',
+		default2dType: 'QR'
 	};
 </script>

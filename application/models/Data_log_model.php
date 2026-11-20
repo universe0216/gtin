@@ -86,8 +86,8 @@ class Data_log_model extends CI_Model {
 		}
 
 		$this->db->group_start();
-		$this->db->like('data_log.entity', $search);
-		$this->db->or_like('data_log.action', $search);
+		$this->db->like('data_log.original_data', $search);
+		$this->db->or_like('data_log.new_data', $search);
 		$this->db->or_like('accounts.username', $search);
 		$this->db->or_like('accounts.full_name', $search);
 

@@ -10,7 +10,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 $config['barcode_1d_types'] = array(
 	'EAN-13',
-	'EAN-8',
+	// 'EAN-8',
 	// 'UPC-A',
 	// 'UPC-E',
 	'ITF-14',
