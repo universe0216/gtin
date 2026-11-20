@@ -118,7 +118,7 @@ class Product_registration_export {
 				$product_name = trim((string) ($item['name'] ?? ''));
 			}
 
-			if ($status === 'approved' || $status === 'accepted')
+			if ($status === 'approved')
 			{
 				$barcode_value = $this->cell($columns, $cells, array('1d barcode', 'barcode'));
 

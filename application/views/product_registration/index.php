@@ -410,6 +410,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	window.PRODUCT_REGISTRATION_CONFIG = {
 		baseUrl: <?php echo json_encode(site_url('product_registration')); ?>,
 		initialTabs: <?php echo json_encode($tabs); ?>,
+		itemStatuses: <?php echo json_encode(registration_item_statuses()); ?>,
 		barcode1dTypes: <?php echo json_encode(barcode_1d_type_options()); ?>,
 		barcode2dTypes: <?php echo json_encode(barcode_2d_type_options()); ?>,
 		default1dType: 'EAN 13',

@@ -1605,6 +1605,40 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 	font-weight: 600;
 }
 
+.procedure-detail-header-prefix {
+	color: #93c5fd;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+}
+
+.procedure-detail-info-value.procedure-detail-status-pending {
+	color: #cbd5e1;
+	background: rgba(148, 163, 184, 0.18);
+	border-color: rgba(148, 163, 184, 0.5);
+	font-weight: 600;
+}
+
+.procedure-detail-info-value.procedure-detail-status-approved {
+	color: #86efac;
+	background: rgba(34, 197, 94, 0.18);
+	border-color: rgba(34, 197, 94, 0.65);
+	font-weight: 700;
+}
+
+.procedure-detail-info-value.procedure-detail-status-rejected {
+	color: #fca5a5;
+	background: rgba(239, 68, 68, 0.18);
+	border-color: rgba(239, 68, 68, 0.7);
+	font-weight: 700;
+}
+
+.procedure-detail-info-value.procedure-detail-status-warning {
+	color: #fde68a;
+	background: rgba(245, 158, 11, 0.2);
+	border-color: rgba(245, 158, 11, 0.75);
+	font-weight: 700;
+}
+
 .procedure-detail-eyebrow {
 	color: var(--app-text-muted);
 	font-size: 0.75rem;
@@ -2057,7 +2091,8 @@ html[data-mdb-theme="dark"] .procedure-data-table.table-hover > tbody > tr:hover
 }
 
 .procedure-barcode-auto-assign,
-.procedure-barcode-auto-generate {
+.procedure-barcode-auto-generate,
+.procedure-barcode-check {
 	flex: 0 0 auto;
 	white-space: nowrap;
 }
@@ -2460,13 +2495,17 @@ select.procedure-detail-info-input option {
 }
 
 #productsGrid .jqx-grid-cell-filter,
-#productsGrid .jqx-widget-header.jqx-grid-cell-filter {
+#productsGrid .jqx-widget-header.jqx-grid-cell-filter,
+#organizationProductsGrid .jqx-grid-cell-filter,
+#organizationProductsGrid .jqx-widget-header.jqx-grid-cell-filter {
 	background-color: var(--app-surface-raised);
 	border-color: var(--app-border-subtle);
 }
 
 #productsGrid .jqx-grid-cell-filter .jqx-input,
-#productsGrid .jqx-grid-cell-filter input {
+#productsGrid .jqx-grid-cell-filter input,
+#organizationProductsGrid .jqx-grid-cell-filter .jqx-input,
+#organizationProductsGrid .jqx-grid-cell-filter input {
 	background-color: var(--app-surface);
 	border-color: var(--app-border);
 	color: #e7ecf3;

@@ -21,8 +21,12 @@
 	function statusLabel(status) {
 		const key = String(status || '').toLowerCase();
 
-		if (key === 'approved' || key === 'accepted') {
-			return t('reg_accepted');
+		if (key === 'approved') {
+			return t('reg_approved');
+		}
+
+		if (key === 'warning') {
+			return t('reg_warning');
 		}
 
 		if (key === 'rejected') {

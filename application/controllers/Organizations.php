@@ -360,7 +360,7 @@ class Organizations extends BasicController {
 		}
 
 		$params = $this->list_query_params();
-		$filters = $this->list_filters_from_params($params);
+		$filters = $this->organization_product_filters($params);
 		$sort = $this->resolve_product_sort_for_columns($this->detail_product_columns);
 		$total = $this->product_model->count_by_organization($id, $params['search'], '', $filters);
 		$offset = ($params['page'] - 1) * $params['per_page'];
@@ -446,6 +446,45 @@ class Organizations extends BasicController {
 				'product_count' => (int) ($result['product_count'] ?? 0),
 			),
 		));
+	}
+
+	protected function organization_product_filters(array $params)
+	{
+		$params['column_filters'] = $this->product_column_filter_params();
+
+		return $this->list_filters_from_params($params);
+	}
+
+	protected function product_column_filter_params()
+	{
+		$map = $this->product_model->get_filterable_columns();
+		$raw = $this->input->get('filter');
+		$filters = array();
+
+		if ( ! is_array($raw) || empty($map))
+		{
+			return $filters;
+		}
+
+		foreach ($raw as $key => $value)
+		{
+			$key = trim((string) $key);
+			$value = trim((string) $value);
+
+			if ($key === '' || $value === '' || ! isset($map[$key]))
+			{
+				continue;
+			}
+
+			if (mb_strlen($value) > 255)
+			{
+				$value = mb_substr($value, 0, 255);
+			}
+
+			$filters[$key] = $value;
+		}
+
+		return $filters;
 	}
 
 	protected function list_query_params()

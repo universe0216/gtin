@@ -51,16 +51,19 @@ class Organization_archieve extends Organizations {
 		}
 
 		$params = $this->list_query_params();
+		$filters = $this->organization_product_filters($params);
 		$sort = $this->resolve_product_sort_for_columns($this->detail_product_columns);
 		$organization_id = (int) $record['origin_id'];
-		$total = $this->product_model->count_by_organization($organization_id, $params['search']);
+		$total = $this->product_model->count_by_organization($organization_id, $params['search'], '', $filters);
 		$offset = ($params['page'] - 1) * $params['per_page'];
 		$records = $this->product_model->get_paginated_by_organization(
 			$organization_id,
 			$params['per_page'],
 			$offset,
 			$params['search'],
-			$sort
+			$sort,
+			'',
+			$filters
 		);
 		$meta = $this->build_paginated_meta(
 			$total,

@@ -124,7 +124,15 @@ class Product_archieve_model extends Product_model {
 
 	protected function apply_list_order($sort)
 	{
-		if ( ! empty($sort['sql']) && ($sort['key'] ?? '') === 'organization_name')
+		if (empty($sort['sql']) || empty($sort['direction']))
+		{
+			$this->db->order_by('products_archieve.deleted_at', 'DESC');
+			$this->db->order_by('products_archieve.id', 'DESC');
+
+			return;
+		}
+
+		if (($sort['key'] ?? '') === 'organization_name')
 		{
 			$this->db->order_by($sort['sql'], $sort['direction'] === 'asc' ? 'ASC' : 'DESC', FALSE);
 
@@ -154,7 +162,11 @@ class Product_archieve_model extends Product_model {
 			$this->db->or_like('products_archieve.barcode_1d', $search);
 			$this->db->or_like('products_archieve.barcode_1d_type', $search);
 			$this->db->or_like('products_archieve.barcode_2d', $search);
+			$this->db->or_like('products_archieve.barcode_2d_type', $search);
 			$this->db->or_like('products_archieve.package_type', $search);
+			$this->db->or_like('products_archieve.price', $search);
+			$this->db->or_like('products_archieve.reg_date', $search);
+			$this->db->or_like('products_archieve.processor_name', $search);
 			$this->db->group_end();
 			return;
 		}

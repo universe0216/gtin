@@ -644,6 +644,14 @@ class Product_registration_processor {
 			count($saved_items)
 		);
 		$this->CI->load->model('organization_model');
+		$prefix_names = $factory_name_list;
+
+		if (trim((string) ($registration['organization_name'] ?? '')) !== '')
+		{
+			$prefix_names[] = $registration['organization_name'];
+		}
+
+		$tab['factory_prefixes'] = $this->CI->organization_model->prefixes_by_name($prefix_names);
 		$tab['unregistered_factories'] = $this->CI->organization_model->missing_names($factory_name_list);
 
 		return $tab;

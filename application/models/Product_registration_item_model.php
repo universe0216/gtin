@@ -27,7 +27,7 @@ class Product_registration_item_model extends CI_Model {
 			->select('product_registration_items.*, product_registrations.procedure_number, product_registrations.created_at AS registration_created_at, product_registrations.organization_name')
 			->from($this->table)
 			->join('product_registrations', 'product_registrations.id = product_registration_items.product_registration_id', 'inner')
-			->where_in('product_registration_items.status', array('approved', 'accepted'));
+			->where('product_registration_items.status', 'approved');
 
 		if ($barcode !== '')
 		{

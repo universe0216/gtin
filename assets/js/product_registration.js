@@ -118,9 +118,13 @@
 
 	// ---------------------------------------------------------- status helpers
 
+	const itemStatuses = Array.isArray(config.itemStatuses)
+		? config.itemStatuses
+		: ['pending', 'approved', 'rejected', 'warning'];
+
 	function normalizeItemStatus(itemStatus) {
 		const status = String(itemStatus || 'pending').toLowerCase();
-		return status === 'accepted' ? 'approved' : status;
+		return itemStatuses.indexOf(status) >= 0 ? status : 'pending';
 	}
 
 	function statusIconRenderer(row, columnfield, value, defaultHtml, columnSettings, rowdata) {
@@ -130,7 +134,7 @@
 		if (status === 'rejected') {
 			icon = '<i class="fas fa-times procedure-item-status-icon procedure-item-status-icon-rejected" aria-label="' + t('reg_rejected') + '"></i>';
 		} else if (status === 'approved') {
-			icon = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="' + t('reg_accepted') + '"></i>';
+			icon = '<i class="fas fa-check procedure-item-status-icon procedure-item-status-icon-approved" aria-label="' + t('reg_approved') + '"></i>';
 		} else if (status === 'warning') {
 			const label = (rowdata && rowdata.message) ? rowdata.message : t('reg_similar_warning');
 			icon = '<i class="fas fa-exclamation-triangle procedure-item-status-icon procedure-item-status-icon-warning" title="' + escapeAttr(label) + '" aria-label="' + escapeAttr(label) + '"></i>';
@@ -397,7 +401,44 @@
 
 	// ----------------------------------------------------------- detail modal
 
+	function rowFactoryName(tab, row) {
+		const columns = (tab && tab.columns) || [];
+		const cells = (row && row.cells) || [];
+		const index = findColumnIndex(columns, ['factory name']);
+
+		if (index >= 0 && String(cells[index] || '').trim()) {
+			return String(cells[index]).trim();
+		}
+
+		if (String(cells[22] || '').trim()) {
+			return String(cells[22]).trim();
+		}
+
+		return tab && tab.organization_name ? String(tab.organization_name).trim() : '';
+	}
+
+	function rowGs1Prefix(tab, factoryName) {
+		const prefixes = (tab && tab.factory_prefixes) || {};
+		const name = String(factoryName || '').trim();
+
+		if (!name) {
+			return '';
+		}
+
+		if (prefixes[name]) {
+			return String(prefixes[name]);
+		}
+
+		const match = Object.keys(prefixes).find(function (key) {
+			return key.toLowerCase() === name.toLowerCase();
+		});
+
+		return match ? String(prefixes[match] || '') : '';
+	}
+
 	function buildRowPayload(tab, row, index) {
+		const factoryName = rowFactoryName(tab, row);
+
 		return {
 			id: row.id,
 			row_index: index + 1,
@@ -407,6 +448,8 @@
 			image_urls: row.image_urls || [],
 			procedure_number: tab.procedure_number,
 			organization_name: tab.organization_name,
+			factory_name: factoryName,
+			gs1_prefix: rowGs1Prefix(tab, factoryName),
 			file_name: tab.file_name,
 			processor_name: tab.processor_name || '',
 			status: tab.status || 'uploaded',
@@ -1675,7 +1718,7 @@
 		}
 
 		if (normalized === 'approved') {
-			return t('reg_accepted');
+			return t('reg_approved');
 		}
 
 		if (normalized === 'warning') {
@@ -1720,24 +1763,68 @@
 		syncRejectionReasonBlock(payload);
 	}
 
-	function renderModalHeader(payload) {
-		if (!productModalTitle) {
+	function warningMessageFor(payload) {
+		const itemStatus = normalizeItemStatus(payload && payload.item_status || 'pending');
+
+		if (itemStatus !== 'warning') {
+			return '';
+		}
+
+		return String((payload && payload.rejection_reason) || '').trim() || t('reg_similar_warning');
+	}
+
+	function setSummaryField(id, value, visible) {
+		const label = document.getElementById(id + 'Label');
+		const field = document.getElementById(id);
+
+		if (label) {
+			label.classList.toggle('d-none', visible === false);
+		}
+
+		if (!field) {
 			return;
 		}
 
-		const orgName = escapeHtml(payload.organization_name || '');
-		const productNumber = escapeHtml(payload.product_procedure_number || 'Product');
-		const itemStatus = normalizeItemStatus(payload.item_status || 'pending');
-		const warningMessage = itemStatus === 'warning'
-			? (String(payload.rejection_reason || '').trim() || t('reg_similar_warning'))
-			: '';
+		field.textContent = value || '';
+		field.classList.toggle('d-none', visible === false);
+	}
 
-		productModalTitle.innerHTML =
-			(orgName ? '<span class="procedure-detail-header-org">' + orgName + '</span>' : '') +
-			'<span class="procedure-detail-header-product">' + productNumber + '</span>' +
-			'<span class="badge ' + productStatusBadgeClass(itemStatus) + '">' + escapeHtml(productStatusLabel(itemStatus)) + '</span>' +
-			(warningMessage ? '<span class="procedure-detail-header-warning">' + escapeHtml(warningMessage) + '</span>' : '');
+	function syncDetailSummary(payload) {
+		const status = normalizeItemStatus(payload.item_status || 'pending');
+		const statusField = document.getElementById('procedureDetailStatusValue');
+
+		setSummaryField('procedureDetailStatusValue', productStatusLabel(status));
+
+		if (statusField) {
+			['pending', 'approved', 'rejected', 'warning'].forEach(function (name) {
+				statusField.classList.toggle('procedure-detail-status-' + name, name === status);
+			});
+		}
+
+		const warning = warningMessageFor(payload);
+		setSummaryField('procedureDetailWarningValue', warning, warning !== '');
+	}
+
+	function renderModalHeader(payload) {
+		if (productModalTitle) {
+			const name = payload.factory_name || payload.organization_name || '—';
+			const prefix = String(payload.gs1_prefix || '').trim();
+
+			productModalTitle.innerHTML =
+				'<span class="procedure-detail-header-product">' + escapeHtml(name) + '</span>' +
+				(prefix ? '<span class="procedure-detail-header-prefix">' + escapeHtml(prefix) + '</span>' : '');
+		}
+
+		syncDetailSummary(payload);
 		updateDetailReason(payload);
+	}
+
+	function summaryField(label, value, id, visible, extraClass) {
+		const hidden = visible === false ? ' d-none' : '';
+		const extra = extraClass ? ' ' + extraClass : '';
+
+		return '<span class="procedure-detail-info-label' + hidden + '" id="' + id + 'Label">' + escapeHtml(label) + '</span>' +
+			'<span class="procedure-detail-info-value' + hidden + extra + '" id="' + id + '">' + escapeHtml(value || '') + '</span>';
 	}
 
 	function updateDetailReason(payload) {
@@ -1936,8 +2023,13 @@
 		}
 
 		if (field === 'barcode_1d') {
-			return '<input type="text" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
-				dataAttrs + ' value="' + saved + '">';
+			return '<div class="procedure-barcode-value-control">' +
+				'<input type="text" maxlength="255" class="form-control form-control-sm procedure-detail-info-input"' +
+					dataAttrs + ' value="' + saved + '">' +
+				'<button type="button" class="btn btn-sm btn-outline-secondary procedure-barcode-check">' +
+					escapeHtml(t('reg_check_barcode')) +
+				'</button>' +
+			'</div>';
 		}
 
 		const options = barcodeTypeOptions(field, value).map(function (option) {
@@ -2133,6 +2225,38 @@
 		saveBarcodeField(valueInput);
 	}
 
+	function checkBarcode(button) {
+		const wrap = button.closest('.procedure-barcode-value-control');
+		const input = wrap ? wrap.querySelector('[data-barcode-field="barcode_1d"]') : null;
+
+		if (!input) {
+			return;
+		}
+
+		const itemId = input.getAttribute('data-item-id');
+		const typeInput = document.getElementById('procedureBarcodeField_barcode_1d_type');
+		const formData = new FormData();
+
+		formData.append('barcode_1d', input.value.trim());
+		formData.append('barcode_1d_type', typeInput ? typeInput.value : '');
+		button.disabled = true;
+
+		fetchApi(baseUrl + '/check_barcode/' + itemId, {
+			method: 'POST',
+			body: formData,
+		}).then(function (result) {
+			const valid = !!(result.data && result.data.valid);
+
+			input.classList.toggle('is-invalid', !valid);
+			showToast(result.message || t(valid ? 'reg_barcode_valid' : 'reg_barcode_check_failed'), valid ? 'success' : 'error');
+		}).catch(function (error) {
+			input.classList.add('is-invalid');
+			showToast(error.message || t('reg_barcode_check_failed'), 'error');
+		}).finally(function () {
+			button.disabled = false;
+		});
+	}
+
 	function autoAssignBarcode(button) {
 		const typeInput = barcodeFieldInput('barcode_1d_type');
 		const valueInput = barcodeFieldInput('barcode_1d');
@@ -2265,8 +2389,12 @@
 			'</div>';
 		}).join('');
 
+		const warning = warningMessageFor(payload);
+
 		productDetailInfo.innerHTML =
 			'<div class="procedure-detail-info-grid">' +
+				summaryField(t('reg_status'), productStatusLabel(payload.item_status), 'procedureDetailStatusValue', true, 'procedure-detail-status-' + normalizeItemStatus(payload.item_status)) +
+				summaryField(t('reg_warning'), warning, 'procedureDetailWarningValue', warning !== '') +
 				renderRejectionReasonBlock(payload) +
 				fieldsHtml +
 			'</div>';
@@ -3295,7 +3423,7 @@
 			}
 		});
 
-		(payload.accepted || []).forEach(function (item) {
+		(payload.approved || []).forEach(function (item) {
 			if (item.barcode_2d) {
 				applyBarcodeFieldLocally(registrationId, item.id, 'barcode_2d_type', item.barcode_2d_type || 'QR');
 				applyBarcodeFieldLocally(registrationId, item.id, 'barcode_2d', item.barcode_2d);
@@ -3362,7 +3490,7 @@
 	function focusAutoProcessRow(registrationId, data) {
 		const payload = data || {};
 		const changed = (payload.assigned && payload.assigned[0])
-			|| (payload.accepted && payload.accepted[0])
+			|| (payload.approved && payload.approved[0])
 			|| (payload.rejected && payload.rejected[0])
 			|| (payload.cleared && payload.cleared[0])
 			|| (payload.warned && payload.warned[0]);
@@ -3388,7 +3516,7 @@
 
 		const maxSteps = ((tab && tab.rows) ? tab.rows.length : 0) + 1;
 		let assignedCount = 0;
-		let acceptedCount = 0;
+		let approvedCount = 0;
 		let rejectedCount = 0;
 		let clearedCount = 0;
 		let warnedCount = 0;
@@ -3401,8 +3529,8 @@
 				showToast(t('reg_auto_process_done').replace('%d', String(assignedCount)), 'success');
 			}
 
-			if (acceptedCount) {
-				showToast(t('reg_auto_process_accepted').replace('%d', String(acceptedCount)), 'success');
+			if (approvedCount) {
+				showToast(t('reg_auto_process_accepted').replace('%d', String(approvedCount)), 'success');
 			}
 
 			if (rejectedCount) {
@@ -3413,7 +3541,7 @@
 				showToast(t('reg_auto_process_cleared'), 'success');
 			}
 
-			if (!assignedCount && !acceptedCount && !rejectedCount && !clearedCount && !warnedCount) {
+			if (!assignedCount && !approvedCount && !rejectedCount && !clearedCount && !warnedCount) {
 				showToast(t('reg_auto_process_none'), 'success');
 			}
 
@@ -3442,10 +3570,10 @@
 
 				focusAutoProcessRow(registrationId, data);
 
-				return wait(160).then(function () {
+				return wait(1).then(function () {
 					applyAutoProcessResult(registrationId, data);
 					assignedCount += (data.assigned || []).length;
-					acceptedCount += (data.accepted || []).length;
+					approvedCount += (data.approved || []).length;
 					rejectedCount += (data.rejected || []).length;
 					clearedCount += (data.cleared || []).length;
 					warnedCount += (data.warned || []).length;
@@ -4284,6 +4412,13 @@
 		});
 
 		productDetailInfo.addEventListener('click', function (event) {
+			const checkBtn = event.target.closest('.procedure-barcode-check');
+
+			if (checkBtn && !checkBtn.disabled) {
+				checkBarcode(checkBtn);
+				return;
+			}
+
 			const assignBtn = event.target.closest('.procedure-barcode-auto-assign');
 
 			if (assignBtn && !assignBtn.disabled) {

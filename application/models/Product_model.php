@@ -351,7 +351,12 @@ class Product_model extends Basic_model {
 			$this->db->or_like('products.barcode_1d', $search);
 			$this->db->or_like('products.barcode_1d_type', $search);
 			$this->db->or_like('products.barcode_2d', $search);
+			$this->db->or_like('products.barcode_2d_type', $search);
 			$this->db->or_like('products.package_type', $search);
+			$this->db->or_like('products.price', $search);
+			$this->db->or_like('products.reg_date', $search);
+			$this->db->or_like('products.processor_name', $search);
+			$this->db->or_like('organizations.name', $search);
 			$this->db->group_end();
 			return;
 		}

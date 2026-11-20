@@ -201,6 +201,40 @@ class Organization_model extends Basic_model {
 			->row_array();
 	}
 
+	public function prefixes_by_name(array $names)
+	{
+		$wanted = array();
+
+		foreach ($names as $name)
+		{
+			$name = trim((string) $name);
+
+			if ($name !== '')
+			{
+				$wanted[$name] = $name;
+			}
+		}
+
+		if (empty($wanted))
+		{
+			return array();
+		}
+
+		$rows = $this->db
+			->select('name, gs1_prefix')
+			->where_in('name', array_values($wanted))
+			->get($this->table)
+			->result_array();
+		$prefixes = array();
+
+		foreach ($rows as $row)
+		{
+			$prefixes[trim((string) $row['name'])] = trim((string) ($row['gs1_prefix'] ?? ''));
+		}
+
+		return $prefixes;
+	}
+
 	public function missing_names(array $names)
 	{
 		$wanted = array();
