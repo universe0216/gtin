@@ -725,6 +725,47 @@ class Product_registration_processor {
 		return $this->normalize_gs1_prefix($organization['gs1_prefix'] ?? '');
 	}
 
+	public function list_available_ean13($organization_name, array $reserved = array())
+	{
+		$this->CI->load->model('organization_model');
+		$this->CI->load->model('product_model');
+
+		$organization = $this->CI->organization_model->get_by_name(trim((string) $organization_name));
+
+		if ( ! $organization || empty($organization['gs1_prefix']))
+		{
+			return array();
+		}
+
+		$prefix = $this->normalize_gs1_prefix($organization['gs1_prefix']);
+		$used = $this->get_used_product_numbers((int) $organization['id'], $prefix);
+
+		foreach ($reserved as $barcode)
+		{
+			$product_number = $this->extract_product_number_from_barcode($barcode, $prefix);
+
+			if ($product_number !== NULL && $product_number >= 0 && $product_number <= 999)
+			{
+				$used[$product_number] = TRUE;
+			}
+		}
+
+		$available = array();
+
+		for ($product_number = 1; $product_number < 1000 && count($available) < 50; $product_number++)
+		{
+			if (isset($used[$product_number]))
+			{
+				continue;
+			}
+
+			$data_digits = $prefix.str_pad((string) $product_number, 3, '0', STR_PAD_LEFT);
+			$available[] = $data_digits.$this->calculate_ean13_checksum($data_digits);
+		}
+
+		return $available;
+	}
+
 	protected function calculate_available_barcodes($organization_name, $count)
 	{
 		$count = (int) $count;

@@ -154,7 +154,7 @@ class Product_model extends Basic_model {
 
 	protected function list_order_column()
 	{
-		return 'products.'.$this->primary_key;
+		return 'products.created_at';
 	}
 
 	protected function apply_list_filters(array $filters)
@@ -186,7 +186,15 @@ class Product_model extends Basic_model {
 
 	protected function apply_list_order($sort)
 	{
-		if ( ! empty($sort['sql']) && ($sort['key'] ?? '') === 'category_name')
+		if (empty($sort['sql']) || empty($sort['direction']))
+		{
+			$this->db->order_by('products.created_at', 'DESC');
+			$this->db->order_by('products.id', 'DESC');
+
+			return;
+		}
+
+		if (($sort['key'] ?? '') === 'category_name')
 		{
 			$this->db->order_by($sort['sql'], $sort['direction'] === 'asc' ? 'ASC' : 'DESC', FALSE);
 

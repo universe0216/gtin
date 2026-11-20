@@ -613,6 +613,7 @@
 		updateAssignableBarcodeDisplay();
 		updateDetailNavButtons();
 		refreshSimilarSearch();
+		loadAvailableEan();
 
 		const imageTabBtn = document.getElementById('procedureDetailTabImageBtn');
 
@@ -1270,7 +1271,9 @@
 			return Math.max(280, window.innerHeight - 320);
 		}
 
-		return Math.max(220, pane.clientHeight - (search ? search.offsetHeight : 0) - 16);
+		const available = pane.querySelector('.procedure-available-ean');
+
+		return Math.max(220, pane.clientHeight - (search ? search.offsetHeight : 0) - (available ? available.offsetHeight : 0) - 24);
 	}
 
 	function similarIndexRenderer(row) {
@@ -1565,6 +1568,77 @@
 		applySimilarEmptyMessage();
 		similarGrid.gotoFirst();
 		similarGrid.reload();
+	}
+
+	function resizeSimilarGrid() {
+		if (!similarGrid) {
+			return;
+		}
+
+		similarGrid.$el.jqxGrid('height', similarGridHeight());
+	}
+
+	function loadAvailableEan() {
+		const list = document.getElementById('procedureAvailableEanList');
+
+		if (!list) {
+			return;
+		}
+
+		const organization = selectedFactoryName();
+		const params = new URLSearchParams();
+		params.set('organization', organization);
+		reservedBarcodes(null).forEach(function (barcode) {
+			params.append('reserved[]', barcode);
+		});
+
+		list.innerHTML = '<span class="text-muted small">' + escapeHtml(t('jqx_load')) + '</span>';
+
+		fetchApi(baseUrl + '/available_ean13?' + params.toString()).then(function (result) {
+			if (!activeDetail || selectedFactoryName() !== organization) {
+				return;
+			}
+
+			const numbers = result.data || [];
+
+			if (!numbers.length) {
+				list.innerHTML = '<span class="text-muted small">' + escapeHtml(t('reg_ean_available_empty')) + '</span>';
+				return;
+			}
+
+			list.innerHTML = numbers.map(function (ean) {
+				return '<button type="button" class="btn btn-sm btn-outline-success procedure-available-ean-item" data-ean="' +
+					escapeAttr(ean) + '">' + escapeHtml(ean) + '</button>';
+			}).join('');
+			resizeSimilarGrid();
+		}).catch(function () {
+			list.innerHTML = '<span class="text-muted small">' + escapeHtml(t('reg_ean_available_empty')) + '</span>';
+			resizeSimilarGrid();
+		});
+	}
+
+	function applyAvailableEan(button) {
+		const ean = (button.getAttribute('data-ean') || '').trim();
+		const valueInput = barcodeFieldInput('barcode_1d');
+		const tab = getActiveTab();
+
+		if (!ean || !valueInput) {
+			return;
+		}
+
+		if (!registrationCanEdit(tab) || valueInput.disabled) {
+			showToast(t('reg_completed_locked'), 'error');
+			return;
+		}
+
+		const typeInput = barcodeFieldInput('barcode_1d_type');
+
+		if (typeInput && !typeInput.disabled && !String(typeInput.value || '').trim()) {
+			setBarcodeControl(typeInput, 'EAN-13');
+		}
+
+		setBarcodeControl(valueInput, ean);
+		loadAvailableEan();
 	}
 
 	function findSimilarProducts() {
@@ -4056,8 +4130,21 @@
 
 		if (event.target.id === 'procedureDetailTabSimilarBtn') {
 			ensureSimilarGrid();
+			loadAvailableEan();
 		}
 	});
+
+	const availableEanList = document.getElementById('procedureAvailableEanList');
+
+	if (availableEanList) {
+		availableEanList.addEventListener('click', function (event) {
+			const button = event.target.closest('.procedure-available-ean-item');
+
+			if (button) {
+				applyAvailableEan(button);
+			}
+		});
+	}
 
 	if (similarSearchInput) {
 		similarSearchInput.addEventListener('input', function () {

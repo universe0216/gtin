@@ -242,6 +242,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 								<div id="procedureDetailImageGallery" class="procedure-detail-image-gallery"></div>
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabSimilar" role="tabpanel" aria-labelledby="procedureDetailTabSimilarBtn">
+								<div class="procedure-available-ean" id="procedureDetailAvailableEan">
+									<div class="procedure-available-ean-label"><?php echo html_escape(app_line('reg_ean_available')); ?></div>
+									<div class="procedure-available-ean-list" id="procedureAvailableEanList"></div>
+								</div>
 								<div class="procedure-similar-search d-flex flex-wrap align-items-center gap-2 mb-2">
 									<button type="button" class="btn btn-sm btn-outline-primary" id="procedureSimilarFindBtn" data-mdb-ripple-init>
 										<i class="fas fa-clone me-1" aria-hidden="true"></i><?php echo html_escape(app_line('reg_find_similar')); ?>
@@ -261,6 +265,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 									</div>
 									<p class="text-muted small mb-0" id="procedureSimilarOrg"></p>
 								</div>
+
 								<div id="procedureSimilarGrid"></div>
 							</div>
 							<div class="tab-pane fade procedure-detail-tab-pane" id="procedureDetailTabBarcodes" role="tabpanel" aria-labelledby="procedureDetailTabBarcodesBtn">

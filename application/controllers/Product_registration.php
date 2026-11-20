@@ -1311,7 +1311,7 @@ class Product_registration extends AuthenticatedController {
 
 		if ($value === '')
 		{
-			return NULL;
+			return date('Y-m-d');
 		}
 
 		$time = strtotime($value);
@@ -2005,6 +2005,27 @@ class Product_registration extends AuthenticatedController {
 		$info['cells'] = array_values($cells);
 
 		return json_encode($info);
+	}
+
+	public function available_ean13()
+	{
+		if ( ! $this->input->is_ajax_request())
+		{
+			show_404();
+		}
+
+		$organization_name = trim((string) $this->input->get('organization'));
+		$reserved = $this->input->get('reserved');
+
+		if ( ! is_array($reserved))
+		{
+			$reserved = $reserved === NULL || $reserved === '' ? array() : array($reserved);
+		}
+
+		return $this->json_response(array(
+			'success' => TRUE,
+			'data'    => $this->product_registration_processor->list_available_ean13($organization_name, $reserved),
+		));
 	}
 
 	public function organization_products()
